@@ -22,6 +22,7 @@
     "build:knowledge-adapters": "npm run build:knowledge-client && npm run build -w @commerce/knowledge-document-adapter",
     "dev:knowledge-demo": "npm run build:knowledge-server && tsx scripts/runtime/knowledge-product-demo.ts",
     "test:knowledge-product": "node --import ./scripts/runtime/test-environment.mjs --import tsx --test packages/knowledge-contracts/test/*.test.ts packages/knowledge-client/test/*.test.ts apps/knowledge-api/test/*.test.ts apps/knowledge-web/test/*.test.ts packages/knowledge/test/writer-authority.integration.test.ts",
+    "test:document-onboarding": "node --import ./scripts/runtime/test-environment.mjs --import tsx scripts/runtime/document-onboarding-demo.ts",
     "build:knowledge-foundation": "npm run build:knowledge-client && npm run build:knowledge-server && npm run build:knowledge-adapters",
     "build:knowledge-core": "npm run build -w @commerce/knowledge-core"
   },

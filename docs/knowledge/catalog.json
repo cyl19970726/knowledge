@@ -115,6 +115,16 @@
       "lifecycle": "current"
     },
     {
+      "id": "knowledge-document-onboarding-20261028",
+      "path": "evidence/document-onboarding-20261028.md",
+      "title": "真实公开文档接入验收",
+      "group": "当前实现回执",
+      "status": "真实公开文档与合成任务验证 · 非业务效果验收",
+      "summary": "真实文档字节、登记读取、查询采用反馈、撤权清理及原文合同修正。",
+      "date": "2026-10-28",
+      "lifecycle": "record"
+    },
+    {
       "id": "knowledge-onboarding-acceptance-20261027",
       "path": "evidence/onboarding-20261027.md",
       "title": "冷读者与合成实例接入验收",
