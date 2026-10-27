@@ -33,8 +33,8 @@
 | [决策阅读层历史记录](evidence/decision-value-20261019.md) | 固定日期本地实现和未验项；record | [查询采用与反馈](model.md#查询采用与反馈) | 原文及全部原锚点留在本文件 |
 | [认知维护 M0 审查](evidence/maintenance-m0-20261021.md) | 固定日期设计审查；record | [通用认知模型](model.md) | 原文及全部原锚点留在本文件 |
 | [认知维护 M1 实跑](evidence/maintenance-m1-20261021.md) | 固定日期受限实跑证据；record | [连续两轮验收](model.md#连续两轮怎样验收认知成长) | 原文及全部原锚点留在本文件 |
-| [非视频来源受限试点](evidence/domain-pilot-20261021.md) | 固定日期普通文档试点；record | [普通文档端到端接入](integration.md#8-普通文档业务端到端接入) | 原文及全部原锚点留在本文件 |
-| [查询采用反馈历史记录](evidence/task-use-20261023.md) | 固定日期真实任务读取证据；record | [使用与变化流程](integration.md#5-查询研究采用反馈与变化) | 原文及全部原锚点留在本文件 |
+| [非视频来源受限试点](evidence/domain-pilot-20261021.md) | 固定日期普通文档试点；record | [普通文档端到端接入](integration.md#10-普通文档业务端到端接入) | 原文及全部原锚点留在本文件 |
+| [查询采用反馈历史记录](evidence/task-use-20261023.md) | 固定日期真实任务读取证据；record | [使用与变化流程](integration.md#7-查询研究采用反馈与变化) | 原文及全部原锚点留在本文件 |
 
 历史文档仍可提供事实与推导依据，但其“当前”“已部署”“待实现”和数量只按原日期解释。现行通用正文不得反向复制这些状态。
 
@@ -53,18 +53,18 @@
 | 为什么要分层 | 通用核心 | [来源、认知与关联](model.md#来源认知与关联) | [原章](reference/commerce-product.md#为什么要分层) |
 | 记忆究竟保存什么 | 通用核心 | [来源、认知与关联](model.md#来源认知与关联) | [原章](reference/commerce-product.md#记忆究竟保存什么) |
 | 类型、身份和标签各回答什么 | 通用核心 | [稳定身份与正文权威](model.md#稳定身份与正文权威) | [原章](reference/commerce-product.md#类型身份和标签各回答什么) |
-| 粗精拉进入知识时保留哪些语境 | 业务适配 | [登记来源、版本、锚点、权限与用途](integration.md#4-登记来源版本锚点权限与用途) | [原章](reference/commerce-product.md#粗精拉进入知识时保留哪些语境) |
+| 粗精拉进入知识时保留哪些语境 | 业务适配 | [登记来源、版本、锚点、权限与用途](integration.md#6-登记来源版本锚点权限与用途) | [原章](reference/commerce-product.md#粗精拉进入知识时保留哪些语境) |
 | LLM Wiki 的核心：把新材料编进已有认识 | 通用核心 | [研究行为：触发与读取范围](model.md#研究行为触发与读取范围) | [原章](reference/commerce-product.md#llm-wiki-的核心把新材料编进已有认识) |
 | 持续构建的三种节奏（目标设计） | 通用核心；固定参数和状态为真正历史 | [研究行为：停止与维护](model.md#研究行为停止与维护) | [原章](reference/commerce-product.md#持续构建的三种节奏目标设计) |
 | 从单片到专题 | 通用核心 | [研究行为：什么值得保存](model.md#研究行为什么值得保存) | [原章](reference/commerce-product.md#从单片到专题) |
-| 粗拉与精拉都可以提供可用知识 | 业务适配 | [登记来源、版本、锚点、权限与用途](integration.md#4-登记来源版本锚点权限与用途) | [原章](reference/commerce-product.md#粗拉与精拉都可以提供可用知识) |
+| 粗拉与精拉都可以提供可用知识 | 业务适配 | [登记来源、版本、锚点、权限与用途](integration.md#6-登记来源版本锚点权限与用途) | [原章](reference/commerce-product.md#粗拉与精拉都可以提供可用知识) |
 | 范式要能指导一次新的创作 | 业务适配 | [查询、采用与反馈](model.md#查询采用与反馈) | [原章](reference/commerce-product.md#范式要能指导一次新的创作) |
 | 多片比较先固定比较范围 | 通用核心 | [带条件的命题与内容关系](model.md#带条件的命题与内容关系) | [原章](reference/commerce-product.md#多片比较先固定比较范围) |
 | 采用、纠错和失效 | 通用核心 | [查询、采用与反馈](model.md#查询采用与反馈) | [原章](reference/commerce-product.md#采用纠错和失效) |
 | 工作台怎样展示一条知识 | 通用核心；界面状态为真正历史 | [产品与交互](product.md#阅读准确版本与来源) | [原章](reference/commerce-product.md#工作台怎样展示一条知识) |
 | 发现错误后会发生什么 | 通用核心 | [研究行为：停止与维护](model.md#研究行为停止与维护) | [原章](reference/commerce-product.md#发现错误后会发生什么) |
 | 缺口怎样变成下一轮研究 | 通用核心 | [研究行为：停止与维护](model.md#研究行为停止与维护) | [原章](reference/commerce-product.md#缺口怎样变成下一轮研究) |
-| 一次创作只读什么 | 业务适配 | [查询、研究、采用、反馈与变化](integration.md#5-查询研究采用反馈与变化) | [原章](reference/commerce-product.md#一次创作只读什么) |
+| 一次创作只读什么 | 业务适配 | [查询、研究、采用、反馈与变化](integration.md#7-查询研究采用反馈与变化) | [原章](reference/commerce-product.md#一次创作只读什么) |
 | 从任务开始筛选 | 业务适配 | [查询、采用与反馈](model.md#查询采用与反馈) | [原章](reference/commerce-product.md#从任务开始筛选) |
 | 参考包的最小交付 | 业务适配 | [查询、采用与反馈](model.md#查询采用与反馈) | [原章](reference/commerce-product.md#参考包的最小交付) |
 | 实际结果怎样修正知识 | 通用核心 | [查询、采用与反馈](model.md#查询采用与反馈) | [原章](reference/commerce-product.md#实际结果怎样修正知识) |
@@ -79,7 +79,7 @@
 | 日报更新与未知页面的连续构建（2026-10-18 实施合同） | 真正历史 | [当前状态](current-state.md) | [原章](reference/commerce-product.md#日报更新与未知页面的连续构建2026-10-18-实施合同) |
 | 待确认变化与安全恢复（2026-10-19） | 真正历史 | [当前状态](current-state.md) | [原章](reference/commerce-product.md#待确认变化与安全恢复2026-10-19) |
 | 独立研究页的覆盖复用 | 真正历史 | [当前状态](current-state.md) | [原章](reference/commerce-product.md#独立研究页的覆盖复用) |
-| 采集身份与内容主张分开核验 | 业务适配；恢复规则为真正历史 | [登记来源、版本、锚点、权限与用途](integration.md#4-登记来源版本锚点权限与用途) | [原章](reference/commerce-product.md#采集身份与内容主张分开核验) |
+| 采集身份与内容主张分开核验 | 业务适配；恢复规则为真正历史 | [登记来源、版本、锚点、权限与用途](integration.md#6-登记来源版本锚点权限与用途) | [原章](reference/commerce-product.md#采集身份与内容主张分开核验) |
 
 ## `research/purpose-architecture-20261022.md` 逐章继承
 
@@ -116,7 +116,7 @@
 | 原章节 | 分类 | 唯一现行继任章节 | 旧链接目标 |
 | --- | --- | --- | --- |
 | 案例、主张、范式、Wiki 与参考包 | 通用核心；页首实现为真正历史 | [通用知识核心](architecture.md#通用知识核心) | [原章](reference/commerce-architecture.md#案例主张范式wiki-与参考包) |
-| 3. 粗拉、精拉都能入知识库，但入库不等于升格 | 业务适配 | [登记来源、版本、锚点、权限与用途](integration.md#4-登记来源版本锚点权限与用途) | [原章](reference/commerce-architecture.md#3-粗拉精拉都能入知识库但入库不等于升格) |
+| 3. 粗拉、精拉都能入知识库，但入库不等于升格 | 业务适配 | [登记来源、版本、锚点、权限与用途](integration.md#6-登记来源版本锚点权限与用途) | [原章](reference/commerce-architecture.md#3-粗拉精拉都能入知识库但入库不等于升格) |
 | 4. 单条与多条怎样形成知识 | 业务适配；通用审阅机制入核心 | [阅读、研究与唯一发表](architecture.md#阅读研究与唯一发表) | [原章](reference/commerce-architecture.md#4-单条与多条怎样形成知识) |
 | 4.1 单片、范式与参考包的最小内容 | 业务适配 | [查询、采用与反馈](model.md#查询采用与反馈) | [原章](reference/commerce-architecture.md#41-单片范式与参考包的最小内容) |
 | 4.2 类型、身份与分类：目标合同 | 通用核心；旧代码说明为真正历史 | [稳定身份与正文权威](model.md#稳定身份与正文权威) | [原章](reference/commerce-architecture.md#42-类型身份与分类目标合同) |

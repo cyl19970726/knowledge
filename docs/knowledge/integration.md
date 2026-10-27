@@ -40,7 +40,77 @@ npm run build:knowledge-web
 
 定向工程回归可运行 `npm run test:knowledge-product`。需要数据库的验收使用明确、专用、可丢弃的 `TEST_DATABASE_URL`，并按项目规则设置 `TEST_DATABASE_REQUIRED=1`；不能复用业务库，也不能让缺失配置静默跳过后仍声称数据库验收通过。
 
-## 3. 分清 API、Worker、Web 与适配器职责
+## 3. 启动一个可操作的合成实例
+
+最快的方式是使用独立演示入口。它每次创建一个新的临时 schema，只写合成资料，退出时删除 schema；必须显式提供一次性数据库，不会使用业务 `DATABASE_URL`。
+
+```sh
+export KNOWLEDGE_DEMO_DATABASE_URL='postgresql://localhost:5432/ccl_test_knowledge_demo'
+export TEST_DATABASE_REQUIRED=1
+npm run dev:knowledge-demo
+```
+
+另开终端启动网页：
+
+```sh
+npm run dev:knowledge-web
+```
+
+演示 API 默认监听 `127.0.0.1:4311`，Web 默认监听 `127.0.0.1:4310`。本地 `local/knowledge-product/demo/connection.json` 提供本次 `baseUrl`、`projectId`、`spaceId` 和 token；该文件含本地连接信息，不进入 Git，也不能复用到其他实例。生产构建预览可运行 `npm run preview -w @commerce/knowledge-web`，默认端口为 4312。
+
+直接启动独立 API 而非演示入口时，至少需要以下配置；下列值只是本地占位示例，不是生产配置：
+
+```sh
+export KNOWLEDGE_DATABASE_URL='postgresql://localhost:5432/ccl_test_knowledge_api'
+export KNOWLEDGE_API_TOKEN='local-only-change-me-24-chars'
+export KNOWLEDGE_API_PROJECT_ID='synthetic-project'
+export KNOWLEDGE_API_SPACE_IDS='synthetic-space'
+export KNOWLEDGE_API_PRINCIPAL_ID='local-reader'
+npm run dev:knowledge-api
+```
+
+无 writer grant 时默认是只读装配。研究执行、写者激活、来源权利和用途策略必须分别配置，不能用演示启动证明真实写入、模型研究或生产部署已获授权。
+
+## 4. 初始化客户端并完成第一次调用
+
+以下普通文档示例使用公开包出口。`baseUrl`、`projectId`、`spaceId` 和 token 从当前实例连接信息取得；示例资料是合成文本。先读取实例能力，确认当前实例实际开放的范围：
+
+```ts
+import {createKnowledgeClient} from '@commerce/knowledge-client';
+import {createDocumentKnowledgeAdapter} from '@commerce/knowledge-document-adapter';
+
+const client = createKnowledgeClient({
+  baseUrl: 'http://127.0.0.1:4311',
+  scope: {projectId: 'knowledge-synthetic', spaceId: 'synthetic-research'},
+  headers: {Authorization: 'Bearer local-only-change-me-24-chars'},
+});
+const capabilities = await client.capabilities();
+console.log(capabilities.data.mode, capabilities.data.permittedActions);
+const documents = createDocumentKnowledgeAdapter(client);
+```
+
+若使用上面的最小只读 API 配置，只执行 `capabilities`、`catalog`、`query` 和 `receipt`，不要执行下面的来源写入。下面的 `contribute` 仅在带合成 writer grant 的 `dev:knowledge-demo` 演示实例执行；直接 API 的写入首调必须先按实现版本配置 writer authority 和用途策略。
+
+```ts
+const source = await documents.contribute({
+  externalId: 'onboarding-note', version: '1',
+  text: '第一条合成认识。\n\n它只用于验证来源和查询。',
+  author: null, publisher: null, acquirer: 'local-demo',
+  obtainedAt: new Date().toISOString(),
+  rightsPolicyRef: 'synthetic-local-only', expectedSourceHead: null,
+  sourceGroups: [], limitations: ['Synthetic demo only'],
+}, {idempotencyKey: 'onboarding-note-v1'});
+
+const result = await documents.query({
+  question: '合成认识', purpose: 'exploration_reading', limit: 10,
+});
+const receipt = await client.receipt(result.data.readReceiptId);
+console.log(source.data.ref, result.data.items, receipt.data.orderedItems);
+```
+
+这段调用完成来源登记、问题查询和读集回执读取。相同键和相同输入重放返回同一结果；相同键配不同输入会冲突，不能换键掩盖错误。完整的采用、反馈、撤权、未知对账和数据库清理路径可执行于 `apps/knowledge-api/test/source-use.integration.test.ts`，不需要再手写一套接入样例。
+
+## 5. 分清 API、Worker、Web 与适配器职责
 
 | 组件 | 负责 | 不负责 |
 | --- | --- | --- |
@@ -53,7 +123,7 @@ npm run build:knowledge-web
 
 独立 API、Worker 和 Web 的运行变量、端口及授权装配以对应实现版本为准。API 的数据库、项目、空间和 token 配置与 Worker 的研究执行配置分别核对；写能力还需显式 writer authority 和用途策略。Web 只获得用户连接所需的非机密预填值，token 不进入构建产物或浏览器持久存储。真实模型、采集、生产数据库和写者资格不是构建的前置条件，也不是构建成功后的隐含结果。
 
-## 4. 登记来源、版本、锚点、权限与用途
+## 6. 登记来源、版本、锚点、权限与用途
 
 每个来源先回答五组问题：
 
@@ -69,7 +139,7 @@ npm run build:knowledge-web
 
 来源更新、撤权和内容纠错通过生命周期交接通知知识服务。外部来源在发表时仍需可证明的权利保证；无法保证跨系统撤权与本地提交原子性时，应拒绝或保留相应限制。托管来源在发表事务内重验版本和权利。来源登记成功不等于知识已审阅、可发表或可产生业务效果。
 
-## 5. 查询、研究、采用、反馈与变化
+## 7. 查询、研究、采用、反馈与变化
 
 按以下顺序接一条完整使用链，每一步都保留上一步的准确引用：
 
@@ -82,7 +152,7 @@ npm run build:knowledge-web
 7. **记录反馈。** 保存真实观察、未观察项、测量范围、成本和解释，关联原使用记录。反馈不会绕过研究审阅直接改正式知识。
 8. **读取变化与维护结果。** 沿原用途查询修订、无变化、待补证及反馈处理关系；新查询使用当前有效版本，历史任务仍按当时准确记录解释。
 
-## 6. 幂等、撤权、取消与未知结果
+## 8. 幂等、撤权、取消与未知结果
 
 所有写操作使用稳定幂等键并保存原始请求摘要。相同键和相同输入返回同一操作结果；相同键配不同输入是冲突。客户端不盲目自动重试。
 
@@ -95,7 +165,7 @@ npm run build:knowledge-web
 
 用途贯穿反馈、使用关联、操作查询、阅读回执、研究、审阅和取消。对账携带原用途，不能用另一项已获批用途访问旧操作。
 
-## 7. 共享 schema 是唯一接口权威
+## 9. 共享 schema 是唯一接口权威
 
 公开 DTO、运行时校验、合同版本和提交状态由 `@commerce/knowledge-contracts` 统一定义；客户端在发送和接收时校验。业务适配器从该包及其公共类型导入，字段参考和示例从同一版本生成或校验。
 
@@ -103,7 +173,7 @@ npm run build:knowledge-web
 
 Schema 能证明形状与边界，不证明跨字段授权、来源租约、发表 fencing 或认知内容正确；这些仍由应用层、核心与独立审阅负责。
 
-## 8. 普通文档业务端到端接入
+## 10. 普通文档业务端到端接入
 
 以下流程不要求视频、采集平台或媒体 Worker：
 
@@ -118,7 +188,7 @@ Schema 能证明形状与边界，不证明跨字段授权、来源租约、发�
 9. **验证撤权和未知。** 撤销一个文档用途后确认正文、使用重放和变化访问被拒绝；模拟写响应丢失，用原键对账，确认没有重复外部动作。
 10. **重启复核。** 重启服务后按准确版本找回来源、知识、读集、操作、使用和反馈；核对业务原件未被改写，测试数据按隔离责任清理。
 
-## 9. 验收边界
+## 11. 验收边界
 
 | 验收层 | 至少要证明 | 不能据此声称 |
 | --- | --- | --- |
