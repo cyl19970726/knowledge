@@ -110,6 +110,8 @@ console.log(source.data.ref, result.data.items, receipt.data.orderedItems);
 
 这段调用完成来源登记、问题查询和读集回执读取。相同键和相同输入重放返回同一结果；相同键配不同输入会冲突，不能换键掩盖错误。完整的采用、反馈、撤权、未知对账和数据库清理路径可执行于 `apps/knowledge-api/test/source-use.integration.test.ts`，不需要再手写一套接入样例。
 
+另一个[真实公开文档接入样例](https://github.com/cyl19970726/knowledge/blob/main/examples/document-onboarding/README.md)使用当前 `AGENTS.md` 和 Git SHA，逐字验证真实文档的登记与读回，再执行查询、采用、合成反馈、撤权和清理。可重复运行 `npm run test:document-onboarding`；它验证真实公开文档与适配器的工程行为，不把合成任务或反馈当作第二个真实业务的效果。
+
 ## 5. 分清 API、Worker、Web 与适配器职责
 
 | 组件 | 负责 | 不负责 |

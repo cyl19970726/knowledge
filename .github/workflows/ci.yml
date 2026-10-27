@@ -47,6 +47,8 @@ jobs:
         run: npm run build
       - name: Test core with disposable PostgreSQL schemas
         run: npm test
+      - name: Test public document onboarding with disposable PostgreSQL schemas
+        run: npm run test:document-onboarding
       - name: Validate portable core documentation
         run: |
           make docs
