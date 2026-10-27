@@ -25,6 +25,36 @@
       "lifecycle": "current"
     },
     {
+      "id": "knowledge-model",
+      "path": "model.md",
+      "title": "通用认知模型",
+      "group": "产品与交互",
+      "status": "现行说明 · 实现与部署分别见状态页",
+      "date": "2026-10-27",
+      "summary": "认知成长、内容关系、研究行为、采用反馈与连续两轮验收",
+      "lifecycle": "current"
+    },
+    {
+      "id": "knowledge-integration",
+      "path": "integration.md",
+      "title": "新业务技术接入手册",
+      "group": "开发与接入",
+      "status": "接入说明 · 实现与部署分别见状态页",
+      "date": "2026-10-27",
+      "summary": "Node与workspaces、构建运行、适配器、普通文档端到端及验收边界",
+      "lifecycle": "instructions"
+    },
+    {
+      "id": "knowledge-ownership",
+      "path": "ownership.md",
+      "title": "文档权威、章节继承与旧链接",
+      "group": "运行与维护",
+      "status": "现行说明 · 原文与固定证据继续保留",
+      "date": "2026-10-27",
+      "summary": "25份既有文档与三份长文逐章的通用、业务和历史归属",
+      "lifecycle": "current"
+    },
+    {
       "id": "knowledge-system",
       "path": "architecture.md",
       "title": "职责与架构",

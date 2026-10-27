@@ -1,27 +1,19 @@
-# Commerce Creative Lab
+# Independent Knowledge Product
 
-This repository captures the existing TikTok research workbench and local batch scripts. Do not silently replace the current system with a proposed future architecture.
+This repository contains only the standalone knowledge product and its generic document adapter. Keep commerce adapters, business source owners, application databases, credentials, and other business runtime content out of the core.
 
-- Product and business scope remain governed by the [seven-goal Page](https://chatgpt.com/space/page_d2cb3d9f4fc8819188ac80363db3f30d) and the [living understanding Page](https://chatgpt.com/space/page_35e0d83c4f14819180a5b50a5995a1d4). Repository docs describe implementation, not a competing business knowledge base.
-- Keep actual implementation, documented provider capability, research observations and proposed work distinct. Preserve source timestamps and raw evidence outside Git.
-- Store no credentials, client media, chats, real API responses or personal notes in commits. Demo data must be clearly synthetic. Local serving is loopback-only by default.
-- Separate asset, post, ad, product and shop identities. Public availability does not establish organic distribution; search failure does not establish ads-only. API success does not establish business success or matching identity.
-- Keep all seven goals visible. The 2026-10-10 request covered the as-is system. On 2026-10-12 the user approved implementation after the product/architecture review, with official OpenAI Agents SDK, TypeScript and PostgreSQL + Cloudflare R2 (S3-compatible API; clarified by the user on 2026-10-12). Follow `docs/product/roadmap.md` for phased acceptance; track actual implementation in `docs/implementation/`. Start locally and preserve the legacy workbench; cloud deployment, automatic publishing and paid generation are not implied by a working local prototype.
-- Preserve the original project data and workbench. This is a portable source package; legacy scripts require local evidence and are not a production scheduler.
-- Skills are project-local by default. Do not install or register global skills without explicit authorization. Archify is used from its existing installation; historical diagram candidates and raw receipts stay in this repository's `.archify/`; exact reader-facing copies, specifications and portable validation summaries belong in `docs/diagrams/`.
-- Use the Node 24 version in `.node-version`. Database tests require an explicit `TEST_DATABASE_URL` for a dedicated disposable local test database; never reuse application configuration or load business `.env` files for tests. Set `TEST_DATABASE_REQUIRED=1` for database-backed acceptance so missing configuration fails instead of silently skipping coverage. See [local development and tests](docs/operations/local-development.md#隔离数据库测试).
-- Run appropriate tests and the publication scan before publishing. Never use real API credentials in tests.
-
-- Keep reader-facing documentation under `docs/`. Edit Markdown and `docs/catalog.json`; regenerate `docs/index.html` with `make docs` and validate with `make docs-check`. Do not edit generated HTML directly. The offline reader is documentation infrastructure, not the proposed business runtime. A catalog entry must declare whether it is current state, proposed design, instructions or historical delivery.
-
-- The generic knowledge product has one owning document set in `docs/knowledge/`, with its own `catalog.json` imported by the main catalog. Start at `docs/knowledge/README.md`; product, architecture, capability semantics, operations, current state and maintenance each have one owner. Business acquisition/analysis and field mappings remain in business docs, starting at `docs/integrations/knowledge.md`. Keep exact API fields in the implementation's shared schema, not a parallel handwritten DTO. Build the standalone reader with `make docs-knowledge`; `make docs` builds both readers. Preserve stable IDs, historical receipts and `docs/knowledge/migration-map.json` when moving content; run both migration checks. Update affected current docs with implementation PRs, while keeping confirmed design, local validation, merge, deployment and cognitive/business acceptance distinct.
-
-- Documentation diagrams: keep the product overview in Archify; use Mermaid in the owning Markdown for other new or revised module diagrams. Follow `docs/maintenance.md`; evaluate whether a reader can explain the transformations, task selection and feedback from the diagram itself. Rendering/layout checks and prose Q&A do not establish diagram effectiveness. Preserve historical diagrams unless their content needs revision.
+- Use the Node 24 version in `.node-version`; preserve the existing package names and workspace dependency direction.
+- Core source lives in `packages/contracts`, `packages/knowledge*`, `packages/adapters/knowledge-service`, `packages/adapters/knowledge-document`, and `apps/knowledge-*`. The document adapter is the second-business integration reference, not a commerce-specific implementation.
+- Keep implementation, local engineering validation, deployment, and business acceptance distinct. Demo fixtures are synthetic and do not establish real-world knowledge quality.
+- Database tests require an explicit `TEST_DATABASE_URL` for a dedicated disposable test database. Never load business `.env` files or reuse application data. Set `TEST_DATABASE_REQUIRED=1` for required database acceptance so missing configuration fails visibly.
+- Product, architecture, capabilities, operations, current state, and maintenance each have one owning document under `docs/knowledge/`; start at `docs/knowledge/README.md`. The root `docs/README.md` is only the core navigation entry, and root `docs/catalog.json` imports `knowledge/catalog.json` rather than maintaining a business document inventory.
+- Edit Markdown and catalog source only. Generate both readers with `make docs`, validate with `make docs-check`, and never edit generated HTML directly. Preserve stable IDs, retained text, live section successors, historical aliases, and `docs/knowledge/migration-map.json`.
+- The core migration check uses `--external-business` because business documents belong to their external owning repository. The default remains strict for the commerce repository; do not weaken preservation or current-guide checks.
+- Run the relevant core build and tests plus documentation checks before delivery. Report missing database coverage explicitly; never present skipped integration tests as passing coverage.
+- Skills are project-local by default. Do not install or register global skills without explicit authorization.
 
 ## Branch and release handoff
 
-- Isolate concurrent implementation in a dedicated Git worktree or clone **and** a feature branch. A feature branch in the shared checkout alone is not isolation. Record the exact `origin/main` SHA used as the task baseline and assign file ownership; route shared-interface changes through their named owner.
-- Integrate changes into `main` only through a pull request. A local copy, cherry-pick, or module-complete note is not a merged release. New work starts from the updated `origin/main` after the prior PR is merged.
-- Report implementation, local workbench wiring, PR, merge, and deployment as separate states. A code merge does not authorize paid API use, production rollout, publishing, or other external actions.
-- Every PR describes changed behavior, checks actually run, remaining limitations, and any semantic/content review still needed. Passing tests establish only the behavior they cover; they do not establish semantic quality or business acceptance.
-- If earlier implementation arrives as inherited dirty work with no genuine PR history, consolidate it transparently in one PR and describe its provenance. Do not invent or imply historical PRs.
+- Isolate concurrent implementation in a dedicated worktree or clone and a feature branch. Preserve other tasks' changes and do not commit unless requested.
+- Integrate releases through pull requests. Report implementation, review, merge, deployment, and business acceptance as separate states.
+- Every handoff lists changed behavior, commands actually run, results, remaining limitations, and any database or semantic acceptance still needed.

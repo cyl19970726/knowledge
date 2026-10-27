@@ -20,20 +20,21 @@
     ]
   },
   "include": [
-    "apps/api/**/*.ts",
-    "apps/worker/**/*.ts",
-    "apps/web/**/*.ts",
-    "apps/web/**/*.tsx",
-    "packages/**/*.ts",
-    "scripts/runtime/**/*.ts",
-    "scripts/migration/**/*.ts",
-    "scripts/deployment/**/*.ts",
-    "scripts/acquisition/**/*.ts",
-    "scripts/check-package-boundaries.ts",
-    "scripts/test/**/*.ts",
+    "packages/contracts/**/*.ts",
+    "packages/knowledge/**/*.ts",
+    "packages/knowledge-contracts/**/*.ts",
+    "packages/knowledge-client/**/*.ts",
+    "packages/knowledge-application/**/*.ts",
+    "packages/adapters/knowledge-service/**/*.ts",
+    "packages/adapters/knowledge-document/**/*.ts",
     "apps/knowledge-api/**/*.ts",
     "apps/knowledge-worker/**/*.ts",
     "apps/knowledge-web/**/*.ts",
-    "apps/knowledge-web/**/*.tsx"
+    "apps/knowledge-web/**/*.tsx",
+    "scripts/runtime/**/*.ts"
+  ],
+  "exclude": [
+    "packages/knowledge/test/daily-research.test.ts",
+    "packages/knowledge/test/daily-report-archive.test.ts"
   ]
 }

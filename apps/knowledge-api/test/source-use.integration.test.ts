@@ -7,9 +7,8 @@ import {seedKnowledgeSyntheticFixture} from '../../../scripts/runtime/knowledge-
 import {createKnowledgeApi} from '../src/index.ts';
 import {createKnowledgeClient,KnowledgeClientError} from '../../../packages/knowledge-client/src/index.ts';
 import {createDocumentKnowledgeAdapter} from '../../../packages/adapters/knowledge-document/src/index.ts';
-import {createCommerceKnowledgeAdapter} from '../../../packages/adapters/knowledge-commerce/src/index.ts';
 import {createPgSourceRegistry,assertLocalSourceProof} from '../../../packages/adapters/knowledge-service/src/sources.ts';
-import type {FeedbackInput,UseInput,KnowledgeRef} from '../../../packages/knowledge-contracts/src/index.ts';
+import type {FeedbackInput,UseInput} from '../../../packages/knowledge-contracts/src/index.ts';
 
 const url=readTestDatabase();
 const dbTest=url?test:test.skip;
@@ -39,8 +38,8 @@ async function withFixture(run:(value:{pool:pg.Pool;seed:Awaited<ReturnType<type
 function documentInput(id:string,text:string){return {externalId:id,version:'1',text,author:'Synthetic author',publisher:'Synthetic publisher',acquirer:'Engineering test',obtainedAt:new Date().toISOString(),rightsPolicyRef:'synthetic-local-only',expectedSourceHead:null,sourceGroups:[{id:`synthetic:${id}`,status:'known' as const,authority:'synthetic-test'}],limitations:['Synthetic test only']};}
 
 /** These tests exercise a disposable PG schema and a real loopback HTTP server; evidence is engineering-only. */
-dbTest('M2: document and commerce source versions enforce replay, owner CAS, and revocation at the publication lock', {timeout:90_000},async()=>withFixture(async({pool,seed,baseUrl,token,client})=>{
-  const document=createDocumentKnowledgeAdapter(client),commerce=createCommerceKnowledgeAdapter(client);
+dbTest('M2: document source versions enforce replay, owner CAS, and revocation at the publication lock', {timeout:90_000},async()=>withFixture(async({pool,seed,baseUrl,token,client})=>{
+  const document=createDocumentKnowledgeAdapter(client);
   const sourceInput=documentInput(`notes-${randomUUID()}`,'Synthetic paragraph one.\n\nSynthetic paragraph two.');
   const key=randomUUID();
   const [first,replay]=await Promise.all([document.contribute(sourceInput,{idempotencyKey:key}),document.contribute(sourceInput,{idempotencyKey:key})]);
@@ -58,21 +57,6 @@ dbTest('M2: document and commerce source versions enforce replay, owner CAS, and
   assert.equal((await client.sourceContent(first.data.ref,'exploration_reading')).data.content,sourceInput.text);
   await assert.rejects(document.contribute({...sourceInput,text:'Changed text'}, {idempotencyKey:key}),errorCode('IDEMPOTENCY_CONFLICT'));
   await assert.rejects(document.contribute({...sourceInput,version:'2',text:'A newer synthetic source',existingObjectId:first.data.ref.objectId}, {idempotencyKey:randomUUID()}),errorCode('SOURCE_HEAD_CONFLICT'));
-  const analysisRef={objectId:randomUUID(),versionId:randomUUID()};
-  const commerceSource=await commerce.contributeAnalysis({analysisRef,reportText:'Synthetic report projection; no original media or performance data.',sourceGroups:[{id:'synthetic:report',status:'known',authority:'synthetic-test'}],creator:'Synthetic creator',publisher:'Synthetic publisher',acquirer:'Engineering test',obtainedAt:new Date().toISOString(),rightsPolicyRef:'synthetic-local-only',expectedSourceHead:null,limitations:['Synthetic report only']},{idempotencyKey:randomUUID()});
-  assert.equal(commerceSource.data.sourceKind,'analysis_report_projection');
-  const commerceRecord=(await client.source(commerceSource.data.ref,'exploration_reading')).data;
-  assert.equal(commerceRecord.provenance?.externalIdentity.adapterId,'commerce');
-  assert.equal(commerceRecord.provenance?.externalIdentity.externalObjectId,analysisRef.objectId);
-  assert.equal(commerceRecord.provenance?.externalIdentity.externalVersion,analysisRef.versionId);
-  assert.equal(commerceRecord.provenance?.author,'Synthetic creator');
-  assert.equal(commerceRecord.provenance?.publisher,'Synthetic publisher');
-  assert.equal(commerceRecord.provenance?.acquirer,'Engineering test');
-  const nextReport={analysisRef:{objectId:analysisRef.objectId,versionId:randomUUID()},reportText:'Second synthetic report projection.',sourceGroups:[{id:'synthetic:report',status:'known' as const,authority:'synthetic-test'}],creator:'Synthetic creator',publisher:'Synthetic publisher',acquirer:'Engineering test',obtainedAt:new Date().toISOString(),rightsPolicyRef:'synthetic-local-only',expectedSourceHead:commerceSource.data.ref.versionId,existingObjectId:commerceSource.data.ref.objectId,limitations:['Synthetic report only']};
-  const updated=await commerce.contributeAnalysis(nextReport,{idempotencyKey:randomUUID()});
-  assert.equal(updated.data.ref.objectId,commerceSource.data.ref.objectId);
-  assert.notEqual(updated.data.ref.versionId,commerceSource.data.ref.versionId);
-  await assert.rejects(commerce.contributeAnalysis({...nextReport,analysisRef:{objectId:nextReport.analysisRef.objectId,versionId:randomUUID()}},{idempotencyKey:randomUUID()}),errorCode('SOURCE_HEAD_CONFLICT'));
   const secondToken=`secondary-${randomUUID()}-${randomUUID()}`;
   const secondApi=await createKnowledgeApi({pool,token:secondToken,principal:{...seed.principal,id:'foreign-owner'},capabilities:seed.authorization,writerGrant:seed.writerGrant,port:0});
   const secondServer=await secondApi.listen();
@@ -108,8 +92,8 @@ dbTest('M2: document and commerce source versions enforce replay, owner CAS, and
   const db=await pool.connect();try{await db.query('BEGIN');await assert.rejects(assertLocalSourceProof(db,context,proof),(error:unknown)=>error instanceof Error&&'code' in error&&error.code==='SOURCE_PROOF_REVOKED');await db.query('ROLLBACK');}finally{db.release();}
 }));
 
-dbTest('M3: exact read receipt records external choices and scoped feedback without a Task', {timeout:90_000},async()=>withFixture(async({pool,seed,baseUrl,token,client})=>{
-  const document=createDocumentKnowledgeAdapter(client),commerce=createCommerceKnowledgeAdapter(client);
+dbTest('M3: document exact read receipt records external choices and scoped feedback without a Task', {timeout:90_000},async()=>withFixture(async({pool,seed,baseUrl,token,client})=>{
+  const document=createDocumentKnowledgeAdapter(client);
   const catalog=await client.catalog({purpose:'exploration_reading',limit:20});
   const catalogReceipt=await client.receipt(catalog.data.readReceiptId);
   assert.deepEqual(catalogReceipt.data.orderedItems.map(item=>item.ref),catalog.data.items.map(item=>item.ref));
@@ -128,6 +112,8 @@ dbTest('M3: exact read receipt records external choices and scoped feedback with
   const useKey=randomUUID();
   const use=await document.use(input,{idempotencyKey:useKey});
   assert.equal(use.data.considered.length,3);assert.equal(use.data.snapshot.id,receipt.data.id);
+  const useReplay=await document.use(input,{idempotencyKey:useKey});
+  assert.equal(useReplay.data.id,use.data.id);
   assert.equal((await client.lookupOperation({purpose:'exploration_reading',operation:'uses:write',key:useKey})).data.state,'committed');
   assert.equal((await pool.query('SELECT count(*)::int n FROM ccl_knowledge_external_uses')).rows[0].n,1);
   await assert.rejects(document.use({...input,considered:[{...input.considered[0],ref:{...refs[0],versionId:randomUUID()}}]},{idempotencyKey:randomUUID()}),errorCode('USE_READSET_MISMATCH'));
@@ -145,9 +131,6 @@ dbTest('M3: exact read receipt records external choices and scoped feedback with
   await assert.rejects(client.changes({purpose:'exploration_reading',limit:1,after:page1.coverage!.nextCursor!,feedbackId:one.data.id}),errorCode('CHANGES_CURSOR'));
   assert.equal((await client.changes({purpose:'exploration_reading',limit:10,useId:use.data.id})).data.items.length,2);
   assert.equal((await client.feedbackResolutions(one.data.id,{purpose:'exploration_reading',limit:10})).data.items.length,1);
-  const commerceContext=commerce.context(`commerce-task-${randomUUID()}`,'v1',sha('commerce context'),'Synthetic commerce use, no media execution');
-  const commerceUse=await commerce.use({...input,context:commerceContext,considered:[{ref:refs[2],decision:'deferred',reason:'Needs evidence',before:null,after:null}]},{idempotencyKey:randomUUID()});
-  assert.equal(commerceUse.data.context.adapterId,'commerce');
   for(const principal of [{...seed.principal,id:'foreign-reader'},{...seed.principal,clientInstallationId:'other-installation'}]){
     const alternateToken=`alternate-${randomUUID()}-${randomUUID()}`;
     const alternateApi=await createKnowledgeApi({pool,token:alternateToken,principal,capabilities:seed.authorization,writerGrant:seed.writerGrant,port:0});
@@ -157,23 +140,12 @@ dbTest('M3: exact read receipt records external choices and scoped feedback with
       await assert.rejects(alternate.recordUse(input,{idempotencyKey:randomUUID()}),errorCode(principal.id==='foreign-reader'?'READ_RECEIPT_UNAVAILABLE':'READ_RECEIPT_CONTEXT_MISMATCH'));
     }finally{await new Promise<void>(resolve=>alternateServer.close(()=>resolve()));}
   }
-  const commerceToken=`commerce-purpose-${randomUUID()}-${randomUUID()}`;
-  const commerceApi=await createKnowledgeApi({pool,token:commerceToken,principal:{...seed.principal,purposes:['commerce_use']},capabilities:seed.authorization,writerGrant:seed.writerGrant,port:0});
-  const commerceServer=await commerceApi.listen();
-  try{const address=commerceServer.address();assert.ok(address&&typeof address!=='string');
-    const commerceClient=createKnowledgeClient({baseUrl:`http://127.0.0.1:${address.port}`,scope:{projectId:seed.projectId,spaceId:seed.spaceId},headers:{Authorization:`Bearer ${commerceToken}`}});
-    const commerceRead=await commerceClient.catalog({purpose:'commerce_use',limit:10});
-    const choice=commerceRead.data.items[0];assert.ok(choice);assert.equal(choice.status.reviewDecision,'exploration_only');
-    assert.equal(choice.status.purpose.admitted,false);
-    await assert.rejects(commerceClient.recordUse({...input,readReceiptId:commerceRead.data.readReceiptId,purpose:'commerce_use',context:commerceContext,
-      considered:[{ref:choice.ref,decision:'adopted',reason:'Synthetic test must deny this choice',before:null,after:null}]},{idempotencyKey:randomUUID()}),errorCode('USE_NOT_ELIGIBLE'));
-  }finally{await new Promise<void>(resolve=>commerceServer.close(()=>resolve()));}
   await pool.query(`UPDATE ccl_knowledge_read_receipts SET expires_at=now()-interval '1 second' WHERE id=$1`,[receipt.data.id]);
-  await assert.rejects(commerce.use({...input,context:commerceContext},{idempotencyKey:randomUUID()}),errorCode('READ_RECEIPT_UNAVAILABLE'));
+  await assert.rejects(document.use(input,{idempotencyKey:randomUUID()}),errorCode('READ_RECEIPT_UNAVAILABLE'));
   await client.revokeSource(seed.source.ref,{contentDigest:seed.source.ref.contentDigest,expectedGeneration:1},{idempotencyKey:randomUUID()});
   await assert.rejects(client.use(use.data.id,'exploration_reading'),errorCode('USE_SNAPSHOT_ACCESS_REVOKED'));
   await assert.rejects(document.use(input,{idempotencyKey:useKey}),errorCode('USE_SNAPSHOT_ACCESS_REVOKED'));
-  assert.equal((await pool.query('SELECT count(*)::int n FROM ccl_knowledge_external_uses')).rows[0].n,2,'replay must not create a new use');
+  assert.equal((await pool.query('SELECT count(*)::int n FROM ccl_knowledge_external_uses')).rows[0].n,1,'replay must not create a new use');
 }));
 
 dbTest('lost COMMIT acknowledgement is reconciled by the original capability key', {timeout:90_000},async()=>withFixture(async({pool,seed})=>{

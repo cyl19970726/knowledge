@@ -134,37 +134,16 @@ print("ordinary code")
         match = re.search(r'<script id="document-index" type="application/json">(.*?)</script>', page)
         self.assertNotIn('subgroup', json.loads(match.group(1))[1])
 
-    def test_product_catalog_follows_reading_route(self):
+    def test_root_catalog_contains_only_core_entry_and_knowledge_import(self):
         catalog = json.loads((ROOT / 'docs/catalog.json').read_text())
-        actual = [(doc['id'], doc.get('subgroup')) for doc in catalog['documents'] if doc['group'] == '产品文档']
-        expected = [
-            ('overview', '总体与路线'), ('product-questions', '总体与路线'), ('product', '总体与路线'),
-            ('workbench', '总体与路线'), ('roadmap', '总体与路线'),
-            ('closed-loop-acceptance', '总体与路线'),
-            ('daily', '获取与理解'), ('daily-learning-policy', '获取与理解'), ('materials', '获取与理解'),
-            ('business-research', '获取与理解'), ('product-analysis', '获取与理解'),
-            ('memory', '知识与创作'), ('daily-research', '知识与创作'), ('creation', '知识与创作'),
-            ('creation-pilot', '知识与创作'),
-            ('accounts', '发布与学习'), ('outcomes', '发布与学习'),
-        ]
-        if catalog.get('imports'):
-            expected.remove(('memory', '知识与创作'))
-            self.assertNotIn('memory', {doc['id'] for doc in catalog['documents']})
-            imported = json.loads((ROOT / 'docs/knowledge/catalog.json').read_text())
-            self.assertIn('memory', {doc['id'] for doc in imported['documents']})
-        self.assertEqual(actual, expected)
-        by_id = {doc['id']: doc for doc in catalog['documents']}
-        if catalog.get('imports'):
-            by_id.update({doc['id']: doc for doc in imported['documents']})
-        for doc_id in ['knowledge-daily-redesign', 'knowledge-daily-workflows']:
-            self.assertEqual(by_id[doc_id]['group'], '历史档案')
-            self.assertEqual(by_id[doc_id]['lifecycle'], 'archive')
-        if catalog.get('imports'):
-            self.assertEqual(by_id['knowledge-purpose-architecture']['group'], '历史与依据')
-            self.assertEqual(by_id['knowledge-purpose-architecture']['lifecycle'], 'record')
-        else:
-            self.assertEqual(by_id['knowledge-purpose-architecture']['group'], '研究记录')
-            self.assertEqual(by_id['knowledge-purpose-architecture']['lifecycle'], 'research')
+        self.assertEqual([doc['id'] for doc in catalog['documents']], ['overview'])
+        self.assertEqual(catalog['documents'][0]['path'], 'README.md')
+        self.assertEqual(catalog['imports'], ['knowledge/catalog.json'])
+        self.assertEqual(catalog['home_id'], 'knowledge-overview')
+        imported = json.loads((ROOT / 'docs/knowledge/catalog.json').read_text())
+        self.assertIn('memory', {doc['id'] for doc in imported['documents']})
+        migration = json.loads((ROOT / 'docs/knowledge/migration-map.json').read_text())
+        self.assertEqual(catalog['hash_aliases'], migration['rootAliasesAtBaseline'])
 
     def test_hash_aliases_are_embedded_and_flattened_to_existing_anchors(self):
         catalog_path = self.docs / 'catalog.json'
@@ -197,6 +176,19 @@ print("ordinary code")
             catalog_path.write_text(json.dumps(catalog))
             with self.subTest(aliases=aliases), self.assertRaisesRegex(ValueError, error):
                 builder.build(self.docs)
+
+    def test_external_aliases_are_explicit_and_do_not_weaken_other_alias_checks(self):
+        _, _, docs = builder.load_documents(self.docs)
+        catalog = {'hash_aliases': {
+            'external-business': 'outside--section',
+            'old-section': 'detail--细节',
+        }}
+        self.assertEqual(builder.validate_hash_aliases(catalog, docs, {'external-business'}),
+                         {'old-section': 'detail--细节'})
+        with self.assertRaisesRegex(ValueError, 'Unknown hash alias target'):
+            builder.validate_hash_aliases(catalog, docs)
+        with self.assertRaisesRegex(ValueError, 'Unknown hash alias target'):
+            builder.validate_hash_aliases(catalog, docs, {'old-section'})
 
     def test_unknown_fragment_fails(self):
         (self.docs / 'README.md').write_text('[Missing](design/detail.md#absent)')

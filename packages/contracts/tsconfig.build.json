@@ -4,5 +4,5 @@
     "strict": true, "skipLibCheck": true, "declaration": true,
     "outDir": "dist", "rootDir": "src", "types": []
   },
-  "include": ["src/primitives.ts"]
+  "include": ["src/**/*.ts"]
 }

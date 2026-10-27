@@ -1,4 +1,4 @@
-# Private snapshots, responses, and media never belong in this repository.
+# Credentials, private evidence, and local runtime data never belong in this repository.
 .env
 .env.*
 !.env.example
@@ -17,38 +17,3 @@ node_modules/
 dist/
 coverage/
 *.tsbuildinfo
-
-# The original workbench writes these into its source folder.
-apps/workbench/data.js
-apps/workbench/data.json
-apps/workbench/原始响应/
-apps/workbench/素材证据/
-apps/workbench/公开素材证据/
-pipeline/legacy/研究执行/内容工作台/原始响应/
-pipeline/legacy/研究执行/内容工作台/*.json
-pipeline/legacy/研究执行/内容工作台/data.js
-pipeline/legacy/研究执行/内容工作台/扩库20261010/
-pipeline/legacy/研究执行/内容工作台/他牌广告20261010/
-pipeline/legacy/研究执行/内容工作台/YESNAP广告核查20261010/*.json
-pipeline/legacy/研究执行/数据采集/
-pipeline/legacy/研究执行/素材证据/
-pipeline/legacy/研究执行/公开素材证据/
-pipeline/legacy/研究执行/客户证据/
-pipeline/legacy/研究执行/交付/
-pipeline/legacy/研究执行/市场分析/analysis.json
-pipeline/legacy/研究执行/市场分析/report.txt
-
-# Keep the synthetic example only; protect accidental research exports.
-examples/*
-!examples/synthetic-workbench.json
-
-# Original Archify receipts/captures are local audit evidence and contain host paths.
-# Publish only portable candidates and final standalone HTML; curated previews live in docs/assets.
-.archify/**
-!.archify/*/
-!.archify/*/candidate.json
-!.archify/*/current-system.html
-!.archify/*/current-acquisition.html
-!.archify/*/target-platform.html
-!.archify/*/evidence-storage.html
-!.archify/*/analysis-proposal.html

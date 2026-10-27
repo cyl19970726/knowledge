@@ -207,7 +207,12 @@ def validate_diagrams(directory: Path, only_html: set[str] | None = None):
     return manifest
 
 
-def validate_hash_aliases(catalog: dict, docs: dict) -> dict[str, str]:
+class UnknownHashAliasTarget(ValueError):
+    pass
+
+
+def validate_hash_aliases(catalog: dict, docs: dict,
+                          unresolved_aliases: set[str] | None = None) -> dict[str, str]:
     aliases = catalog.get('hash_aliases', {})
     if not isinstance(aliases, dict):
         raise ValueError('hash_aliases must be an object')
@@ -221,35 +226,47 @@ def validate_hash_aliases(catalog: dict, docs: dict) -> dict[str, str]:
     if conflict:
         raise ValueError(f'Hash alias conflicts with existing anchor: {sorted(conflict)[0]}')
 
-    resolved, visiting = {}, set()
+    resolved = {}
+    unresolved_aliases = unresolved_aliases or set()
 
-    def resolve(key: str) -> str:
+    def resolve(key: str, visiting: set[str]) -> str:
         if key in available:
             return key
         if key not in aliases:
-            raise ValueError(f'Unknown hash alias target: {key}')
+            raise UnknownHashAliasTarget(f'Unknown hash alias target: {key}')
         if key in visiting:
             raise ValueError(f'Hash alias cycle: {key}')
         visiting.add(key)
-        target = resolve(aliases[key])
+        target = resolve(aliases[key], visiting)
         visiting.remove(key)
         resolved[key] = target
         return target
 
     for key in aliases:
-        resolve(key)
+        try:
+            resolve(key, set())
+        except UnknownHashAliasTarget:
+            if key not in unresolved_aliases:
+                raise
     return resolved
 
 
-def build(directory: Path, assets_dir: Path | None = None):
+def build(directory: Path, assets_dir: Path | None = None, *, external_business: bool = False):
     directory = directory.resolve()
     assets_dir = (assets_dir or directory).resolve()
     if not (assets_dir / '_site/mermaid.bundle.js').is_file():
         raise ValueError('Missing offline Mermaid runtime: _site/mermaid.bundle.js')
     catalog, md, docs = load_documents(directory, assets_dir)
-    aliases = validate_hash_aliases(catalog, docs)
     standalone = directory != assets_dir
-    if (directory / 'diagrams/manifest.json').is_file() or not standalone:
+    unresolved_aliases = set()
+    if external_business:
+        if standalone:
+            raise ValueError('--external-business applies only to the root reader')
+        mapping = json.loads((directory / 'knowledge/migration-map.json').read_text())
+        unresolved_aliases = {key for key, target in mapping['rootAliasesAtBaseline'].items()
+                              if catalog['hash_aliases'].get(key) == target}
+    aliases = validate_hash_aliases(catalog, docs, unresolved_aliases)
+    if (directory / 'diagrams/manifest.json').is_file():
         diagrams = validate_diagrams(directory)
     else:
         diagrams = {'diagrams': []}
@@ -267,7 +284,8 @@ def build(directory: Path, assets_dir: Path | None = None):
                      for d in diagrams['diagrams']}
     diagram_paths.update(quote(os.path.relpath(p, directory), safe='/') for p in shared_diagrams)
     root_anchors = ({d['id'] for d in docs.values()} |
-                    {h['id'] for d in docs.values() for h in d['headings']} | set(aliases)) if not standalone else None
+                    {h['id'] for d in docs.values() for h in d['headings']} | set(aliases)) \
+        if not standalone and not external_business else None
     home_id = catalog.get('home_id', 'overview')
     if not isinstance(home_id, str) or not re.fullmatch(r'[a-z][a-z0-9-]*', home_id):
         raise ValueError('Catalog home_id must be a stable document ID')
@@ -373,9 +391,11 @@ def main():
     parser.add_argument('--check', action='store_true', help='Validate inputs and fail if generated files are stale')
     parser.add_argument('--docs-dir', type=Path, default=ROOT / 'docs')
     parser.add_argument('--assets-dir', type=Path, help='Shared template/runtime and explicit asset boundary')
+    parser.add_argument('--external-business', action='store_true',
+                        help='Omit baseline aliases whose business targets live outside the core reader')
     args = parser.parse_args()
     try:
-        page, manifest = build(args.docs_dir, args.assets_dir)
+        page, manifest = build(args.docs_dir, args.assets_dir, external_business=args.external_business)
         for name, content in [('index.html', page), ('build-manifest.json', manifest)]:
             target = args.docs_dir / name
             if args.check:

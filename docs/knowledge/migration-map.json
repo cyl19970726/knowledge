@@ -11,294 +11,42 @@
       "baselineSha256": "934cd3f54f74ea664b24d90e486bc58b81ee6e0fcbb4dfb5dace44ae84355913",
       "normalizedTextSha256": "ff80f70e80466c7386bddb8810da01056c236410ae0caad0af49c0b2b1ef9113",
       "sections": [
-        {
-          "heading": "知识与记忆：让持续研究服务下一次决定",
-          "level": 1,
-          "anchor": "memory--知识与记忆让持续研究服务下一次决定",
-          "retainedAt": "knowledge/reference/commerce-product.md#知识与记忆让持续研究服务下一次决定",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "日报研究怎样建立和修订知识关联",
-          "level": 2,
-          "anchor": "memory--日报研究怎样建立和修订知识关联",
-          "retainedAt": "knowledge/reference/commerce-product.md#日报研究怎样建立和修订知识关联",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "关联的单位是带条件的命题",
-          "level": 3,
-          "anchor": "memory--关联的单位是带条件的命题",
-          "retainedAt": "knowledge/reference/commerce-product.md#关联的单位是带条件的命题",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "从新材料到新认识，再回到日报",
-          "level": 3,
-          "anchor": "memory--从新材料到新认识再回到日报",
-          "retainedAt": "knowledge/reference/commerce-product.md#从新材料到新认识再回到日报",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "以认识变化而非产出数量验收",
-          "level": 3,
-          "anchor": "memory--以认识变化而非产出数量验收",
-          "retainedAt": "knowledge/reference/commerce-product.md#以认识变化而非产出数量验收",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "一眼看懂本模块",
-          "level": 2,
-          "anchor": "memory--一眼看懂本模块",
-          "retainedAt": "knowledge/reference/commerce-product.md#一眼看懂本模块",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "为什么要分层",
-          "level": 2,
-          "anchor": "memory--为什么要分层",
-          "retainedAt": "knowledge/reference/commerce-product.md#为什么要分层",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "记忆究竟保存什么",
-          "level": 3,
-          "anchor": "memory--记忆究竟保存什么",
-          "retainedAt": "knowledge/reference/commerce-product.md#记忆究竟保存什么",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "类型、身份和标签各回答什么",
-          "level": 3,
-          "anchor": "memory--类型身份和标签各回答什么",
-          "retainedAt": "knowledge/reference/commerce-product.md#类型身份和标签各回答什么",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "粗精拉进入知识时保留哪些语境",
-          "level": 3,
-          "anchor": "memory--粗精拉进入知识时保留哪些语境",
-          "retainedAt": "knowledge/reference/commerce-product.md#粗精拉进入知识时保留哪些语境",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "LLM Wiki 的核心：把新材料编进已有认识",
-          "level": 2,
-          "anchor": "memory--llm-wiki-的核心把新材料编进已有认识",
-          "retainedAt": "knowledge/reference/commerce-product.md#llm-wiki-的核心把新材料编进已有认识",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "持续构建的三种节奏（目标设计）",
-          "level": 3,
-          "anchor": "memory--持续构建的三种节奏目标设计",
-          "retainedAt": "knowledge/reference/commerce-product.md#持续构建的三种节奏目标设计",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "从单片到专题",
-          "level": 2,
-          "anchor": "memory--从单片到专题",
-          "retainedAt": "knowledge/reference/commerce-product.md#从单片到专题",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "粗拉与精拉都可以提供可用知识",
-          "level": 3,
-          "anchor": "memory--粗拉与精拉都可以提供可用知识",
-          "retainedAt": "knowledge/reference/commerce-product.md#粗拉与精拉都可以提供可用知识",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "范式要能指导一次新的创作",
-          "level": 3,
-          "anchor": "memory--范式要能指导一次新的创作",
-          "retainedAt": "knowledge/reference/commerce-product.md#范式要能指导一次新的创作",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "多片比较先固定比较范围",
-          "level": 3,
-          "anchor": "memory--多片比较先固定比较范围",
-          "retainedAt": "knowledge/reference/commerce-product.md#多片比较先固定比较范围",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "采用、纠错和失效",
-          "level": 2,
-          "anchor": "memory--采用纠错和失效",
-          "retainedAt": "knowledge/reference/commerce-product.md#采用纠错和失效",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "工作台怎样展示一条知识",
-          "level": 3,
-          "anchor": "memory--工作台怎样展示一条知识",
-          "retainedAt": "knowledge/reference/commerce-product.md#工作台怎样展示一条知识",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "发现错误后会发生什么",
-          "level": 3,
-          "anchor": "memory--发现错误后会发生什么",
-          "retainedAt": "knowledge/reference/commerce-product.md#发现错误后会发生什么",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "缺口怎样变成下一轮研究",
-          "level": 3,
-          "anchor": "memory--缺口怎样变成下一轮研究",
-          "retainedAt": "knowledge/reference/commerce-product.md#缺口怎样变成下一轮研究",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "一次创作只读什么",
-          "level": 2,
-          "anchor": "memory--一次创作只读什么",
-          "retainedAt": "knowledge/reference/commerce-product.md#一次创作只读什么",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "从任务开始筛选",
-          "level": 3,
-          "anchor": "memory--从任务开始筛选",
-          "retainedAt": "knowledge/reference/commerce-product.md#从任务开始筛选",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "参考包的最小交付",
-          "level": 3,
-          "anchor": "memory--参考包的最小交付",
-          "retainedAt": "knowledge/reference/commerce-product.md#参考包的最小交付",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "实际结果怎样修正知识",
-          "level": 2,
-          "anchor": "memory--实际结果怎样修正知识",
-          "retainedAt": "knowledge/reference/commerce-product.md#实际结果怎样修正知识",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "虚构示例：反例怎样改变下一次创作",
-          "level": 2,
-          "anchor": "memory--虚构示例反例怎样改变下一次创作",
-          "retainedAt": "knowledge/reference/commerce-product.md#虚构示例反例怎样改变下一次创作",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "一条新材料怎样改动已有 Wiki",
-          "level": 3,
-          "anchor": "memory--一条新材料怎样改动已有-wiki",
-          "retainedAt": "knowledge/reference/commerce-product.md#一条新材料怎样改动已有-wiki",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "什么证据才能把 P1 改成 P2",
-          "level": 3,
-          "anchor": "memory--什么证据才能把-p1-改成-p2",
-          "retainedAt": "knowledge/reference/commerce-product.md#什么证据才能把-p1-改成-p2",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "下一次创作实际读什么、做什么",
-          "level": 3,
-          "anchor": "memory--下一次创作实际读什么做什么",
-          "retainedAt": "knowledge/reference/commerce-product.md#下一次创作实际读什么做什么",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "产品验收与未决",
-          "level": 2,
-          "anchor": "memory--产品验收与未决",
-          "retainedAt": "knowledge/reference/commerce-product.md#产品验收与未决",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "怎样证明知识真的有用",
-          "level": 3,
-          "anchor": "memory--怎样证明知识真的有用",
-          "retainedAt": "knowledge/reference/commerce-product.md#怎样证明知识真的有用",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "哪些还没确定",
-          "level": 3,
-          "anchor": "memory--哪些还没确定",
-          "retainedAt": "knowledge/reference/commerce-product.md#哪些还没确定",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "每日研究报告的归档与构建",
-          "level": 2,
-          "anchor": "memory--每日研究报告的归档与构建",
-          "retainedAt": "knowledge/reference/commerce-product.md#每日研究报告的归档与构建",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "日报更新与未知页面的连续构建（2026-10-18 实施合同）",
-          "level": 3,
-          "anchor": "memory--日报更新与未知页面的连续构建2026-10-18-实施合同",
-          "retainedAt": "knowledge/reference/commerce-product.md#日报更新与未知页面的连续构建2026-10-18-实施合同",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "待确认变化与安全恢复（2026-10-19）",
-          "level": 3,
-          "anchor": "memory--待确认变化与安全恢复2026-10-19",
-          "retainedAt": "knowledge/reference/commerce-product.md#待确认变化与安全恢复2026-10-19",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "独立研究页的覆盖复用",
-          "level": 3,
-          "anchor": "memory--独立研究页的覆盖复用",
-          "retainedAt": "knowledge/reference/commerce-product.md#独立研究页的覆盖复用",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "采集身份与内容主张分开核验",
-          "level": 3,
-          "anchor": "memory--采集身份与内容主张分开核验",
-          "retainedAt": "knowledge/reference/commerce-product.md#采集身份与内容主张分开核验",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        }
+        {"heading":"知识与记忆：让持续研究服务下一次决定","level":1,"anchor":"memory--知识与记忆让持续研究服务下一次决定","retainedAt":"knowledge/reference/commerce-product.md#知识与记忆让持续研究服务下一次决定","currentGuide":"knowledge/model.md#认知成长的目标","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"日报研究怎样建立和修订知识关联","level":2,"anchor":"memory--日报研究怎样建立和修订知识关联","retainedAt":"knowledge/reference/commerce-product.md#日报研究怎样建立和修订知识关联","currentGuide":"knowledge/model.md#研究行为触发与读取范围","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"关联的单位是带条件的命题","level":3,"anchor":"memory--关联的单位是带条件的命题","retainedAt":"knowledge/reference/commerce-product.md#关联的单位是带条件的命题","currentGuide":"knowledge/model.md#带条件的命题与内容关系","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"从新材料到新认识，再回到日报","level":3,"anchor":"memory--从新材料到新认识再回到日报","retainedAt":"knowledge/reference/commerce-product.md#从新材料到新认识再回到日报","currentGuide":"knowledge/model.md#研究行为触发与读取范围","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"以认识变化而非产出数量验收","level":3,"anchor":"memory--以认识变化而非产出数量验收","retainedAt":"knowledge/reference/commerce-product.md#以认识变化而非产出数量验收","currentGuide":"knowledge/model.md#连续两轮怎样验收认知成长","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"一眼看懂本模块","level":2,"anchor":"memory--一眼看懂本模块","retainedAt":"knowledge/reference/commerce-product.md#一眼看懂本模块","currentGuide":"knowledge/model.md#来源认知与关联","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"为什么要分层","level":2,"anchor":"memory--为什么要分层","retainedAt":"knowledge/reference/commerce-product.md#为什么要分层","currentGuide":"knowledge/model.md#来源认知与关联","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"记忆究竟保存什么","level":3,"anchor":"memory--记忆究竟保存什么","retainedAt":"knowledge/reference/commerce-product.md#记忆究竟保存什么","currentGuide":"knowledge/model.md#来源认知与关联","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"类型、身份和标签各回答什么","level":3,"anchor":"memory--类型身份和标签各回答什么","retainedAt":"knowledge/reference/commerce-product.md#类型身份和标签各回答什么","currentGuide":"knowledge/model.md#稳定身份与正文权威","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"粗精拉进入知识时保留哪些语境","level":3,"anchor":"memory--粗精拉进入知识时保留哪些语境","retainedAt":"knowledge/reference/commerce-product.md#粗精拉进入知识时保留哪些语境","currentGuide":"knowledge/integration.md#4-登记来源版本锚点权限与用途","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"LLM Wiki 的核心：把新材料编进已有认识","level":2,"anchor":"memory--llm-wiki-的核心把新材料编进已有认识","retainedAt":"knowledge/reference/commerce-product.md#llm-wiki-的核心把新材料编进已有认识","currentGuide":"knowledge/model.md#研究行为触发与读取范围","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"持续构建的三种节奏（目标设计）","level":3,"anchor":"memory--持续构建的三种节奏目标设计","retainedAt":"knowledge/reference/commerce-product.md#持续构建的三种节奏目标设计","currentGuide":"knowledge/architecture.md#研究执行与维护","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"从单片到专题","level":2,"anchor":"memory--从单片到专题","retainedAt":"knowledge/reference/commerce-product.md#从单片到专题","currentGuide":"knowledge/model.md#研究行为什么值得保存","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"粗拉与精拉都可以提供可用知识","level":3,"anchor":"memory--粗拉与精拉都可以提供可用知识","retainedAt":"knowledge/reference/commerce-product.md#粗拉与精拉都可以提供可用知识","currentGuide":"knowledge/integration.md#4-登记来源版本锚点权限与用途","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"范式要能指导一次新的创作","level":3,"anchor":"memory--范式要能指导一次新的创作","retainedAt":"knowledge/reference/commerce-product.md#范式要能指导一次新的创作","currentGuide":"knowledge/model.md#查询采用与反馈","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"多片比较先固定比较范围","level":3,"anchor":"memory--多片比较先固定比较范围","retainedAt":"knowledge/reference/commerce-product.md#多片比较先固定比较范围","currentGuide":"knowledge/model.md#带条件的命题与内容关系","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"采用、纠错和失效","level":2,"anchor":"memory--采用纠错和失效","retainedAt":"knowledge/reference/commerce-product.md#采用纠错和失效","currentGuide":"knowledge/model.md#查询采用与反馈","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"工作台怎样展示一条知识","level":3,"anchor":"memory--工作台怎样展示一条知识","retainedAt":"knowledge/reference/commerce-product.md#工作台怎样展示一条知识","currentGuide":"knowledge/product.md#阅读准确版本与来源","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"发现错误后会发生什么","level":3,"anchor":"memory--发现错误后会发生什么","retainedAt":"knowledge/reference/commerce-product.md#发现错误后会发生什么","currentGuide":"knowledge/model.md#研究行为停止与维护","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"缺口怎样变成下一轮研究","level":3,"anchor":"memory--缺口怎样变成下一轮研究","retainedAt":"knowledge/reference/commerce-product.md#缺口怎样变成下一轮研究","currentGuide":"knowledge/model.md#研究行为停止与维护","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"一次创作只读什么","level":2,"anchor":"memory--一次创作只读什么","retainedAt":"knowledge/reference/commerce-product.md#一次创作只读什么","currentGuide":"knowledge/integration.md#5-查询研究采用反馈与变化","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"从任务开始筛选","level":3,"anchor":"memory--从任务开始筛选","retainedAt":"knowledge/reference/commerce-product.md#从任务开始筛选","currentGuide":"knowledge/model.md#查询采用与反馈","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"参考包的最小交付","level":3,"anchor":"memory--参考包的最小交付","retainedAt":"knowledge/reference/commerce-product.md#参考包的最小交付","currentGuide":"knowledge/model.md#查询采用与反馈","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"实际结果怎样修正知识","level":2,"anchor":"memory--实际结果怎样修正知识","retainedAt":"knowledge/reference/commerce-product.md#实际结果怎样修正知识","currentGuide":"knowledge/model.md#查询采用与反馈","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"虚构示例：反例怎样改变下一次创作","level":2,"anchor":"memory--虚构示例反例怎样改变下一次创作","retainedAt":"knowledge/reference/commerce-product.md#虚构示例反例怎样改变下一次创作","currentGuide":"knowledge/model.md#查询采用与反馈","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"一条新材料怎样改动已有 Wiki","level":3,"anchor":"memory--一条新材料怎样改动已有-wiki","retainedAt":"knowledge/reference/commerce-product.md#一条新材料怎样改动已有-wiki","currentGuide":"knowledge/model.md#研究行为综合与循环放大","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"什么证据才能把 P1 改成 P2","level":3,"anchor":"memory--什么证据才能把-p1-改成-p2","retainedAt":"knowledge/reference/commerce-product.md#什么证据才能把-p1-改成-p2","currentGuide":"knowledge/model.md#研究行为综合与循环放大","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"下一次创作实际读什么、做什么","level":3,"anchor":"memory--下一次创作实际读什么做什么","retainedAt":"knowledge/reference/commerce-product.md#下一次创作实际读什么做什么","currentGuide":"knowledge/model.md#查询采用与反馈","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"产品验收与未决","level":2,"anchor":"memory--产品验收与未决","retainedAt":"knowledge/reference/commerce-product.md#产品验收与未决","currentGuide":"knowledge/model.md#连续两轮怎样验收认知成长","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"怎样证明知识真的有用","level":3,"anchor":"memory--怎样证明知识真的有用","retainedAt":"knowledge/reference/commerce-product.md#怎样证明知识真的有用","currentGuide":"knowledge/model.md#连续两轮怎样验收认知成长","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"哪些还没确定","level":3,"anchor":"memory--哪些还没确定","retainedAt":"knowledge/reference/commerce-product.md#哪些还没确定","currentGuide":"knowledge/current-state.md#分别看主线候选与生产","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"每日研究报告的归档与构建","level":2,"anchor":"memory--每日研究报告的归档与构建","retainedAt":"knowledge/reference/commerce-product.md#每日研究报告的归档与构建","currentGuide":"knowledge/integration.md#5-查询研究采用反馈与变化","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"日报更新与未知页面的连续构建（2026-10-18 实施合同）","level":3,"anchor":"memory--日报更新与未知页面的连续构建2026-10-18-实施合同","retainedAt":"knowledge/reference/commerce-product.md#日报更新与未知页面的连续构建2026-10-18-实施合同","currentGuide":"knowledge/current-state.md#分别看主线候选与生产","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"待确认变化与安全恢复（2026-10-19）","level":3,"anchor":"memory--待确认变化与安全恢复2026-10-19","retainedAt":"knowledge/reference/commerce-product.md#待确认变化与安全恢复2026-10-19","currentGuide":"knowledge/current-state.md#分别看主线候选与生产","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"独立研究页的覆盖复用","level":3,"anchor":"memory--独立研究页的覆盖复用","retainedAt":"knowledge/reference/commerce-product.md#独立研究页的覆盖复用","currentGuide":"knowledge/current-state.md#分别看主线候选与生产","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"采集身份与内容主张分开核验","level":3,"anchor":"memory--采集身份与内容主张分开核验","retainedAt":"knowledge/reference/commerce-product.md#采集身份与内容主张分开核验","currentGuide":"knowledge/integration.md#4-登记来源版本锚点权限与用途","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"}
       ]
     },
     {
@@ -309,118 +57,20 @@
       "baselineSha256": "32050f10b37bfc517d9e63fadfaab1a106dd089867ec044b9f65aac48c2b8e8f",
       "normalizedTextSha256": "20ce71a5e7be7512e3f18fa677261ddc280412a26ac8d9df4e0de955cbf3dbfc",
       "sections": [
-        {
-          "heading": "案例、主张、范式、Wiki 与参考包",
-          "level": 1,
-          "anchor": "knowledge-architecture--案例主张范式wiki-与参考包",
-          "retainedAt": "knowledge/reference/commerce-architecture.md#案例主张范式wiki-与参考包",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "3. 粗拉、精拉都能入知识库，但入库不等于升格",
-          "level": 2,
-          "anchor": "knowledge-architecture--3-粗拉精拉都能入知识库但入库不等于升格",
-          "retainedAt": "knowledge/reference/commerce-architecture.md#3-粗拉精拉都能入知识库但入库不等于升格",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "4. 单条与多条怎样形成知识",
-          "level": 2,
-          "anchor": "knowledge-architecture--4-单条与多条怎样形成知识",
-          "retainedAt": "knowledge/reference/commerce-architecture.md#4-单条与多条怎样形成知识",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "4.1 单片、范式与参考包的最小内容",
-          "level": 3,
-          "anchor": "knowledge-architecture--41-单片范式与参考包的最小内容",
-          "retainedAt": "knowledge/reference/commerce-architecture.md#41-单片范式与参考包的最小内容",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "4.2 类型、身份与分类：目标合同",
-          "level": 3,
-          "anchor": "knowledge-architecture--42-类型身份与分类目标合同",
-          "retainedAt": "knowledge/reference/commerce-architecture.md#42-类型身份与分类目标合同",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "4.3 关系与失效：目标合同",
-          "level": 3,
-          "anchor": "knowledge-architecture--43-关系与失效目标合同",
-          "retainedAt": "knowledge/reference/commerce-architecture.md#43-关系与失效目标合同",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "4.4 持续构建：目标执行合同",
-          "level": 3,
-          "anchor": "knowledge-architecture--44-持续构建目标执行合同",
-          "retainedAt": "knowledge/reference/commerce-architecture.md#44-持续构建目标执行合同",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "6. 创作实际读取什么",
-          "level": 2,
-          "anchor": "knowledge-architecture--6-创作实际读取什么",
-          "retainedAt": "knowledge/reference/commerce-architecture.md#6-创作实际读取什么",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "原文与证据",
-          "level": 2,
-          "anchor": "knowledge-architecture--原文与证据",
-          "retainedAt": "knowledge/reference/commerce-architecture.md#原文与证据",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "构建失败的有界自修复（v7，实施中）",
-          "level": 2,
-          "anchor": "knowledge-architecture--构建失败的有界自修复v7实施中",
-          "retainedAt": "knowledge/reference/commerce-architecture.md#构建失败的有界自修复v7实施中",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "覆盖身份与未知页隔离（2026-10-18 实施合同）",
-          "level": 2,
-          "anchor": "knowledge-architecture--覆盖身份与未知页隔离2026-10-18-实施合同",
-          "retainedAt": "knowledge/reference/commerce-architecture.md#覆盖身份与未知页隔离2026-10-18-实施合同",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "变化计数与受限页恢复（2026-10-19 实施合同）",
-          "level": 3,
-          "anchor": "knowledge-architecture--变化计数与受限页恢复2026-10-19-实施合同",
-          "retainedAt": "knowledge/reference/commerce-architecture.md#变化计数与受限页恢复2026-10-19-实施合同",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "同水位成功页与提交冲突",
-          "level": 3,
-          "anchor": "knowledge-architecture--同水位成功页与提交冲突",
-          "retainedAt": "knowledge/reference/commerce-architecture.md#同水位成功页与提交冲突",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "身份补证的一次性准入",
-          "level": 3,
-          "anchor": "knowledge-architecture--身份补证的一次性准入",
-          "retainedAt": "knowledge/reference/commerce-architecture.md#身份补证的一次性准入",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        }
+        {"heading":"案例、主张、范式、Wiki 与参考包","level":1,"anchor":"knowledge-architecture--案例主张范式wiki-与参考包","retainedAt":"knowledge/reference/commerce-architecture.md#案例主张范式wiki-与参考包","currentGuide":"knowledge/architecture.md#通用知识核心","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"3. 粗拉、精拉都能入知识库，但入库不等于升格","level":2,"anchor":"knowledge-architecture--3-粗拉精拉都能入知识库但入库不等于升格","retainedAt":"knowledge/reference/commerce-architecture.md#3-粗拉精拉都能入知识库但入库不等于升格","currentGuide":"knowledge/integration.md#4-登记来源版本锚点权限与用途","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"4. 单条与多条怎样形成知识","level":2,"anchor":"knowledge-architecture--4-单条与多条怎样形成知识","retainedAt":"knowledge/reference/commerce-architecture.md#4-单条与多条怎样形成知识","currentGuide":"knowledge/architecture.md#阅读研究与唯一发表","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"4.1 单片、范式与参考包的最小内容","level":3,"anchor":"knowledge-architecture--41-单片范式与参考包的最小内容","retainedAt":"knowledge/reference/commerce-architecture.md#41-单片范式与参考包的最小内容","currentGuide":"knowledge/model.md#查询采用与反馈","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"4.2 类型、身份与分类：目标合同","level":3,"anchor":"knowledge-architecture--42-类型身份与分类目标合同","retainedAt":"knowledge/reference/commerce-architecture.md#42-类型身份与分类目标合同","currentGuide":"knowledge/model.md#稳定身份与正文权威","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"4.3 关系与失效：目标合同","level":3,"anchor":"knowledge-architecture--43-关系与失效目标合同","retainedAt":"knowledge/reference/commerce-architecture.md#43-关系与失效目标合同","currentGuide":"knowledge/architecture.md#内容关系与失效","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"4.4 持续构建：目标执行合同","level":3,"anchor":"knowledge-architecture--44-持续构建目标执行合同","retainedAt":"knowledge/reference/commerce-architecture.md#44-持续构建目标执行合同","currentGuide":"knowledge/architecture.md#研究执行与维护","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"6. 创作实际读取什么","level":2,"anchor":"knowledge-architecture--6-创作实际读取什么","retainedAt":"knowledge/reference/commerce-architecture.md#6-创作实际读取什么","currentGuide":"knowledge/architecture.md#业务适配职责","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"原文与证据","level":2,"anchor":"knowledge-architecture--原文与证据","retainedAt":"knowledge/reference/commerce-architecture.md#原文与证据","currentGuide":"knowledge/migration.md#全文去处","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"构建失败的有界自修复（v7，实施中）","level":2,"anchor":"knowledge-architecture--构建失败的有界自修复v7实施中","retainedAt":"knowledge/reference/commerce-architecture.md#构建失败的有界自修复v7实施中","currentGuide":"knowledge/current-state.md#分别看主线候选与生产","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"覆盖身份与未知页隔离（2026-10-18 实施合同）","level":2,"anchor":"knowledge-architecture--覆盖身份与未知页隔离2026-10-18-实施合同","retainedAt":"knowledge/reference/commerce-architecture.md#覆盖身份与未知页隔离2026-10-18-实施合同","currentGuide":"knowledge/current-state.md#分别看主线候选与生产","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"变化计数与受限页恢复（2026-10-19 实施合同）","level":3,"anchor":"knowledge-architecture--变化计数与受限页恢复2026-10-19-实施合同","retainedAt":"knowledge/reference/commerce-architecture.md#变化计数与受限页恢复2026-10-19-实施合同","currentGuide":"knowledge/current-state.md#分别看主线候选与生产","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"同水位成功页与提交冲突","level":3,"anchor":"knowledge-architecture--同水位成功页与提交冲突","retainedAt":"knowledge/reference/commerce-architecture.md#同水位成功页与提交冲突","currentGuide":"knowledge/current-state.md#分别看主线候选与生产","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"身份补证的一次性准入","level":3,"anchor":"knowledge-architecture--身份补证的一次性准入","retainedAt":"knowledge/reference/commerce-architecture.md#身份补证的一次性准入","currentGuide":"knowledge/current-state.md#分别看主线候选与生产","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"}
       ]
     },
     {
@@ -431,174 +81,27 @@
       "baselineSha256": "270a37b6565387f686a2146b2d8797e4a0bfd8019ed7e306e9f42d1a4890f346",
       "normalizedTextSha256": "fcd75588335c2b0433006ec95ef594171668964499570645479f41231057913d",
       "sections": [
-        {
-          "heading": "知识库如何让认知自我成长：目标、例子与完整架构",
-          "level": 1,
-          "anchor": "knowledge-purpose-architecture--知识库如何让认知自我成长目标例子与完整架构",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#知识库如何让认知自我成长目标例子与完整架构",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "设计评估结论",
-          "level": 2,
-          "anchor": "knowledge-purpose-architecture--设计评估结论",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#设计评估结论",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "先看知识内容，再看对它的操作",
-          "level": 2,
-          "anchor": "knowledge-purpose-architecture--先看知识内容再看对它的操作",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#先看知识内容再看对它的操作",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "图一 知识库保存什么，认知凭什么成立",
-          "level": 3,
-          "anchor": "knowledge-purpose-architecture--图一-知识库保存什么认知凭什么成立",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#图一-知识库保存什么认知凭什么成立",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "图二 Ingest、Query、Lint 怎样作用于同一知识库",
-          "level": 3,
-          "anchor": "knowledge-purpose-architecture--图二-ingestquerylint-怎样作用于同一知识库",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#图二-ingestquerylint-怎样作用于同一知识库",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "为什么这套结构有机会实现认知自我成长",
-          "level": 2,
-          "anchor": "knowledge-purpose-architecture--为什么这套结构有机会实现认知自我成长",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#为什么这套结构有机会实现认知自我成长",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "目标：让认知自我成长，并被人和 Agent 继承、检验与修正",
-          "level": 2,
-          "anchor": "knowledge-purpose-architecture--目标让认知自我成长并被人和-agent-继承检验与修正",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#目标让认知自我成长并被人和-agent-继承检验与修正",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "没有这层知识时，具体会失去什么",
-          "level": 2,
-          "anchor": "knowledge-purpose-architecture--没有这层知识时具体会失去什么",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#没有这层知识时具体会失去什么",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "例一（真实）：本轮问题怎样推动我们理解知识库",
-          "level": 3,
-          "anchor": "knowledge-purpose-architecture--例一真实本轮问题怎样推动我们理解知识库",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#例一真实本轮问题怎样推动我们理解知识库",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "例二（假设）：拉片认知与创作认知怎样合成新认知",
-          "level": 3,
-          "anchor": "knowledge-purpose-architecture--例二假设拉片认知与创作认知怎样合成新认知",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#例二假设拉片认知与创作认知怎样合成新认知",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "认知研究与更新的最小行为合同",
-          "level": 2,
-          "anchor": "knowledge-purpose-architecture--认知研究与更新的最小行为合同",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#认知研究与更新的最小行为合同",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "一 什么变化值得成为持久认知",
-          "level": 3,
-          "anchor": "knowledge-purpose-architecture--一-什么变化值得成为持久认知",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#一-什么变化值得成为持久认知",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "二 谁触发研究，为什么读取这些知识",
-          "level": 3,
-          "anchor": "knowledge-purpose-architecture--二-谁触发研究为什么读取这些知识",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#二-谁触发研究为什么读取这些知识",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "三 稳定身份、正文权威与更新方式",
-          "level": 3,
-          "anchor": "knowledge-purpose-architecture--三-稳定身份正文权威与更新方式",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#三-稳定身份正文权威与更新方式",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "四 综合凭什么成立，怎样避免循环放大",
-          "level": 3,
-          "anchor": "knowledge-purpose-architecture--四-综合凭什么成立怎样避免循环放大",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#四-综合凭什么成立怎样避免循环放大",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "五 何时停止，旧认识变化后维护到哪里",
-          "level": 3,
-          "anchor": "knowledge-purpose-architecture--五-何时停止旧认识变化后维护到哪里",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#五-何时停止旧认识变化后维护到哪里",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "六 何时可发布，怎样证明下一轮真的用到了",
-          "level": 3,
-          "anchor": "knowledge-purpose-architecture--六-何时可发布怎样证明下一轮真的用到了",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#六-何时可发布怎样证明下一轮真的用到了",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "架构职责怎样支撑认知成长",
-          "level": 2,
-          "anchor": "knowledge-purpose-architecture--架构职责怎样支撑认知成长",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#架构职责怎样支撑认知成长",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "当前实现与建议的距离",
-          "level": 2,
-          "anchor": "knowledge-purpose-architecture--当前实现与建议的距离",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#当前实现与建议的距离",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "还有哪些地方需要在实现中定准",
-          "level": 2,
-          "anchor": "knowledge-purpose-architecture--还有哪些地方需要在实现中定准",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#还有哪些地方需要在实现中定准",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        },
-        {
-          "heading": "连续两轮怎样验收认知成长",
-          "level": 2,
-          "anchor": "knowledge-purpose-architecture--连续两轮怎样验收认知成长",
-          "retainedAt": "knowledge/research/purpose-architecture-20261022.md#连续两轮怎样验收认知成长",
-          "currentGuide": "knowledge/README.md",
-          "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
-        }
+        {"heading":"知识库如何让认知自我成长：目标、例子与完整架构","level":1,"anchor":"knowledge-purpose-architecture--知识库如何让认知自我成长目标例子与完整架构","retainedAt":"knowledge/research/purpose-architecture-20261022.md#知识库如何让认知自我成长目标例子与完整架构","currentGuide":"knowledge/model.md#认知成长的目标","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"设计评估结论","level":2,"anchor":"knowledge-purpose-architecture--设计评估结论","retainedAt":"knowledge/research/purpose-architecture-20261022.md#设计评估结论","currentGuide":"knowledge/model.md#连续两轮怎样验收认知成长","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"先看知识内容，再看对它的操作","level":2,"anchor":"knowledge-purpose-architecture--先看知识内容再看对它的操作","retainedAt":"knowledge/research/purpose-architecture-20261022.md#先看知识内容再看对它的操作","currentGuide":"knowledge/model.md#来源认知与关联","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"图一 知识库保存什么，认知凭什么成立","level":3,"anchor":"knowledge-purpose-architecture--图一-知识库保存什么认知凭什么成立","retainedAt":"knowledge/research/purpose-architecture-20261022.md#图一-知识库保存什么认知凭什么成立","currentGuide":"knowledge/model.md#来源认知与关联","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"图二 Ingest、Query、Lint 怎样作用于同一知识库","level":3,"anchor":"knowledge-purpose-architecture--图二-ingestquerylint-怎样作用于同一知识库","retainedAt":"knowledge/research/purpose-architecture-20261022.md#图二-ingestquerylint-怎样作用于同一知识库","currentGuide":"knowledge/model.md#研究行为触发与读取范围","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"为什么这套结构有机会实现认知自我成长","level":2,"anchor":"knowledge-purpose-architecture--为什么这套结构有机会实现认知自我成长","retainedAt":"knowledge/research/purpose-architecture-20261022.md#为什么这套结构有机会实现认知自我成长","currentGuide":"knowledge/model.md#认知成长的目标","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"目标：让认知自我成长，并被人和 Agent 继承、检验与修正","level":2,"anchor":"knowledge-purpose-architecture--目标让认知自我成长并被人和-agent-继承检验与修正","retainedAt":"knowledge/research/purpose-architecture-20261022.md#目标让认知自我成长并被人和-agent-继承检验与修正","currentGuide":"knowledge/model.md#认知成长的目标","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"没有这层知识时，具体会失去什么","level":2,"anchor":"knowledge-purpose-architecture--没有这层知识时具体会失去什么","retainedAt":"knowledge/research/purpose-architecture-20261022.md#没有这层知识时具体会失去什么","currentGuide":"knowledge/model.md#认知成长的目标","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"例一（真实）：本轮问题怎样推动我们理解知识库","level":3,"anchor":"knowledge-purpose-architecture--例一真实本轮问题怎样推动我们理解知识库","retainedAt":"knowledge/research/purpose-architecture-20261022.md#例一真实本轮问题怎样推动我们理解知识库","currentGuide":"knowledge/model.md#认知成长的目标","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"例二（假设）：拉片认知与创作认知怎样合成新认知","level":3,"anchor":"knowledge-purpose-architecture--例二假设拉片认知与创作认知怎样合成新认知","retainedAt":"knowledge/research/purpose-architecture-20261022.md#例二假设拉片认知与创作认知怎样合成新认知","currentGuide":"knowledge/model.md#研究行为综合与循环放大","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"认知研究与更新的最小行为合同","level":2,"anchor":"knowledge-purpose-architecture--认知研究与更新的最小行为合同","retainedAt":"knowledge/research/purpose-architecture-20261022.md#认知研究与更新的最小行为合同","currentGuide":"knowledge/model.md#研究行为什么值得保存","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"一 什么变化值得成为持久认知","level":3,"anchor":"knowledge-purpose-architecture--一-什么变化值得成为持久认知","retainedAt":"knowledge/research/purpose-architecture-20261022.md#一-什么变化值得成为持久认知","currentGuide":"knowledge/model.md#研究行为什么值得保存","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"二 谁触发研究，为什么读取这些知识","level":3,"anchor":"knowledge-purpose-architecture--二-谁触发研究为什么读取这些知识","retainedAt":"knowledge/research/purpose-architecture-20261022.md#二-谁触发研究为什么读取这些知识","currentGuide":"knowledge/model.md#研究行为触发与读取范围","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"三 稳定身份、正文权威与更新方式","level":3,"anchor":"knowledge-purpose-architecture--三-稳定身份正文权威与更新方式","retainedAt":"knowledge/research/purpose-architecture-20261022.md#三-稳定身份正文权威与更新方式","currentGuide":"knowledge/model.md#稳定身份与正文权威","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"四 综合凭什么成立，怎样避免循环放大","level":3,"anchor":"knowledge-purpose-architecture--四-综合凭什么成立怎样避免循环放大","retainedAt":"knowledge/research/purpose-architecture-20261022.md#四-综合凭什么成立怎样避免循环放大","currentGuide":"knowledge/model.md#研究行为综合与循环放大","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"五 何时停止，旧认识变化后维护到哪里","level":3,"anchor":"knowledge-purpose-architecture--五-何时停止旧认识变化后维护到哪里","retainedAt":"knowledge/research/purpose-architecture-20261022.md#五-何时停止旧认识变化后维护到哪里","currentGuide":"knowledge/model.md#研究行为停止与维护","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"六 何时可发布，怎样证明下一轮真的用到了","level":3,"anchor":"knowledge-purpose-architecture--六-何时可发布怎样证明下一轮真的用到了","retainedAt":"knowledge/research/purpose-architecture-20261022.md#六-何时可发布怎样证明下一轮真的用到了","currentGuide":"knowledge/model.md#研究行为审阅发表与继承","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"架构职责怎样支撑认知成长","level":2,"anchor":"knowledge-purpose-architecture--架构职责怎样支撑认知成长","retainedAt":"knowledge/research/purpose-architecture-20261022.md#架构职责怎样支撑认知成长","currentGuide":"knowledge/architecture.md#通用知识核心","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"当前实现与建议的距离","level":2,"anchor":"knowledge-purpose-architecture--当前实现与建议的距离","retainedAt":"knowledge/research/purpose-architecture-20261022.md#当前实现与建议的距离","currentGuide":"knowledge/current-state.md#分别看主线候选与生产","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"还有哪些地方需要在实现中定准","level":2,"anchor":"knowledge-purpose-architecture--还有哪些地方需要在实现中定准","retainedAt":"knowledge/research/purpose-architecture-20261022.md#还有哪些地方需要在实现中定准","currentGuide":"knowledge/current-state.md#分别看主线候选与生产","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"},
+        {"heading":"连续两轮怎样验收认知成长","level":2,"anchor":"knowledge-purpose-architecture--连续两轮怎样验收认知成长","retainedAt":"knowledge/research/purpose-architecture-20261022.md#连续两轮怎样验收认知成长","currentGuide":"knowledge/model.md#连续两轮怎样验收认知成长","note":"全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"}
       ]
     },
     {
@@ -614,7 +117,7 @@
           "level": 1,
           "anchor": "knowledge-architecture-review--知识库架构评审与接口对齐",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#知识库架构评审与接口对齐",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -622,7 +125,7 @@
           "level": 2,
           "anchor": "knowledge-architecture-review--结论与优先级",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#结论与优先级",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -630,7 +133,7 @@
           "level": 2,
           "anchor": "knowledge-architecture-review--外部范式对照与当前设计取舍",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#外部范式对照与当前设计取舍",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -638,7 +141,7 @@
           "level": 3,
           "anchor": "knowledge-architecture-review--三套方案怎样取舍",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#三套方案怎样取舍",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -646,7 +149,7 @@
           "level": 3,
           "anchor": "knowledge-architecture-review--对当前五类对象的判断需要校正",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#对当前五类对象的判断需要校正",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -654,7 +157,7 @@
           "level": 2,
           "anchor": "knowledge-architecture-review--一-先分清三种层次",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#一-先分清三种层次",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -662,7 +165,7 @@
           "level": 3,
           "anchor": "knowledge-architecture-review--数据与知识的职责层",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#数据与知识的职责层",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -670,7 +173,7 @@
           "level": 3,
           "anchor": "knowledge-architecture-review--代码的分层",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#代码的分层",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -678,7 +181,7 @@
           "level": 2,
           "anchor": "knowledge-architecture-review--二-对象已经定义了什么",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#二-对象已经定义了什么",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -686,7 +189,7 @@
           "level": 2,
           "anchor": "knowledge-architecture-review--三-ingest-query-lint-的真实行为",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#三-ingest-query-lint-的真实行为",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -694,7 +197,7 @@
           "level": 3,
           "anchor": "knowledge-architecture-review--异步语义编纂-综合与修复的共同写路径",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#异步语义编纂-综合与修复的共同写路径",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -702,7 +205,7 @@
           "level": 2,
           "anchor": "knowledge-architecture-review--四-接口和实现有没有落地",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#四-接口和实现有没有落地",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -710,7 +213,7 @@
           "level": 2,
           "anchor": "knowledge-architecture-review--五-泛型应该用在哪里",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#五-泛型应该用在哪里",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -718,7 +221,7 @@
           "level": 2,
           "anchor": "knowledge-architecture-review--六-结果必须表达哪几件不同的事",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#六-结果必须表达哪几件不同的事",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -726,7 +229,7 @@
           "level": 2,
           "anchor": "knowledge-architecture-review--七-建议的对齐节奏",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#七-建议的对齐节奏",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -734,7 +237,7 @@
           "level": 3,
           "anchor": "knowledge-architecture-review--设计前置-先明确知识生长合同",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#设计前置-先明确知识生长合同",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -742,7 +245,7 @@
           "level": 3,
           "anchor": "knowledge-architecture-review--第一阶段-先收紧合同",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#第一阶段-先收紧合同",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -750,7 +253,7 @@
           "level": 3,
           "anchor": "knowledge-architecture-review--第二阶段-统一扩展-读取注册与维护责任",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#第二阶段-统一扩展-读取注册与维护责任",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -758,7 +261,7 @@
           "level": 3,
           "anchor": "knowledge-architecture-review--第三阶段-用真实第二领域与有界语义-lint-验通用性",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#第三阶段-用真实第二领域与有界语义-lint-验通用性",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -766,7 +269,7 @@
           "level": 2,
           "anchor": "knowledge-architecture-review--八-固定版本工程验证与证据边界",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#八-固定版本工程验证与证据边界",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -774,7 +277,7 @@
           "level": 3,
           "anchor": "knowledge-architecture-review--本次设计评估与文档整理",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#本次设计评估与文档整理",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -782,7 +285,7 @@
           "level": 3,
           "anchor": "knowledge-architecture-review--决策检索记录",
           "retainedAt": "knowledge/research/architecture-review-20261022.md#决策检索记录",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         }
       ]
@@ -800,7 +303,7 @@
           "level": 1,
           "anchor": "graphify-research--graphify-研究与知识工作台图谱设计",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#graphify-研究与知识工作台图谱设计",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -808,7 +311,7 @@
           "level": 2,
           "anchor": "graphify-research--研究目标与方法",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#研究目标与方法",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -816,7 +319,7 @@
           "level": 2,
           "anchor": "graphify-research--决策覆盖与验收",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#决策覆盖与验收",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -824,7 +327,7 @@
           "level": 2,
           "anchor": "graphify-research--1-结论借鉴图谱能力按我们的知识使用效果设计工作台",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#1-结论借鉴图谱能力按我们的知识使用效果设计工作台",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -832,7 +335,7 @@
           "level": 2,
           "anchor": "graphify-research--2-graphify-的技术栈固定提交的开源实现",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#2-graphify-的技术栈固定提交的开源实现",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -840,7 +343,7 @@
           "level": 2,
           "anchor": "graphify-research--3-它有哪几层",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#3-它有哪几层",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -848,7 +351,7 @@
           "level": 3,
           "anchor": "graphify-research--wikireflectlint-的区别",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#wikireflectlint-的区别",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -856,7 +359,7 @@
           "level": 2,
           "anchor": "graphify-research--4-图谱前端怎样实现",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#4-图谱前端怎样实现",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -864,7 +367,7 @@
           "level": 3,
           "anchor": "graphify-research--从领域图到页面",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#从领域图到页面",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -872,7 +375,7 @@
           "level": 3,
           "anchor": "graphify-research--视觉编码与布局",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#视觉编码与布局",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -880,7 +383,7 @@
           "level": 3,
           "anchor": "graphify-research--哪些交互已实现哪些属于别的入口",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#哪些交互已实现哪些属于别的入口",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -888,7 +391,7 @@
           "level": 3,
           "anchor": "graphify-research--大图与移动端",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#大图与移动端",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -896,7 +399,7 @@
           "level": 2,
           "anchor": "graphify-research--5-本轮实际浏览器验证",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#5-本轮实际浏览器验证",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -904,7 +407,7 @@
           "level": 2,
           "anchor": "graphify-research--6-与我们的五层和三条流程比较",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#6-与我们的五层和三条流程比较",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -912,7 +415,7 @@
           "level": 2,
           "anchor": "graphify-research--7-从希望达到的知识库效果推导前端",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#7-从希望达到的知识库效果推导前端",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -920,7 +423,7 @@
           "level": 3,
           "anchor": "graphify-research--页面骨架与进入路径",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#页面骨架与进入路径",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -928,7 +431,7 @@
           "level": 3,
           "anchor": "graphify-research--图谱的四种问题视图",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#图谱的四种问题视图",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -936,7 +439,7 @@
           "level": 3,
           "anchor": "graphify-research--节点连线和状态的设计约束",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#节点连线和状态的设计约束",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -944,7 +447,7 @@
           "level": 2,
           "anchor": "graphify-research--8-现有代码能支持什么还缺什么",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#8-现有代码能支持什么还缺什么",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -952,7 +455,7 @@
           "level": 2,
           "anchor": "graphify-research--9-前端技术路线建议",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#9-前端技术路线建议",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -960,7 +463,7 @@
           "level": 2,
           "anchor": "graphify-research--10-可点击提案与后续实施顺序",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#10-可点击提案与后续实施顺序",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -968,7 +471,7 @@
           "level": 2,
           "anchor": "graphify-research--11-本项目交互提案的验证与保留边界",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#11-本项目交互提案的验证与保留边界",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -976,7 +479,7 @@
           "level": 2,
           "anchor": "graphify-research--12-证据索引",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#12-证据索引",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -984,7 +487,7 @@
           "level": 2,
           "anchor": "graphify-research--2026-10-15-实施后记已选择-cytoscape-并接入真实工作台",
           "retainedAt": "knowledge/research/graphify-frontend-20261015.md#2026-10-15-实施后记已选择-cytoscape-并接入真实工作台",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         }
       ]
@@ -1002,7 +505,7 @@
           "level": 1,
           "anchor": "knowledge-workbench--知识工作台真实数据节点图谱与使用边界",
           "retainedAt": "knowledge/evidence/workbench-20261015.md#知识工作台真实数据节点图谱与使用边界",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1010,7 +513,7 @@
           "level": 2,
           "anchor": "knowledge-workbench--从产品目标推导界面",
           "retainedAt": "knowledge/evidence/workbench-20261015.md#从产品目标推导界面",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1018,7 +521,7 @@
           "level": 2,
           "anchor": "knowledge-workbench--图谱技术栈的决定",
           "retainedAt": "knowledge/evidence/workbench-20261015.md#图谱技术栈的决定",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1026,7 +529,7 @@
           "level": 2,
           "anchor": "knowledge-workbench--nowledge-mem-的实际试用",
           "retainedAt": "knowledge/evidence/workbench-20261015.md#nowledge-mem-的实际试用",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1034,7 +537,7 @@
           "level": 2,
           "anchor": "knowledge-workbench--真实数据怎样进入",
           "retainedAt": "knowledge/evidence/workbench-20261015.md#真实数据怎样进入",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1042,7 +545,7 @@
           "level": 2,
           "anchor": "knowledge-workbench--关系与影响规则",
           "retainedAt": "knowledge/evidence/workbench-20261015.md#关系与影响规则",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1050,7 +553,7 @@
           "level": 2,
           "anchor": "knowledge-workbench--参考包与证据回查",
           "retainedAt": "knowledge/evidence/workbench-20261015.md#参考包与证据回查",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1058,7 +561,7 @@
           "level": 2,
           "anchor": "knowledge-workbench--验收记录",
           "retainedAt": "knowledge/evidence/workbench-20261015.md#验收记录",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1066,7 +569,7 @@
           "level": 2,
           "anchor": "knowledge-workbench--后续边界",
           "retainedAt": "knowledge/evidence/workbench-20261015.md#后续边界",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         }
       ]
@@ -1084,7 +587,7 @@
           "level": 1,
           "anchor": "knowledge-module--知识模块-d1d3-实施交接",
           "retainedAt": "knowledge/evidence/module-20261015.md#知识模块-d1d3-实施交接",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1092,7 +595,7 @@
           "level": 2,
           "anchor": "knowledge-module--依据与阅读记录",
           "retainedAt": "knowledge/evidence/module-20261015.md#依据与阅读记录",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1100,7 +603,7 @@
           "level": 2,
           "anchor": "knowledge-module--交付与验收状态",
           "retainedAt": "knowledge/evidence/module-20261015.md#交付与验收状态",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1108,7 +611,7 @@
           "level": 2,
           "anchor": "knowledge-module--文件与责任",
           "retainedAt": "knowledge/evidence/module-20261015.md#文件与责任",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1116,7 +619,7 @@
           "level": 2,
           "anchor": "knowledge-module--关键行为",
           "retainedAt": "knowledge/evidence/module-20261015.md#关键行为",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1124,7 +627,7 @@
           "level": 3,
           "anchor": "knowledge-module--证据与采用",
           "retainedAt": "knowledge/evidence/module-20261015.md#证据与采用",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1132,7 +635,7 @@
           "level": 3,
           "anchor": "knowledge-module--修订失效和下一轮",
           "retainedAt": "knowledge/evidence/module-20261015.md#修订失效和下一轮",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1140,7 +643,7 @@
           "level": 3,
           "anchor": "knowledge-module--参考包",
           "retainedAt": "knowledge/evidence/module-20261015.md#参考包",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1148,7 +651,7 @@
           "level": 2,
           "anchor": "knowledge-module--验证记录2026-10-14",
           "retainedAt": "knowledge/evidence/module-20261015.md#验证记录2026-10-14",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1156,7 +659,7 @@
           "level": 2,
           "anchor": "knowledge-module--共享文件的最小接线提案未应用",
           "retainedAt": "knowledge/evidence/module-20261015.md#共享文件的最小接线提案未应用",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1164,7 +667,7 @@
           "level": 2,
           "anchor": "knowledge-module--第一个真实小样的接手步骤",
           "retainedAt": "knowledge/evidence/module-20261015.md#第一个真实小样的接手步骤",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1172,7 +675,7 @@
           "level": 2,
           "anchor": "knowledge-module--保留限制",
           "retainedAt": "knowledge/evidence/module-20261015.md#保留限制",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         }
       ]
@@ -1190,7 +693,7 @@
           "level": 1,
           "anchor": "knowledge-learning-loop--知识持续更新实施与验收",
           "retainedAt": "knowledge/evidence/learning-loop-20261016.md#知识持续更新实施与验收",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1198,7 +701,7 @@
           "level": 2,
           "anchor": "knowledge-learning-loop--本轮可执行的行为",
           "retainedAt": "knowledge/evidence/learning-loop-20261016.md#本轮可执行的行为",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1206,7 +709,7 @@
           "level": 2,
           "anchor": "knowledge-learning-loop--默认关闭的能力怎样启用",
           "retainedAt": "knowledge/evidence/learning-loop-20261016.md#默认关闭的能力怎样启用",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1214,7 +717,7 @@
           "level": 2,
           "anchor": "knowledge-learning-loop--验收证据",
           "retainedAt": "knowledge/evidence/learning-loop-20261016.md#验收证据",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         }
       ]
@@ -1232,7 +735,7 @@
           "level": 1,
           "anchor": "knowledge-main-workbench-acceptance--主工作台知识专题部署与-api-验收",
           "retainedAt": "knowledge/evidence/main-workbench-20261016.md#主工作台知识专题部署与-api-验收",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1240,7 +743,7 @@
           "level": 2,
           "anchor": "knowledge-main-workbench-acceptance--本机切换与数据保护",
           "retainedAt": "knowledge/evidence/main-workbench-20261016.md#本机切换与数据保护",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1248,7 +751,7 @@
           "level": 2,
           "anchor": "knowledge-main-workbench-acceptance--真实专题与来源核对",
           "retainedAt": "knowledge/evidence/main-workbench-20261016.md#真实专题与来源核对",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1256,7 +759,7 @@
           "level": 2,
           "anchor": "knowledge-main-workbench-acceptance--验证范围与未完成项",
           "retainedAt": "knowledge/evidence/main-workbench-20261016.md#验证范围与未完成项",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         }
       ]
@@ -1274,7 +777,7 @@
           "level": 1,
           "anchor": "knowledge-resilience--知识覆盖与未知页隔离修复",
           "retainedAt": "knowledge/evidence/resilience-20261018.md#知识覆盖与未知页隔离修复",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1282,7 +785,7 @@
           "level": 2,
           "anchor": "knowledge-resilience--交付与验收",
           "retainedAt": "knowledge/evidence/resilience-20261018.md#交付与验收",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1290,7 +793,7 @@
           "level": 2,
           "anchor": "knowledge-resilience--现场基线",
           "retainedAt": "knowledge/evidence/resilience-20261018.md#现场基线",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1298,7 +801,7 @@
           "level": 2,
           "anchor": "knowledge-resilience--部署及自动调度验收",
           "retainedAt": "knowledge/evidence/resilience-20261018.md#部署及自动调度验收",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         }
       ]
@@ -1316,7 +819,7 @@
           "level": 1,
           "anchor": "knowledge-recovery-progress--已知失败恢复与变化来源组口径",
           "retainedAt": "knowledge/evidence/recovery-20261019.md#已知失败恢复与变化来源组口径",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1324,7 +827,7 @@
           "level": 2,
           "anchor": "knowledge-recovery-progress--本轮边界",
           "retainedAt": "knowledge/evidence/recovery-20261019.md#本轮边界",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1332,7 +835,7 @@
           "level": 2,
           "anchor": "knowledge-recovery-progress--本地验收",
           "retainedAt": "knowledge/evidence/recovery-20261019.md#本地验收",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1340,7 +843,7 @@
           "level": 2,
           "anchor": "knowledge-recovery-progress--获授权发布与恢复要求",
           "retainedAt": "knowledge/evidence/recovery-20261019.md#获授权发布与恢复要求",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1348,7 +851,7 @@
           "level": 2,
           "anchor": "knowledge-recovery-progress--同水位独立页提交追加修复",
           "retainedAt": "knowledge/evidence/recovery-20261019.md#同水位独立页提交追加修复",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1356,7 +859,7 @@
           "level": 2,
           "anchor": "knowledge-recovery-progress--三条身份失败的归档补证实现与本地验收尚未解封",
           "retainedAt": "knowledge/evidence/recovery-20261019.md#三条身份失败的归档补证实现与本地验收尚未解封",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1364,7 +867,7 @@
           "level": 3,
           "anchor": "knowledge-recovery-progress--操作入口与自动后续",
           "retainedAt": "knowledge/evidence/recovery-20261019.md#操作入口与自动后续",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1372,7 +875,7 @@
           "level": 2,
           "anchor": "knowledge-recovery-progress--身份补证部署与索引缺陷2026-10-19-1649快照",
           "retainedAt": "knowledge/evidence/recovery-20261019.md#身份补证部署与索引缺陷2026-10-19-1649快照",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         }
       ]
@@ -1390,7 +893,7 @@
           "level": 1,
           "anchor": "knowledge-decision-value--知识日报与参考包的决策阅读层",
           "retainedAt": "knowledge/evidence/decision-value-20261019.md#知识日报与参考包的决策阅读层",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1398,7 +901,7 @@
           "level": 2,
           "anchor": "knowledge-decision-value--读者现在可以看到什么",
           "retainedAt": "knowledge/evidence/decision-value-20261019.md#读者现在可以看到什么",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1406,7 +909,7 @@
           "level": 2,
           "anchor": "knowledge-decision-value--查找与商品事实边界",
           "retainedAt": "knowledge/evidence/decision-value-20261019.md#查找与商品事实边界",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1414,7 +917,7 @@
           "level": 2,
           "anchor": "knowledge-decision-value--验收与尚未证明的部分",
           "retainedAt": "knowledge/evidence/decision-value-20261019.md#验收与尚未证明的部分",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1422,7 +925,7 @@
           "level": 2,
           "anchor": "knowledge-decision-value--2026-10-19-后续产品纠偏报告的认知责任",
           "retainedAt": "knowledge/evidence/decision-value-20261019.md#2026-10-19-后续产品纠偏报告的认知责任",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         }
       ]
@@ -1440,7 +943,7 @@
           "level": 1,
           "anchor": "cognition-maintenance-m0--认知维护与日报聚合m0-审查稿",
           "retainedAt": "knowledge/evidence/maintenance-m0-20261021.md#认知维护与日报聚合m0-审查稿",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1448,7 +951,7 @@
           "level": 2,
           "anchor": "cognition-maintenance-m0--a-基线已落地能力与继承边界",
           "retainedAt": "knowledge/evidence/maintenance-m0-20261021.md#a-基线已落地能力与继承边界",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1456,7 +959,7 @@
           "level": 2,
           "anchor": "cognition-maintenance-m0--b-谁维护什么怎样读当前与历史",
           "retainedAt": "knowledge/evidence/maintenance-m0-20261021.md#b-谁维护什么怎样读当前与历史",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1464,7 +967,7 @@
           "level": 2,
           "anchor": "cognition-maintenance-m0--c-最小m1纵向链接口与验收",
           "retainedAt": "knowledge/evidence/maintenance-m0-20261021.md#c-最小m1纵向链接口与验收",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1472,7 +975,7 @@
           "level": 2,
           "anchor": "cognition-maintenance-m0--d-主要风险与推荐取舍",
           "retainedAt": "knowledge/evidence/maintenance-m0-20261021.md#d-主要风险与推荐取舍",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1480,7 +983,7 @@
           "level": 2,
           "anchor": "cognition-maintenance-m0--m0实际验证与状态",
           "retainedAt": "knowledge/evidence/maintenance-m0-20261021.md#m0实际验证与状态",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         }
       ]
@@ -1498,7 +1001,7 @@
           "level": 1,
           "anchor": "cognition-maintenance-m1--认知维护与日报聚合m1受限交付记录",
           "retainedAt": "knowledge/evidence/maintenance-m1-20261021.md#认知维护与日报聚合m1受限交付记录",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1506,7 +1009,7 @@
           "level": 2,
           "anchor": "cognition-maintenance-m1--首次受限实跑历史结果续审结果见后文",
           "retainedAt": "knowledge/evidence/maintenance-m1-20261021.md#首次受限实跑历史结果续审结果见后文",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1514,7 +1017,7 @@
           "level": 2,
           "anchor": "cognition-maintenance-m1--工程变化",
           "retainedAt": "knowledge/evidence/maintenance-m1-20261021.md#工程变化",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1522,7 +1025,7 @@
           "level": 2,
           "anchor": "cognition-maintenance-m1--首次受限实跑的验证与私有证据",
           "retainedAt": "knowledge/evidence/maintenance-m1-20261021.md#首次受限实跑的验证与私有证据",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1530,7 +1033,7 @@
           "level": 2,
           "anchor": "cognition-maintenance-m1--首次交付时的未完成项历史状态",
           "retainedAt": "knowledge/evidence/maintenance-m1-20261021.md#首次交付时的未完成项历史状态",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1538,7 +1041,7 @@
           "level": 2,
           "anchor": "cognition-maintenance-m1--m1已知候选续审计划历史计划已执行",
           "retainedAt": "knowledge/evidence/maintenance-m1-20261021.md#m1已知候选续审计划历史计划已执行",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1546,7 +1049,7 @@
           "level": 2,
           "anchor": "cognition-maintenance-m1--当前续审结果与最小方法合同待根审0新增模型许可",
           "retainedAt": "knowledge/evidence/maintenance-m1-20261021.md#当前续审结果与最小方法合同待根审0新增模型许可",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1554,7 +1057,7 @@
           "level": 2,
           "anchor": "cognition-maintenance-m1--零模型续工的当前结果",
           "retainedAt": "knowledge/evidence/maintenance-m1-20261021.md#零模型续工的当前结果",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1562,7 +1065,7 @@
           "level": 2,
           "anchor": "cognition-maintenance-m1--同题-v2-单次真实方法验收2026-10-21",
           "retainedAt": "knowledge/evidence/maintenance-m1-20261021.md#同题-v2-单次真实方法验收2026-10-21",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1570,7 +1073,7 @@
           "level": 2,
           "anchor": "cognition-maintenance-m1--v2-已知双输出续审的零模型准备待根审",
           "retainedAt": "knowledge/evidence/maintenance-m1-20261021.md#v2-已知双输出续审的零模型准备待根审",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1578,7 +1081,7 @@
           "level": 2,
           "anchor": "cognition-maintenance-m1--最后一次真实终审正常日报与复用2026-10-21",
           "retainedAt": "knowledge/evidence/maintenance-m1-20261021.md#最后一次真实终审正常日报与复用2026-10-21",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         }
       ]
@@ -1596,7 +1099,7 @@
           "level": 1,
           "anchor": "knowledge-domain-pilot--通用知识合同与非视频来源-a受限试点",
           "retainedAt": "knowledge/evidence/domain-pilot-20261021.md#通用知识合同与非视频来源-a受限试点",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1604,7 +1107,7 @@
           "level": 2,
           "anchor": "knowledge-domain-pilot--目标与边界",
           "retainedAt": "knowledge/evidence/domain-pilot-20261021.md#目标与边界",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1612,7 +1115,7 @@
           "level": 2,
           "anchor": "knowledge-domain-pilot--复用修正与未完成",
           "retainedAt": "knowledge/evidence/domain-pilot-20261021.md#复用修正与未完成",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1620,7 +1123,7 @@
           "level": 2,
           "anchor": "knowledge-domain-pilot--非视频来源-a准确规则文档",
           "retainedAt": "knowledge/evidence/domain-pilot-20261021.md#非视频来源-a准确规则文档",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         }
       ]
@@ -1638,7 +1141,7 @@
           "level": 1,
           "anchor": "knowledge-task-use-20261023--正常查询准确版本采用与反馈登记",
           "retainedAt": "knowledge/evidence/task-use-20261023.md#正常查询准确版本采用与反馈登记",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1646,7 +1149,7 @@
           "level": 2,
           "anchor": "knowledge-task-use-20261023--交付与边界",
           "retainedAt": "knowledge/evidence/task-use-20261023.md#交付与边界",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1654,7 +1157,7 @@
           "level": 2,
           "anchor": "knowledge-task-use-20261023--正常-api-路径",
           "retainedAt": "knowledge/evidence/task-use-20261023.md#正常-api-路径",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1662,7 +1165,7 @@
           "level": 2,
           "anchor": "knowledge-task-use-20261023--实际任务验证",
           "retainedAt": "knowledge/evidence/task-use-20261023.md#实际任务验证",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         },
         {
@@ -1670,7 +1173,7 @@
           "level": 2,
           "anchor": "knowledge-task-use-20261023--验证",
           "retainedAt": "knowledge/evidence/task-use-20261023.md#验证",
-          "currentGuide": "knowledge/README.md",
+          "currentGuide": "knowledge/current-state.md#分别看主线候选与生产",
           "note": "全文和原日期保留；现行规则见独立指南，原验收仅证明原范围。"
         }
       ]
