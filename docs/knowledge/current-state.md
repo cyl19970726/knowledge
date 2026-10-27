@@ -8,7 +8,7 @@
 
 文档已恢复通用核心与业务适配的归属：`model.md` 承接现行认知模型，`ownership.md` 记录逐份和逐章继任关系，`integration.md` 维护新业务技术接入。189 个旧 `currentGuide` 均指向具体现行章节，不再统一指向入口 README。
 
-核心仓已公开为 [cyl19970726/knowledge](https://github.com/cyl19970726/knowledge)，`main` 当前为 `eecf30e90d6700d06b70d09402ab45a1567b28fb`；commerce 的 [PR69](https://github.com/cyl19970726/commerce-creative-lab/pull/69) 已合入 `main`，合并提交为 `1b96c6d8830b17b86b3dff9b62c9fd530abfd573`，PR68 也随集成完成合并。核心与 commerce 主分支 GitHub Verify 均通过。
+核心仓已公开为 [cyl19970726/knowledge](https://github.com/cyl19970726/knowledge)，本次独立仓验收基线为 `eecf30e90d6700d06b70d09402ab45a1567b28fb`，最新 `main` 以远程提交为准；commerce 的 [PR69](https://github.com/cyl19970726/commerce-creative-lab/pull/69) 已合入 `main`，合并提交为 `1b96c6d8830b17b86b3dff9b62c9fd530abfd573`，PR68 也随集成完成合并。核心与 commerce 主分支 GitHub Verify 均通过。
 
 本地已验证 Node 24 独立构建、完整知识测试 183 项、知识产品测试 62 项，均为 0 失败、0 跳过；数据库测试使用一次性 PostgreSQL 容器。普通文档来源登记、准确读取、查询、采用、反馈、幂等、撤权和未知对账使用合成资料实际执行；这证明普通文档参考接入的软件行为，不是第二个真实业务已接入或其经营效果已成立。生产部署、真实语义研究和真人/业务效果验收仍分别核对。
 
