@@ -1,0 +1,114 @@
+{
+  "date": "2026-10-26",
+  "kind": "synthetic_post_delivery_regression_review",
+  "baseline": "2a0ada19ee791e7ac294d5b7e054ad10126b66e2",
+  "findings": [
+    {
+      "id": 1,
+      "behavior": "unsupported current profile or frozen binding cannot be adopted/adapted; read-time snapshot remains immutable",
+      "red": "adopt unexpectedly succeeded despite document contentSupported=false",
+      "fix": "one evaluateKnowledgeRevision policy used by document/use/research; current eligibility recalculated",
+      "state": "implemented"
+    },
+    {
+      "id": 2,
+      "behavior": "feedback/change/read/association/cursor/reconciliation purpose isolation",
+      "red": "same-principal B could read A feedback/change or receipt",
+      "fix": "explicit DTO/client purpose, persisted bounded authorization columns, purpose-bound queries/cursors and original research-purpose review",
+      "state": "implemented"
+    },
+    {
+      "id": 3,
+      "behavior": "feedback new key/replay/GET/changes and use response cannot return withdrawn source content/refs",
+      "red": "withdrawn linked source or frozen receipt did not prevent all outward paths",
+      "fix": "current scope/hash/source-rights checks distinct from eligibility; ordinary stale/unsupported correction feedback remains possible",
+      "state": "implemented"
+    },
+    {
+      "id": 4,
+      "behavior": "history publishedAt is real DB publication time",
+      "red": "get.publishedAt absent and history substituted revision.createdAt",
+      "fix": "core get/getAsOf/history/search project published_at; application history projects it or null",
+      "state": "implemented"
+    },
+    {
+      "id": 5,
+      "behavior": "configured grant requires activated matching authority; legacy no-grant path remains compatible",
+      "red": "configured grant could write after migration without activation",
+      "fix": "assertKnowledgeWriterAuthority rejects grant with missing row; HTTP port negative regression",
+      "state": "implemented"
+    },
+    {
+      "id": 6,
+      "behavior": "caller relabelling actual A-bound revision as B cannot enter research or worker",
+      "red": "submit accepted and worker called provider for wrong-space exact version",
+      "fix": "actual binding/explicit legacy mapping checked by shared policy before submit and before provider",
+      "state": "implemented"
+    }
+  ],
+  "adjacentCorrections": [
+    "caller_feedback source copies carry immutable purpose and source-owner reads/content/proof reject other or unknown purpose; ordinary sources remain multi-purpose",
+    "legacy feedback purpose metadata is projected without rewriting original payload/digest/key; only exactly matching legacy input can replay",
+    "research_result review request and finalization bind original persisted operation purpose",
+    "known local SDK validation is not_committed before fetch; genuine lost responses remain unknown",
+    "old mismatched-purpose review tickets cannot reveal target metadata through GET"
+  ],
+  "validation": {
+    "backendEmittedTests": {
+      "tests": 34,
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0
+    },
+    "sourceClientAndFullBPurposeHttp": {
+      "tests": 11,
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    },
+    "firstIntegratedPassBeforeFinalTwoCorrections": {
+      "tests": 1102,
+      "passed": 1096,
+      "failed": 0,
+      "skipped": 6
+    },
+    "finalAtomicIntegration": {
+      "tests": 1115,
+      "passed": 1109,
+      "failed": 0,
+      "skipped": 6,
+      "skips": "existing environment-dependent fixtures only; new tests had no skips",
+      "node": "24.21.0",
+      "rootBuild": "passed",
+      "independentWebBuild": "passed",
+      "boundary": "passed",
+      "docs": "generated and checked"
+    },
+    "visualRecheck": "coordinating chat owns real-browser recheck on refreshed demo; no user visual acceptance claimed"
+  },
+  "frontendOwnership": {
+    "coordinatorThread": "01a173ee-283c-7183-96cf-3f5e62deab91",
+    "appliedManagedPatchSha256": "77a1137c7c99daa6b92bf2a517e7832bb05f3e21078256ad3514654c6c88106e",
+    "directAppEditsByBackendLead": false,
+    "supplementPatchSha256": "6c1112c42f4ff88cf85f962a5ad12a2f38e71566baff2f4fb1d5b1070e68286a"
+  },
+  "limits": [
+    "synthetic engineering only",
+    "no real provider/business/visual acceptance",
+    "no merge/deployment/production DB or media/M4/M5"
+  ],
+  "runtime": {
+    "host": "loopback only",
+    "previewPort": 4312,
+    "apiPort": 4311,
+    "beforePid": 22861,
+    "beforeSchemaDropped": true,
+    "newPid": 29186,
+    "credentials": "ignored private local connection file only"
+  },
+  "publicationScan": {
+    "textFiles": 40,
+    "findings": [],
+    "scope": "bounded changed-file credential/private-material scan; not exhaustive DLP"
+  }
+}

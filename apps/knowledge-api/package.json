@@ -1,0 +1,33 @@
+{
+  "name": "@commerce/knowledge-api",
+  "dependencies": {
+    "@commerce/knowledge-core": "0.1.0",
+    "@commerce/knowledge-application": "0.1.0",
+    "@commerce/knowledge-contracts": "0.1.0",
+    "@commerce/knowledge-service-adapter": "0.1.0",
+    "express": "^5.3.0",
+    "pg": "^8.0.0",
+    "zod": "4.6.7"
+  },
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/types/apps/knowledge-api/src/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node ../../scripts/build-knowledge-server.mjs",
+    "dev": "tsx src/index.ts"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "esbuild": "0.28.2",
+    "tsx": "^4.0.0"
+  }
+}

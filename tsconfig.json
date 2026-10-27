@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "apps/api/**/*.ts",
+    "apps/worker/**/*.ts",
+    "apps/web/**/*.ts",
+    "apps/web/**/*.tsx",
+    "packages/**/*.ts",
+    "scripts/runtime/**/*.ts",
+    "scripts/migration/**/*.ts",
+    "scripts/deployment/**/*.ts",
+    "scripts/acquisition/**/*.ts",
+    "scripts/check-package-boundaries.ts",
+    "scripts/test/**/*.ts",
+    "apps/knowledge-api/**/*.ts",
+    "apps/knowledge-worker/**/*.ts",
+    "apps/knowledge-web/**/*.ts",
+    "apps/knowledge-web/**/*.tsx"
+  ]
+}

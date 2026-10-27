@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>{{PAGE_TITLE}}</title><style>{{STYLE}}</style></head>
+<body><a class="skip" href="#reading">跳到正文</a>
+<aside class="sidebar"><a class="brand" href="#{{HOME_ID}}"><span class="brand-mark">{{BRAND_MARK}}</span><strong>{{BRAND}}</strong></a><div class="edition">{{EDITION}} <span>讨论版</span></div>
+<label class="search-label" for="search">搜索文档</label><input id="search" type="search" placeholder="例如：知识库、R2、拉片" autocomplete="off"><nav aria-label="章节目录">{{NAV}}</nav><footer>文档更新 {{DATE}}<br>方案与现状分别标记 · 本地阅读</footer></aside>
+<div class="workspace"><header class="topbar"><button id="menu" aria-expanded="false" aria-controls="sidebar-nav">目录</button><div><span class="eyebrow">PROJECT HANDBOOK</span><span id="breadcrumb">总览</span></div><div class="print-actions"><button id="print-current">打印本章</button><button id="print-all">打印全部</button></div></header>
+<main id="reading" tabindex="-1"><section id="search-results" hidden aria-label="搜索结果"><div class="chapter-meta">全文搜索</div><h1>搜索结果</h1><p id="result-count" role="status"></p><div id="result-list"></div></section><div id="documents">{{ARTICLES}}</div><div id="chapter-switch"></div></main><aside class="toc" aria-label="本章目录"><div class="eyebrow">本章内容</div><nav id="toc-links"></nav></aside></div>
+<dialog id="diagram-dialog" aria-labelledby="diagram-title"><div class="dialog-bar"><strong id="diagram-title">交互图表</strong><div><a id="diagram-open" target="_blank" rel="noopener">独立打开</a><button id="diagram-close">关闭</button></div></div><iframe id="diagram-frame" title="交互架构图"></iframe></dialog>
+<noscript><style>.doc{display:block!important}.toc,#chapter-switch,.search-label,#search,.print-actions{display:none!important}</style><p>脚本未启用，以下显示全部章节；目录仍可定位。</p></noscript>
+<script id="document-index" type="application/json">{{INDEX}}</script><script id="document-aliases" type="application/json">{{ALIASES}}</script><script src="{{MERMAID_SRC}}"></script><script>{{SCRIPT}}</script></body></html>

@@ -1,0 +1,97 @@
+{
+  "date": "2026-10-26",
+  "sourceRevision": "87c4988f513f589559294e219faf29949e9950f6",
+  "verifiedBy": "coordinating lead in actual browser",
+  "environment": "local synthetic PostgreSQL and production web preview; maxModelCalls=0",
+  "localValidation": {
+    "httpWrites": 0,
+    "pendingIntent": false
+  },
+  "lostResponse": {
+    "fault": "discard first successful server response after commit",
+    "postCount": 1,
+    "uniqueKeys": 1,
+    "operationIds": [
+      "eb592098-34ba-4c6a-bb2a-ba8d81ab5dd7"
+    ],
+    "blockedBeforeLookup": true,
+    "readOnlyLookups": [
+      {
+        "path": "/api/v1/projects/knowledge-synthetic/spaces/synthetic-research/knowledge/operations/lookup",
+        "method": "GET"
+      }
+    ],
+    "unblockedAfterLookup": true
+  },
+  "graph": {
+    "desktop": {
+      "nodeCount": 33,
+      "edgeCount": 96,
+      "visibleLabels": 10,
+      "collisions": 0,
+      "rootKey": "knowledge-synthetic/synthetic-research/knowledge/69c84c28-cc15-493c-8ee4-b76c3a5fea95@c67e7c3e-2b08-4b1f-86f4-b78592eb4f8a",
+      "camera": {
+        "zoom": 1,
+        "pan": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    },
+    "mobile": {
+      "width": 368,
+      "height": 390,
+      "camera": {
+        "zoom": 1,
+        "pan": {
+          "x": -321.5,
+          "y": -55
+        }
+      },
+      "rendered": {
+        "x": 184,
+        "y": 195
+      },
+      "rootVisible": true
+    },
+    "fit": {
+      "camera": {
+        "zoom": 0.7498438916422615,
+        "pan": {
+          "x": -196.15978277247945,
+          "y": 5.326787209215439
+        }
+      },
+      "rendered": {
+        "x": 182.88630445268376,
+        "y": 192.7877601197808
+      },
+      "rootVisible": true
+    }
+  },
+  "readerReturn": {
+    "before": {
+      "windowY": 420,
+      "readerY": 0,
+      "width": 390,
+      "overflow": false
+    },
+    "after": {
+      "windowY": 420,
+      "readerY": 0,
+      "width": 390,
+      "overflow": false
+    }
+  },
+  "sourceAnchor": "paragraph:1",
+  "cleanup": {
+    "operationId": "eb592098-34ba-4c6a-bb2a-ba8d81ab5dd7",
+    "state": "cancelled",
+    "maxModelCalls": 0
+  },
+  "limits": [
+    "Not human visual acceptance",
+    "Not real research or business outcome validation",
+    "Not production deployment"
+  ]
+}

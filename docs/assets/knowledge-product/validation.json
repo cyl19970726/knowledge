@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-26",
+  "evidenceKind": "synthetic_local_engineering",
+  "baseline": "8fc92cfbe16c60c783cefc1cf9bc0ff013c74709",
+  "browser": {
+    "surface": "actual Chromium page, production Vite build through loopback proxy",
+    "desktop": {
+      "viewport": [
+        1440,
+        960
+      ],
+      "documentScrollWidth": 1440,
+      "graph": {
+        "engine": "Cytoscape Canvas",
+        "layout": "official ELK native Worker + topology framing",
+        "knowledgeNodes": 32,
+        "externalNodes": 1,
+        "edges": 96,
+        "layoutSprings": 34,
+        "observedLayoutMs": 165,
+        "notPerformanceBenchmark": true
+      },
+      "credentialsInBrowserStorage": false
+    },
+    "mobile": {
+      "viewport": [
+        390,
+        844
+      ],
+      "documentScrollWidth": 390,
+      "readToSource": {
+        "readingWindowY": 500,
+        "sourceWindowY": 0,
+        "returnedWindowY": 500,
+        "exactAnchor": "paragraph:1",
+        "ownerConfirmed": true
+      }
+    },
+    "flowsObserved": [
+      "global catalogue independent from question results",
+      "directed challenge relation and unknown evidence",
+      "query → accurate document → exact source and owner-confirmed anchor → return",
+      "history versus current actual before/after body text",
+      "graph question and camera preserved on reader return",
+      "optional adoption committed against exact reader receipt",
+      "observation and interpretation committed separately",
+      "synthetic research no_change → waiting_for_review with 1 exact knowledge input and 0 source reads"
+    ]
+  },
+  "acceptance": {
+    "engineering": "npm test:1090 tests,1084 pass,0 fail,6 existing environmental skips; root build and independent web build passed",
+    "interaction": "local real-browser tasks passed",
+    "visual": "candidate only; no user acceptance; some dense labels overlap",
+    "cognitive": "not evaluated; no real model or semantic research",
+    "business": "not evaluated"
+  },
+  "limits": [
+    "External source without provable lease cannot strong-publish",
+    "History asOf and graph asOf/cursor return explicit 422",
+    "Default synthetic provider only no_change/needs_evidence; candidate path verified by internal injected fixtures",
+    "Large-graph/mobile performance not benchmarked",
+    "M4/M5,production migration,merge,deployment and paid calls not executed"
+  ],
+  "reviewFixes": [
+    "source write replay rechecks current head/rights",
+    "revoked approval denied, independent rejection can close",
+    "unrelated same-scope principal cannot read review ticket"
+  ]
+}

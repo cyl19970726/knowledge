@@ -1,0 +1,21 @@
+{
+  "name": "@commerce/knowledge-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {"types": "./dist/types/packages/knowledge/src/store.d.ts", "import": "./dist/store.js"},
+    "./store": {"types": "./dist/types/packages/knowledge/src/store.d.ts", "import": "./dist/store.js"},
+    "./types": {"types": "./dist/types/packages/knowledge/src/types.d.ts", "import": "./dist/types.js"},
+    "./utils": {"types": "./dist/types/packages/knowledge/src/utils.d.ts", "import": "./dist/utils.js"},
+    "./wiki-page": {"types": "./dist/types/packages/knowledge/src/wiki-page.d.ts", "import": "./dist/wiki-page.js"},
+    "./wiki-lexical-query": {"types": "./dist/types/packages/knowledge/src/wiki-lexical-query.d.ts", "import": "./dist/wiki-lexical-query.js"},
+    "./writer-authority": {"types": "./dist/types/packages/knowledge/src/writer-authority.d.ts", "import": "./dist/writer-authority.js"},
+    "./migrations": {"types": "./dist/types/packages/knowledge/src/migrations.d.ts", "import": "./dist/migrations.js"}
+  },
+  "files": ["dist"],
+  "knowledgeBuildEntries": ["store", "types", "utils", "wiki-page", "wiki-lexical-query", "writer-authority", "migrations"],
+  "scripts": {"build": "node ../../scripts/build-knowledge-server.mjs"},
+  "dependencies": {"pg": "^8.0.0", "zod": "4.6.7"},
+  "devDependencies": {"@types/pg": "^8.0.0", "esbuild": "0.28.2", "typescript": "~5.9.3"}
+}

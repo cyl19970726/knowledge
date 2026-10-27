@@ -1,0 +1,81 @@
+{
+  "date": "2026-10-26",
+  "sourceRevision": "ccda123792c0014ecbb2d417ceaf5a74557cc5a5",
+  "corpus": "retained real evaluation snapshot copied into new local database",
+  "startup": {
+    "manualCoreMigration": false,
+    "passed": true,
+    "ledgerUnchanged": true,
+    "writerAuthorityRows": 0,
+    "temporaryDatabaseDropped": true,
+    "verifiedAtSourceRevision": "b438fe164024abf134e48baf7c1f7eb881d98caf"
+  },
+  "query": {
+    "originalQuestionUnchanged": true,
+    "returnedAccurateVersions": 3,
+    "weatherOrShippingMatches": 0,
+    "punctuationOrFunctionWordMatches": 0,
+    "method": "wiki-lexical-v1"
+  },
+  "useFeedback": {
+    "adapter": "commerce",
+    "useRecords": 1,
+    "decisions": [
+      "adapted",
+      "rejected",
+      "deferred"
+    ],
+    "feedbackStates": [
+      "observed AI desk review",
+      "not_observed production",
+      "not_observed audience"
+    ],
+    "sameKeyReplay": true,
+    "sameReadback": true,
+    "researchOrPublication": false
+  },
+  "browser": {
+    "uncaughtErrors": 0,
+    "globalNodes": 12,
+    "globalEdges": 12,
+    "switches": [
+      {
+        "mode": "全局",
+        "nodes": 12,
+        "edges": 12,
+        "errorCount": 0
+      },
+      {
+        "mode": "聚焦",
+        "nodes": 11,
+        "edges": 10,
+        "errorCount": 0
+      },
+      {
+        "mode": "全局",
+        "nodes": 12,
+        "edges": 12,
+        "errorCount": 0
+      }
+    ],
+    "mobileHorizontalOverflow": false,
+    "oldEvidenceViewer": "explicitly unadapted",
+    "chineseLabelWrap": "actual real-corpus desktop/mobile rechecked after anywhere wrap; original titles and graph membership retained",
+    "chineseLabelWrapSourceRevision": "ccda123792c0014ecbb2d417ceaf5a74557cc5a5"
+  },
+  "preservation": {
+    "allOriginalRevisionAndHeadRowsMatch": true
+  },
+  "contentVerdict": {
+    "independentAiDeskReview": true,
+    "humanObserved": false,
+    "newValidatedDomainJudgments": 0,
+    "businessOutcomeVerified": false
+  },
+  "limits": [
+    "old analysis/evidence owner remains unconnected",
+    "no business model/media calls",
+    "not production or human visual acceptance",
+    "private evidence omitted"
+  ]
+}

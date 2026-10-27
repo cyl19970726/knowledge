@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "knowledge-source-bridge-validation/1",
+  "date": "2026-10-27",
+  "state": "local_candidate_not_merged_or_deployed",
+  "baseline": "378673e627f79b974efa275f4bc52a1e9d3b03ce",
+  "candidate": "https://github.com/cyl19970726/commerce-creative-lab/pull/68",
+  "authorSourceCommit": "f6c0a216acf107b3067071aba1f343250ec1f63a",
+  "coordinatorChanges": [
+    "reject duplicate exact source/purpose grants",
+    "validate UTF-8 and JSON before successful reads",
+    "Chinese source explanations",
+    "constrain narrow-screen reader grid minimum width"
+  ],
+  "localVerification": {
+    "fullTests": 1135,
+    "passed": 1129,
+    "failed": 0,
+    "existingEnvironmentSkips": 6,
+    "sourceAndViewTargetedTests": 12,
+    "independentWebBuild": "passed",
+    "typecheck": "passed",
+    "realScope": "isolated copy of retained real evaluation data",
+    "metadataRefsReadable": 9,
+    "permissionAndLocatorNegativeCases": 8,
+    "graphAndMetadataDoNotCountAsContentReads": true,
+    "originalFrameLocatorConfirmed": true,
+    "desktopReturnPosition": "passed",
+    "mobile390ReturnPosition": "passed",
+    "mobileApplicationOverflow": false,
+    "actualReportsRead": 2,
+    "actualCitedFramesRead": 7,
+    "allOriginalFrameLocatorsConfirmed": true
+  },
+  "preserved": [
+    "original knowledge bodies, versions, heads and publication times",
+    "original analysis/evidence refs and business custody",
+    "existing managed-source ledger",
+    "historical implementation receipts"
+  ],
+  "interpretation": {
+    "actualLegacyReportAndFrameRead": true,
+    "conditionalUseRejectDeferRecorded": true,
+    "useReplayAndFeedbackReadback": true,
+    "aiDeskObservationOnly": true,
+    "newResearchRun": false,
+    "newKnowledgePublication": false,
+    "newValidatedDomainJudgments": 0,
+    "humanScriptRecall": "not_observed",
+    "physicalProductAndProduction": "not_observed",
+    "viewerEffect": "not_observed"
+  },
+  "publicationBoundary": "Sanitized mechanism summary only. No real report/script/frame payloads, raw responses, private configuration or credentials are included."
+}

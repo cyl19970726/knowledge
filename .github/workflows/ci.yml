@@ -1,0 +1,57 @@
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    # Exercise the native macOS Vision adapter used by the deployed Mini.
+    runs-on: macos-14
+    timeout-minutes: 25
+    env:
+      TEST_DATABASE_URL: postgresql://localhost:5432/ccl_ci
+      TEST_DATABASE_REQUIRED: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Integration tests read pinned document versions from Git history.
+          fetch-depth: 0
+          submodules: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare isolated test dependencies
+        run: |
+          brew install postgresql@17 ffmpeg
+          brew services start postgresql@17
+          export PATH="$(brew --prefix postgresql@17)/bin:$PATH"
+          echo "$(brew --prefix postgresql@17)/bin" >> "$GITHUB_PATH"
+          for attempt in $(seq 1 30); do
+            pg_isready -h localhost -p 5432 && break
+            sleep 1
+          done
+          pg_isready -h localhost -p 5432
+          createdb -h localhost ccl_ci
+          python -m pip install '.[docs]'
+          npm ci
+      - name: Build and check package boundaries
+        run: npm run build
+      - name: Test with disposable PostgreSQL schemas
+        run: npm test
+      - name: Validate portable documentation
+        run: |
+          make docs
+          make docs-check
+          make test
+          python3 scripts/check_docs_migration.py
+          python3 scripts/check_knowledge_docs_migration.py
+          git diff --exit-code -- docs/index.html docs/build-manifest.json docs/knowledge/index.html docs/knowledge/build-manifest.json

@@ -1,0 +1,10 @@
+{
+  "name": "@commerce/contract-primitives",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "files": ["dist"],
+  "exports": {".": {"types": "./dist/primitives.d.ts", "import": "./dist/primitives.js"}},
+  "scripts": {"build": "tsc -p tsconfig.build.json", "typecheck": "tsc -p tsconfig.build.json --noEmit"},
+  "dependencies": {"zod": "4.6.7"}
+}
