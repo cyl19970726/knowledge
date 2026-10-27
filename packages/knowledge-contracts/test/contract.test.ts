@@ -30,5 +30,6 @@ test('managed source content preserves exact leading and trailing whitespace',()
     custody:{mode:'managed_copy',text},sourceKind:'document',author:null,publisher:null,acquirer:'test',
     publishedAt:null,obtainedAt:'2026-10-28T00:00:00Z',assertionKind:'source_claim',sourceGroups:[],anchors:[],actualCoverage:[],limitations:[],rightsPolicyRef:'test',
   });
+  assert.equal(parsed.custody.mode,'managed_copy');
   assert.equal(parsed.custody.text,text);
 });
