@@ -17,9 +17,9 @@ make docs-knowledge-check
 
 ## 核对独立产品候选
 
-独立源码已通过 PR66 合入 `main`，合并提交为 `2d24c74a56942e9019bca46c8a2b271a25febe8b`。新工作从包含该提交的最新 `origin/main` 开始；需要固定复核时，原已验实现为 `ccda123792c0014ecbb2d417ceaf5a74557cc5a5`，起始主线 `8fc92cf` 只解释历史。本集[唯一实施回执](evidence/standalone-product-20261026.md)保留实现会话在合并前编写的完整记录，其“未合并”语句按当时阶段解释，不代表当前 Git 状态。
+独立核心仓已公开为 [cyl19970726/knowledge](https://github.com/cyl19970726/knowledge)，当前 `main` 为 `eecf30e90d6700d06b70d09402ab45a1567b28fb`。commerce 通过 [PR69](https://github.com/cyl19970726/commerce-creative-lab/pull/69) 以 `vendor/knowledge` submodule 接入，合并提交为 `1b96c6d8830b17b86b3dff9b62c9fd530abfd573`；PR68 也随集成完成合并。新工作从核心仓最新 `main` 开始，消费仓再 bump submodule 版本。历史 PR66/67 与早期已验实现用于来源追查，本集[唯一实施回执](evidence/standalone-product-20261026.md)保留合并前的完整记录，其“未合并”语句按当时阶段解释。
 
-实现候选需要分别证明：客户端与公开合同可构建，独立网页不依赖视频或数据库配置完成构建，API 和 Worker 有明确装配与入口，两种业务适配通过同一能力接入。具体包名、参数、端口和命令在该候选的包清单与运行回执中维护。
+实现候选需要分别证明：客户端与公开合同可构建，独立网页不依赖视频或数据库配置完成构建，API 和 Worker 有明确装配与入口，两种业务适配通过同一能力接入。当前包名、参数、端口和命令以[技术接入手册](integration.md)与本页为准，固定日期的实施回执只用于历史追查。
 
 本地工程演示使用明确可丢弃的测试数据库和合成资料，连接参数保留在本地运行配置中。真实模型、采集、生产数据库、来源授权和写者资格需要各自满足条件；演示跑通不代表这些条件已满足。
 
@@ -35,7 +35,7 @@ AI 案头判断、真人脚本复述、实物与制作核验、真实观看结�
 
 ## 配置业务来源所有者
 
-PR68 候选保留两个运行边界。业务宿主持有旧分析仓储与对象存储读取凭据，通过私有 `KNOWLEDGE_SOURCE_OWNER_POLICY_PATH`、`KNOWLEDGE_SOURCE_OWNER_TOKEN` 和 `KNOWLEDGE_SOURCE_OWNER_SUBJECT_ID` 显式装配来源读取器。策略由代码中的 `BusinessSourcePolicySchema` 校验，按原项目、空间、来源对象、版本和用途授予权限；同一来源与用途的重复授权视为配置错误，不能靠追加一条撤权记录覆盖旧条目。
+PR68 已随 PR69 合入 `main`，保留两个运行边界。业务宿主持有旧分析仓储与对象存储读取凭据，通过私有 `KNOWLEDGE_SOURCE_OWNER_POLICY_PATH`、`KNOWLEDGE_SOURCE_OWNER_TOKEN` 和 `KNOWLEDGE_SOURCE_OWNER_SUBJECT_ID` 显式装配来源读取器。策略由代码中的 `BusinessSourcePolicySchema` 校验，按原项目、空间、来源对象、版本和用途授予权限；同一来源与用途的重复授权视为配置错误，不能靠追加一条撤权记录覆盖旧条目。
 
 独立知识 API 只配置 `KNOWLEDGE_SOURCE_OWNER_URL` 和服务间读取令牌 `KNOWLEDGE_SOURCE_OWNER_TOKEN`，或通过 `sourceOwner` 参数注入等价端口。业务宿主的路由是 `/api/v1/business-source-owner`；独立服务不构造视频分析宿主，也不取得对象存储或平台凭据。不配置该连接时明确显示所有者未连接。只读端口接受显式 HTTPS 或回环地址，不追随重定向或调用者提交的任意网址。
 
