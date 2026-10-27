@@ -35,7 +35,7 @@
       "lifecycle": "current"
     },
     {
-      "id": "knowledge-integration",
+      "id": "knowledge-onboarding",
       "path": "integration.md",
       "title": "新业务技术接入手册",
       "group": "开发与接入",

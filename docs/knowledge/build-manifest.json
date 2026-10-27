@@ -3,7 +3,7 @@
   "updated": "2026-10-27",
   "documents": 28,
   "diagrams": 0,
-  "output_sha256": "8b59fe4fdc0c371e29f70b81d158768db473c37e2a947aea17b1070ee28ade34",
+  "output_sha256": "67d56ee0549a5d5a4458630bc325563e4645a4a83024c4073146bb9cf6c34b86",
   "source_sha256": {
     "../_site/mermaid.bundle.js": "ace4ee4658ac7ecdb9a53096dfa379ad76a921228ea143f5e994389af76b662f",
     "../_site/reader.js": "44df74d354da94e0ef41f8f7eccbd394ea2cf69535614b249b032b3dad9e543c",
@@ -25,7 +25,7 @@
     "README.md": "6a06727b323d639c793978e3a621b2063d35053c29162826b61f59cba765a1c5",
     "architecture.md": "1e2154ea338cd6c204a2d5ae14872ad97186c69a329d10d05c93dea29898cad3",
     "capabilities.md": "45e3aea5ee3c1532685967e1d58e76091f0afb8a3252cc4eab38f7677eb6b79b",
-    "catalog.json": "75614b5c43a20f619ed239d93b0239b95dd1bae840d2b66981df52250e7143dd",
+    "catalog.json": "607bb58151ecd91c21bf68e5ecf729a700e345084783fe0def67ab59457622f8",
     "current-state.md": "6eea3ad1137a1af313a85d6a4f30c510eb67ca66b72acb1e2b8d198ea0d9346c",
     "evidence/decision-value-20261019.md": "293e296e678d06c5b0f141a52fc497b9a8f2c2818fc19f473478b516e6a23ceb",
     "evidence/domain-pilot-20261021.md": "6288fdcb3df079396214974c2166467d73512a67731c6f091c1ee8bdc7b573e5",
