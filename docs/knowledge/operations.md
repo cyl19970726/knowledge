@@ -17,7 +17,7 @@ make docs-knowledge-check
 
 ## 核对独立产品候选
 
-独立核心仓已公开为 [cyl19970726/knowledge](https://github.com/cyl19970726/knowledge)，当前 `main` 为 `eecf30e90d6700d06b70d09402ab45a1567b28fb`。commerce 通过 [PR69](https://github.com/cyl19970726/commerce-creative-lab/pull/69) 以 `vendor/knowledge` submodule 接入，合并提交为 `1b96c6d8830b17b86b3dff9b62c9fd530abfd573`；PR68 也随集成完成合并。新工作从核心仓最新 `main` 开始，消费仓再 bump submodule 版本。历史 PR66/67 与早期已验实现用于来源追查，本集[唯一实施回执](evidence/standalone-product-20261026.md)保留合并前的完整记录，其“未合并”语句按当时阶段解释。
+独立核心仓已公开为 [cyl19970726/knowledge](https://github.com/cyl19970726/knowledge)，本次独立仓验收基线为 `eecf30e90d6700d06b70d09402ab45a1567b28fb`，最新 `main` 以远程提交为准。commerce 通过 [PR69](https://github.com/cyl19970726/commerce-creative-lab/pull/69) 以 `vendor/knowledge` submodule 接入，合并提交为 `1b96c6d8830b17b86b3dff9b62c9fd530abfd573`；PR68 也随集成完成合并。新工作从核心仓最新 `main` 开始，消费仓再 bump submodule 版本。历史 PR66/67 与早期已验实现用于来源追查，本集[唯一实施回执](evidence/standalone-product-20261026.md)保留合并前的完整记录，其“未合并”语句按当时阶段解释。
 
 实现候选需要分别证明：客户端与公开合同可构建，独立网页不依赖视频或数据库配置完成构建，API 和 Worker 有明确装配与入口，两种业务适配通过同一能力接入。当前包名、参数、端口和命令以[技术接入手册](integration.md)与本页为准，固定日期的实施回执只用于历史追查。
 
