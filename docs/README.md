@@ -4,8 +4,8 @@
 
 ## 阅读入口
 
-- [产品与交互](knowledge/product.md)：为什么需要知识产品，以及人如何查询、采用和反馈。
-- [架构与模型](knowledge/architecture.md)：来源、准确版本、读取回执、权限与写入边界。
+- [产品与交互](knowledge/product.md)：认识是什么，旧认识如何因新问题形成综合，再被下一轮继承与纠正。
+- [架构与模型](knowledge/architecture.md)：同一知识网保存什么、怎样变化，以及前端、核心和业务如何协作。
 - [对外能力](knowledge/capabilities.md)：客户端和普通文档适配器可调用的能力及限制。
 - [运行与开发](knowledge/operations.md)：本地进程、数据库隔离和故障处理。
 - [当前状态](knowledge/current-state.md)：已经实现的工程行为与尚未完成的验收。

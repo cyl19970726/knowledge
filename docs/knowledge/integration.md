@@ -1,22 +1,23 @@
 # 新业务技术接入手册
 
-新业务复用的是同一套知识能力，不是复制一套知识权威，也不是继承其他业务的资料与权限。业务所有者继续管理原始资料、平台身份、采集分析和经营动作；知识服务管理登记后的来源引用、知识版本、关系、研究、审阅发表、采用与反馈。
+新业务复用的是同一套知识能力，不是复制一套知识权威，也不是继承其他业务的资料与权限。业务所有者继续管理原始资料、平台身份、采集分析和经营动作；知识服务管理登记后的来源引用、知识版本、关系、研究、审阅发表、采用与反馈。commerce 的具体字段映射由其业务仓的[业务适配指南](https://github.com/cyl19970726/commerce-creative-lab/blob/main/docs/integrations/knowledge.md)维护，访问需要该仓库的读取权限。本机已签出业务仓时，对应源文件是 `commerce-creative-lab/docs/integrations/knowledge.md`。
 
 本页给出技术接入顺序。具体字段、错误码和可调用操作以同一源码版本的 `packages/knowledge-contracts/src/index.ts` 及客户端包出口为准；本页不手写第二套 DTO。当前主线、部署和真实语义验收边界见[当前状态](current-state.md)，能力语义见[能力与接入合同](capabilities.md)。
+
+接入前先用一个业务问题走通概念链：原件由谁持有、哪个版本和段落可读；现有认识回答什么、条件与反例是什么；新问题是否只需查询，还是需要研究候选；一次采用或拒用如何连回准确版本，反馈由谁观察并交回。普通文档可以用“规则资格与提交材料合格是否是两个前提”试走，视频可用[产品篇的 A/B→C 场景](product.md#连续两轮从-ab-到-c再接受反例)。两者使用同一知识能力，业务对象、权限与实际效果各自保留在自己的所有者处。以下工程步骤建立连接，并不自动完成该语义链的真实验收。
 
 ## 1. 准备源码、Node 24 与 workspaces
 
 在仓库根目录工作，使用 `.node-version` 指定的 Node 24.x 和根锁文件。不要在新业务目录另建一套 lockfile，或用业务应用的包管理配置覆盖根 workspaces。
 
 ```sh
-git submodule update --init --recursive
 npm ci
 node --version
 ```
 
-核心仓根 `package.json` 的 workspaces 包含公共合同、客户端、核心、应用层、服务适配器、普通文档适配器，以及独立 API、Worker 和 Web；commerce 适配器只保留在消费仓。共享执行依赖若由 submodule 分发，必须在安装和构建前初始化；若当前源码包没有相应 submodule 映射或内容，先核对分发包完整性，不能把缺少依赖后的局部成功当作全链路可构建。
+独立核心仓当前没有 `.gitmodules`；根 `package.json` 的 workspaces 包含公共合同、客户端、核心、应用层、服务适配器、普通文档适配器，以及独立 API、Worker 和 Web。commerce 适配器只保留在消费仓。若从 commerce 消费仓取得核心源码，应按该仓的 submodule 引用先初始化并核对固定提交；这不是在独立核心仓执行 `npm ci` 的前提。
 
-新业务通常新增一个 workspace 适配器，或把现有适配器作为宿主应用依赖。包名、导出和脚本以该版本 manifest 为准；通过声明的包出口导入，不跨包读取 `src` 内部文件，也不依赖构建目录中的偶然路径。
+新业务可以在自己的消费仓实现适配器，普通文档则可先沿用本仓已有的 `@commerce/knowledge-document-adapter` 参考包；只有决定由核心仓维护的通用适配器才需要加入本仓 workspaces。包名、导出和脚本以该版本 manifest 为准；通过声明的包出口导入，不跨包读取 `src` 内部文件，也不依赖构建目录中的偶然路径。
 
 ## 2. 按依赖顺序构建
 
@@ -108,9 +109,19 @@ const receipt = await client.receipt(result.data.readReceiptId);
 console.log(source.data.ref, result.data.items, receipt.data.orderedItems);
 ```
 
-这段调用完成来源登记、问题查询和读集回执读取。相同键和相同输入重放返回同一结果；相同键配不同输入会冲突，不能换键掩盖错误。完整的采用、反馈、撤权、未知对账和数据库清理路径可执行于 `apps/knowledge-api/test/source-use.integration.test.ts`，不需要再手写一套接入样例。
+这段调用完成来源登记、问题查询和读集回执读取。`source.data.ref` 是准确**来源**引用；登记原文并不自动生成或发表一条领域认识，`result.data.items` 也不能仅凭查询返回就解释成“新文档已产生知识”。相同键和相同输入重放返回同一结果；相同键配不同输入会冲突，不能换键掩盖错误。完整的采用、反馈、撤权、未知对账和数据库清理路径可执行于 `apps/knowledge-api/test/source-use.integration.test.ts`，不需要再手写一套接入样例。
 
 另一个[真实公开文档接入样例](https://github.com/cyl19970726/knowledge/blob/main/examples/document-onboarding/README.md)使用当前 `AGENTS.md` 和 Git SHA，逐字验证真实文档的登记与读回，再执行查询、采用、合成反馈、撤权和清理。可重复运行 `npm run test:document-onboarding`；它验证真实公开文档与适配器的工程行为，不把合成任务或反馈当作第二个真实业务的效果。
+
+### 普通文档的最小可核验链
+
+| 交接 | 业务接入者提供 | 从现有接口取得并核对 |
+| --- | --- | --- |
+| 来源 | 固定文档 ID 与修订、允许托管的原文、作者/发布者、取得者、取得时间、来源组、限制、权利政策；服务端另有对应写者资格和用途政策 | `documents.contribute(..., {idempotencyKey})` 返回准确来源 `ref`；用 `client.source(ref, purpose)` 和 `client.sourceContent(ref, purpose)` 比对外部版本、正文摘要、字节和实际覆盖。参考适配器按段落编号定位托管全文；需要稳定页码或节选时，另按公共来源合同实现适配并标明未覆盖范围 |
+| 查询与选择 | 当前项目/空间、获准用途、具体问题；若要记录采用，还须业务任务身份、实际选择及理由 | `documents.query(...)` 返回有界结果和 `readReceiptId`；`client.receipt(id)` 固定本次读集。对返回的**知识**引用再用 `client.document(ref, purpose)` 读准确正文，对来源引用用 `client.sourceContent` 回查；无匹配或读集为空时保留结果，不虚构结论 |
+| 使用与反馈 | 实际采用、改编、拒用或暂缓的知识版本、外部任务上下文；之后提供观察、未观察项及测量范围 | `documents.context(...)`、`documents.use(...)` 和 `documents.feedback(...)` 记录可读回的使用与反馈；每次写入保留稳定幂等键，反馈关联对应使用记录。合成反馈只验证记录链，不证明文档判断正确或业务效果 |
+
+最小工程验证是固定一份有权使用的文档，登记后按同一用途准确读回并比对原文与摘要；用一个具体问题检查实际查询范围和读集，对已有且可准确读取的知识作一次有理由的选择，再读回使用和反馈。`examples/document-onboarding` 的公开文档加合成任务可复现软件行为；真实语义研究、独立审阅发表以及真实业务行动仍需另外取证。没有获准写入的实例可先做能力、查询和已有来源的只读核对，不能把只读成功写成来源已登记。
 
 ## 5. 分清 API、Worker、Web 与适配器职责
 
@@ -194,7 +205,7 @@ Schema 能证明形状与边界，不证明跨字段授权、来源租约、发�
 
 | 验收层 | 至少要证明 | 不能据此声称 |
 | --- | --- | --- |
-| 构建与合同 | Node 24、submodule、workspaces 和依赖顺序可重建；schema/client/adapter 使用同一版本 | 语义质量、真实模型或生产可用 |
+| 构建与合同 | 独立核心仓的 Node 24、workspaces 和依赖顺序可重建；消费仓另核对 submodule 固定提交；schema/client/adapter 使用同一版本 | 语义质量、真实模型或生产可用 |
 | 软件行为 | 准确版本、锚点、权限、用途、幂等、取消、未知对账、唯一发表和重启恢复 | 文档结论正确、业务已接入或已部署 |
 | 读者任务 | 新读者能解释依据、条件、未知、版本、变化及返回路径 | 用户已接受视觉或认知价值 |
 | 连续两轮 | 第一轮正式综合在第二轮被发现、读取并保留条件地使用，反例能修订后继 | 单次查询、无变化或页面数量证明认知成长 |

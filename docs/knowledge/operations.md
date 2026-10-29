@@ -13,7 +13,7 @@ make docs-knowledge-check
 
 输出为 `docs/knowledge/index.html`，目录与全文搜索仅含知识文档。共享阅读器和离线 Mermaid 由仓库文档设施提供。业务适配或其他共享说明通过明确的跨集链接打开。
 
-`make docs` 与 `make docs-check` 继续构建和检查原总报告，其中导入同一份知识文档元数据及正文；不维护两份产品说明。两套报告的生成产物都由源文件重建。
+`make docs` 与 `make docs-check` 构建和检查根目录的核心总入口；根 `docs/catalog.json` 只导入 `knowledge/catalog.json`。根阅读器和知识专属阅读器使用同一份知识文档元数据及正文，两套生成产物都由源文件重建。
 
 ## 核对独立产品候选
 
@@ -46,12 +46,11 @@ PR68 已随 PR69 合入 `main`，保留两个运行边界。业务宿主持有�
 ```sh
 make docs
 make docs-check
-python3 scripts/check_docs_migration.py
-python3 scripts/check_knowledge_docs_migration.py
+python3 scripts/check_knowledge_docs_migration.py --external-business
 python3 -m unittest tests.test_build_docs -v
 ```
 
-迁移校验检查完整文本、标题和原锚点；阅读器测试检查链接、导入、权限边界与生成行为。浏览器还应实际走通入口、目录、搜索、旧链接与跨集返回，并检查窄屏可读性。自动检查不代替内容与读者任务验收。
+当前独立核心仓没有 `scripts/check_docs_migration.py`；`make docs-check` 已调用适用于核心仓的迁移检查，单独运行时须带 `--external-business`。校验检查完整文本、标题和原锚点；阅读器测试检查链接、导入、权限边界与生成行为。浏览器还应实际走通入口、目录、搜索、旧链接与跨集返回，并检查窄屏可读性。自动检查不代替内容与读者任务验收。
 
 ## 合并、部署与回滚
 

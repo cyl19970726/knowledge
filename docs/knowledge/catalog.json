@@ -2,7 +2,7 @@
   "title": "通用认知知识库 · 产品、能力与实现",
   "brand": "知识库",
   "home_id": "knowledge-overview",
-  "updated": "2026-10-27",
+  "updated": "2026-10-29",
   "documents": [
     {
       "id": "knowledge-overview",
@@ -10,8 +10,8 @@
       "title": "通用认知知识库",
       "group": "开始阅读",
       "status": "现行说明 · 实现与部署分别见状态页",
-      "date": "2026-10-26",
-      "summary": "入口与阅读任务",
+      "date": "2026-10-29",
+      "summary": "独立产品目标、总体阅读图与任务入口",
       "lifecycle": "current"
     },
     {
@@ -20,8 +20,8 @@
       "title": "产品与交互",
       "group": "产品与交互",
       "status": "现行说明 · 实现与部署分别见状态页",
-      "date": "2026-10-26",
-      "summary": "探索、阅读、研究及六项语义约束",
+      "date": "2026-10-29",
+      "summary": "认识、三种成长入口、连续两轮综合与纠错、使用和验收",
       "lifecycle": "current"
     },
     {
@@ -40,8 +40,8 @@
       "title": "新业务技术接入手册",
       "group": "开发与接入",
       "status": "接入说明 · 实现与部署分别见状态页",
-      "date": "2026-10-27",
-      "summary": "Node与workspaces、构建运行、适配器、普通文档端到端及验收边界",
+      "date": "2026-10-29",
+      "summary": "业务问题、Node与workspaces、构建运行、适配器及验收边界",
       "lifecycle": "instructions"
     },
     {
@@ -60,8 +60,8 @@
       "title": "职责与架构",
       "group": "开发与接入",
       "status": "现行说明 · 实现与部署分别见状态页",
-      "date": "2026-10-26",
-      "summary": "前端、知识服务、业务适配及设施",
+      "date": "2026-10-29",
+      "summary": "内容模型、知识操作、前端、应用层、内核、业务适配与设施",
       "lifecycle": "current"
     },
     {
@@ -80,7 +80,7 @@
       "title": "运行与验证",
       "group": "运行与维护",
       "status": "现行说明 · 实现与部署分别见状态页",
-      "date": "2026-10-26",
+      "date": "2026-10-29",
       "summary": "文档和产品候选的构建与验证边界",
       "lifecycle": "instructions"
     },
@@ -90,8 +90,8 @@
       "title": "当前状态与证据",
       "group": "运行与维护",
       "status": "现行说明 · 实现与部署分别见状态页",
-      "date": "2026-10-26",
-      "summary": "基线、候选、合并、部署及未验项",
+      "date": "2026-10-29",
+      "summary": "最新核心基线、合成研究限制、历史验收与未验项",
       "lifecycle": "current"
     },
     {
