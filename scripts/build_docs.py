@@ -334,30 +334,28 @@ def build(directory: Path, assets_dir: Path | None = None, *, external_business:
             previous_subgroup = subgroup
         nav.append(f'<details class="nav-section" data-nav-group="{html.escape(group, quote=True)}"{opened}><summary>{html.escape(group)}</summary>{"".join(links)}</details>')
     template = (assets_dir / '_site/template.html').read_text()
-    brand = catalog.get('brand', 'Commerce Creative Lab')
+    brand = catalog.get('brand', '知识库')
     if not isinstance(brand, str) or not brand.strip():
         raise ValueError('Catalog brand must be a non-empty string')
-    page_title = catalog.get('title', 'Commerce Creative Lab · 产品与架构说明书')
+    page_title = catalog.get('title', '知识产品文档')
     if not isinstance(page_title, str) or not page_title.strip():
         raise ValueError('Catalog title must be a non-empty string')
-    brand_mark = catalog.get('brand_mark', 'C / L')
-    edition = catalog.get('edition', '产品与架构说明书')
+    brand_mark = catalog.get('brand_mark', 'K')
+    edition = catalog.get('edition', '核心产品文档')
     if any(not isinstance(value, str) or not value.strip() for value in (brand_mark, edition)):
         raise ValueError('Catalog brand_mark and edition must be non-empty strings')
     reader_script = (assets_dir / '_site/reader.js').read_text()
-    if standalone:
-        title_assignment = "document.title = active.title + ' · Commerce Creative Lab';"
-        if reader_script.count(title_assignment) != 1:
-            raise ValueError('Shared reader title assignment changed')
-        safe_brand = json.dumps(brand, ensure_ascii=True).replace('<', '\\u003c')
-        reader_script = reader_script.replace(
-            title_assignment, f"document.title = active.title + ' · ' + {safe_brand};")
+    brand_placeholder = '__DOC_BRAND_JSON__'
+    if reader_script.count(brand_placeholder) != 1:
+        raise ValueError('Shared reader brand placeholder changed')
+    safe_brand = json.dumps(brand, ensure_ascii=True).replace('<', '\\u003c')
+    reader_script = reader_script.replace(brand_placeholder, safe_brand)
     replacements = {
         '{{STYLE}}': (assets_dir / '_site/style.css').read_text(),
         '{{SCRIPT}}': reader_script,
         '{{PAGE_TITLE}}': html.escape(page_title),
         '{{HOME_ID}}': html.escape(home_id, quote=True),
-        '{{BRAND}}': html.escape(brand) if 'brand' in catalog else 'Commerce<br>Creative Lab',
+        '{{BRAND}}': html.escape(brand),
         '{{BRAND_MARK}}': html.escape(brand_mark),
         '{{EDITION}}': html.escape(edition),
         '{{MERMAID_SRC}}': html.escape(quote(os.path.relpath(assets_dir / '_site/mermaid.bundle.js', directory), safe='/'), quote=True),

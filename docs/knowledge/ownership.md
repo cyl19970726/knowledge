@@ -40,7 +40,7 @@
 
 ## `reference/commerce-product.md` 逐章继承
 
-文档级唯一继任者是[通用认知模型](model.md)。业务专章的规范业务正文仍在[业务适配指南](../index.html#knowledge-integration)及相应业务文档；这里只指明该旧章节的通用解释入口，不在核心仓复制业务规则。
+文档级唯一继任者是[通用认知模型](model.md)。业务专章的规范业务正文仍在[业务适配指南](https://github.com/cyl19970726/commerce-creative-lab/blob/main/docs/integrations/knowledge.md)及相应业务文档；这里只指明该旧章节的通用解释入口，不在核心仓复制业务规则。
 
 | 原章节 | 分类 | 唯一现行继任章节 | 旧链接目标 |
 | --- | --- | --- | --- |
@@ -75,7 +75,7 @@
 | 产品验收与未决 | 通用核心；未决清单为真正历史 | [连续两轮怎样验收认知成长](model.md#连续两轮怎样验收认知成长) | [原章](reference/commerce-product.md#产品验收与未决) |
 | 怎样证明知识真的有用 | 通用核心 | [连续两轮怎样验收认知成长](model.md#连续两轮怎样验收认知成长) | [原章](reference/commerce-product.md#怎样证明知识真的有用) |
 | 哪些还没确定 | 真正历史 | [当前状态](current-state.md) | [原章](reference/commerce-product.md#哪些还没确定) |
-| 每日研究报告的归档与构建 | 业务适配 | [业务适配指南](../index.html#knowledge-integration) | [原章](reference/commerce-product.md#每日研究报告的归档与构建) |
+| 每日研究报告的归档与构建 | 业务适配 | [业务适配指南](https://github.com/cyl19970726/commerce-creative-lab/blob/main/docs/integrations/knowledge.md) | [原章](reference/commerce-product.md#每日研究报告的归档与构建) |
 | 日报更新与未知页面的连续构建（2026-10-18 实施合同） | 真正历史 | [当前状态](current-state.md) | [原章](reference/commerce-product.md#日报更新与未知页面的连续构建2026-10-18-实施合同) |
 | 待确认变化与安全恢复（2026-10-19） | 真正历史 | [当前状态](current-state.md) | [原章](reference/commerce-product.md#待确认变化与安全恢复2026-10-19) |
 | 独立研究页的覆盖复用 | 真正历史 | [当前状态](current-state.md) | [原章](reference/commerce-product.md#独立研究页的覆盖复用) |

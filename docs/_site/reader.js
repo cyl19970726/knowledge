@@ -11,6 +11,13 @@
   let active = docs[0];
   let mermaidId = 0;
   const mermaidJobs = new WeakMap();
+  function centerNarrowDiagrams() {
+    if (!window.matchMedia('(max-width:740px)').matches) return;
+    document.querySelectorAll('.doc.active .mermaid-figure').forEach(figure => {
+      figure.scrollLeft = Math.max(0, (figure.scrollWidth - figure.clientWidth) / 2);
+    });
+  }
+  window.addEventListener('resize', () => requestAnimationFrame(centerNarrowDiagrams));
   function renderMermaid(article) {
     return Promise.all([...article.querySelectorAll('[data-mermaid-diagram]')].map(figure => {
       if (mermaidJobs.has(figure)) return mermaidJobs.get(figure);
@@ -21,7 +28,11 @@
         try {
           const { svg } = await window.mermaid.render(`docs-mermaid-${++mermaidId}`, source.textContent);
           output.innerHTML = svg;
+          const diagram = output.querySelector('svg');
+          const naturalWidth = diagram?.viewBox?.baseVal?.width;
+          if (naturalWidth) figure.style.setProperty('--diagram-width', `${Math.ceil(naturalWidth)}px`);
           source.hidden = true;
+          requestAnimationFrame(centerNarrowDiagrams);
         } catch (error) {
           console.warn('Mermaid diagram could not be rendered; source remains visible.', error);
           output.replaceChildren();
@@ -60,7 +71,7 @@
     });
     resetSearch();
     document.getElementById('breadcrumb').textContent = [active.group, active.subgroup, active.title].filter(Boolean).join(' / ');
-    document.title = active.title + ' · Commerce Creative Lab';
+    document.title = active.title + ' · ' + __DOC_BRAND_JSON__;
     const toc = document.getElementById('toc-links'); toc.replaceChildren();
     active.headings.filter(h => h.level > 1 && h.level < 4).forEach(h => toc.append(makeLink('#' + h.id, h.title, h.level === 3 ? 'sub' : '')));
     const controls = document.getElementById('chapter-switch'); controls.replaceChildren();

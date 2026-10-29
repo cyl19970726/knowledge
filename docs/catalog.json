@@ -4,7 +4,7 @@
   "brand_mark": "K",
   "edition": "核心产品文档",
   "home_id": "knowledge-overview",
-  "updated": "2026-10-27",
+  "updated": "2026-10-29",
   "documents": [
     {
       "id": "overview",
@@ -13,7 +13,7 @@
       "group": "核心文档",
       "status": "阅读入口",
       "summary": "核心知识产品的唯一文档导航与发布边界。",
-      "date": "2026-10-27",
+      "date": "2026-10-29",
       "lifecycle": "current"
     }
   ],
