@@ -1,0 +1,39 @@
+{
+  "synthetic": true,
+  "nodeCount": 32,
+  "externalNodeCount": 1,
+  "edgeCount": 96,
+  "stances": {
+    "context": 64,
+    "navigation": 25,
+    "challenges": 1,
+    "supports": 6
+  },
+  "evidence": {
+    "unknown": 96
+  },
+  "missingStatementAnchors": 96,
+  "sourceIncidentEdges": 64,
+  "uniqueEndpointPairs": 64,
+  "uniquePairAndStance": 64,
+  "sourceGroups": [
+    "synthetic:shared-notes"
+  ],
+  "profiles": {
+    "concept": 31,
+    "synthesis": 1
+  },
+  "coverage": {
+    "scopeDescription": "knowledge-synthetic/synthetic-research",
+    "returned": 32,
+    "loaded": 32,
+    "hasMore": false,
+    "nextCursor": null,
+    "completeness": "complete",
+    "omittedReasons": [],
+    "snapshot": {
+      "publicationEpoch": 3,
+      "consistency": "single_scope_snapshot"
+    }
+  }
+}

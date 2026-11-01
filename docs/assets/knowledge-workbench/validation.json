@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-31",
+  "base": "34ecfe99f03d8477c093c22e24c63f68f26895ea",
+  "status": "local_candidate",
+  "synthetic": true,
+  "productionDeployment": false,
+  "semanticAcceptance": false,
+  "humanUnderstandingAcceptance": false,
+  "checks": {
+    "full_build": "passed",
+    "core_tests": {
+      "passed": 193,
+      "failed": 0,
+      "skipped": 0
+    },
+    "knowledge_product_tests": {
+      "passed": 72,
+      "failed": 0,
+      "skipped": 0
+    },
+    "web_tests": {
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0
+    },
+    "browser": [
+      "desktop_1440x1024",
+      "medium_1024x768",
+      "mobile_390x844",
+      "co_reading_exact_two",
+      "third_selection_blocked",
+      "same_graph_research",
+      "no_change",
+      "candidate_body",
+      "candidate_review_request_and_readback",
+      "needs_evidence",
+      "source_paragraph_1_176_bytes",
+      "reader_and_source_return",
+      "zoom_center_and_keyboard_focus",
+      "list_32_documents"
+    ]
+  },
+  "assets": {
+    "final-desktop.png": "0debbe1f378c0b3e58c0196697d015e35807e99c5d1c898a3b73a9a7d9519561",
+    "final-comparison.png": "0227c63d1ee30ab676034004d44583153efa1fb3e9ea8fdff7419a6ae618a299",
+    "final-notebook-comparison.png": "6b462d8e29562786f3b7245f05bd5ce57bf169e967d334eb61dec2fd0774327d",
+    "final-selection-comparison.png": "7e2dc5cc39905534c307fc099b71baf233b4494955a74834df63532e4b750c32",
+    "final-candidate-review.png": "9fd5aea878233c4749ac3b126c42ad4a408db06f0375b65508eab69038c0a955",
+    "final-needs-evidence.png": "11ca9bec77c70fb814e80370c9611c2b325ce6ca51f4aad5fdba8116c04787d0",
+    "final-graph-390-fit.png": "1c344065b9c0d59ad51d203426daa79ac0e83cce2bb7634b416148cf92af6262",
+    "final-reader-390.png": "41cd9a7c46b62d3f4fc4ecb51c3e10204544544689cf3e1acee57dab7c6d40d2",
+    "final-source-390.png": "2f10cdb362f0816432b7a0cc7061a0e4daf1cdfdb8744ac2e555fbfa429114d4",
+    "final-1024.png": "366bd3898d9baa7a201fc4f83c78e19cc2525ed0c481b939b633691802ee8034"
+  }
+}

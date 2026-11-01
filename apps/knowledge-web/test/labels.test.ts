@@ -23,3 +23,14 @@ test('selected center title avoids the adjacent long title and every node circle
     for (const [otherId, other] of labels) if (id < otherId) assert.equal(intersects(placement.box, other.box), false, `${id} overlaps ${otherId}`);
   }
 });
+
+test('mobile satellite label reserves rendered font and background padding before the right edge', () => {
+  const labels = placeLabels([
+    { id: 'satellite', x: 282, y: 210, radius: 20, text: '情绪与叙事', priority: 80 },
+    { id: 'focus', x: 195, y: 220, radius: 28, text: '商品的可展示性', priority: 200, fontSize: 15 },
+  ], 390, 390);
+  const satellite = labels.get('satellite');
+  assert.ok(satellite);
+  assert.notEqual(satellite.side, 'right');
+  assert.ok(satellite.box.x >= 6 && satellite.box.x + satellite.box.width <= 384);
+});

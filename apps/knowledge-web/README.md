@@ -21,3 +21,11 @@ npm run preview -w @commerce/knowledge-web
 ```
 
 The production preview listens on `127.0.0.1:4312` and proxies to the same local API, without live reload. The UI reads only data returned by the knowledge API. It does not contain production knowledge fixtures. When the API is read-only, research and feedback submission are disabled from its capability response. The Canvas graph has a DOM list for node and relation selection. Browser validation can inspect `data-graph-debug` on `[data-testid="knowledge-graph"]` for measured layout duration, rendered positions, counts, camera, and layout state.
+
+For a separate worktree, choose unused ports and a dedicated disposable database. The existing synthetic demo accepts `KNOWLEDGE_DEMO_DATABASE_URL` and `KNOWLEDGE_API_PORT`; it creates and cleans its own schema. Point only this worktree's Vite process at that API:
+
+```sh
+KNOWLEDGE_WEB_API_TARGET=http://127.0.0.1:4323 npm run dev -w @commerce/knowledge-web -- --port 4322
+```
+
+`KNOWLEDGE_WEB_API_TARGET` configures the development/preview server proxy. It is not a browser variable and carries no authorization token. Normal ports and behavior remain the default. Read the [workbench experience](../../docs/knowledge/frontend/experience.md), [visual grammar](../../docs/knowledge/frontend/design-system.md), and [embedding boundary](../../docs/knowledge/frontend/embedding.md) before changing interactions or extracting a host component. This application is not yet a published UI component package.

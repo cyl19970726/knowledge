@@ -2,7 +2,19 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { GraphResult, KnowledgeDocument, KnowledgeRef, Relation } from '@commerce/knowledge-contracts';
 import { layoutEdges, refKey, selectedRelations, shortLabel, toGraphView } from '../src/graph/view-model.ts';
-import { framePositions, panKeepingWorldCenter } from '../src/graph/frame.ts';
+import { framePositions, nextGraphZoom, panKeepingWorldCenter, zoomCameraAroundCenter } from '../src/graph/frame.ts';
+
+test('button zoom advances within the canvas bounds', () => {
+  assert.equal(nextGraphZoom(1, 'in'), 1.25);
+  assert.equal(nextGraphZoom(1, 'out'), 0.8);
+  assert.equal(nextGraphZoom(2.5, 'in'), 2.6);
+  assert.equal(nextGraphZoom(0.21, 'out'), 0.2);
+  const viewport = { width: 390, height: 400 }, pan = { x: -25, y: 30 }, zoom = 1.4;
+  const centerWorld = { x: (viewport.width / 2 - pan.x) / zoom, y: (viewport.height / 2 - pan.y) / zoom };
+  const next = zoomCameraAroundCenter(zoom, pan, viewport, 'in');
+  assert.ok(Math.abs(centerWorld.x * next.zoom + next.pan.x - viewport.width / 2) < 1e-9);
+  assert.ok(Math.abs(centerWorld.y * next.zoom + next.pan.y - viewport.height / 2) < 1e-9);
+});
 
 test('resizing keeps the same world point under the viewport center', () => {
   const before = { width: 795, height: 500 }, after = { width: 368, height: 390 };

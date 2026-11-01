@@ -1,0 +1,44 @@
+/* Scoped selectors outrank the earlier global evolution rules, regardless of CSS import order. */
+.evolution-view.evolution-view{max-height:none;padding:28px clamp(18px,3vw,38px) 34px;background:radial-gradient(ellipse at 55% 31%,#1b2437 0%,#101923 54%,#0d1721 100%);color:#dce4f1}
+.evolution-view .evolution-intro{max-width:780px;margin-bottom:24px}
+.evolution-view .evolution-intro h2{font-size:clamp(22px,2.4vw,31px);letter-spacing:.015em;line-height:1.3}
+.evolution-view .evolution-intro p{max-width:740px;font-size:13px}
+.evolution-view .evolution-strata{position:relative;max-width:1000px;margin:0 0 28px;padding:20px clamp(12px,2vw,28px) 16px;border:1px solid #344259;border-radius:12px;background:linear-gradient(160deg,#172338df,#111b2aed 64%,#111923);overflow:hidden}
+.evolution-view .evolution-strata-heading{display:flex;justify-content:space-between;align-items:end;gap:16px;padding:0 2px 18px;border-bottom:1px solid #354158}
+.evolution-view .evolution-strata-heading h3{margin:5px 0 0;color:#f1eafd;font-size:18px;letter-spacing:.02em}
+.evolution-view .evolution-strata-heading>span{color:#9db0cb;font-size:12px;text-align:right}
+.evolution-view .evolution-timeline{position:relative;display:grid;gap:3px;max-width:none;margin:18px 0 8px}
+.evolution-view .evolution-timeline:before{content:"";position:absolute;left:45px;top:25px;bottom:36px;width:2px;background:linear-gradient(#ad83f3,#775bb9 65%,#536881);box-shadow:0 0 15px #a479ec70}
+.evolution-view .evolution-version{display:grid;grid-template-columns:minmax(95px,148px) minmax(0,1fr);gap:12px;min-height:166px;padding:0 0 13px;isolation:isolate}
+.evolution-view .evolution-version:not(:last-child):before{display:none}
+.evolution-view .evolution-layer-axis{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:9px;padding:15px 6px 0 30px;z-index:1}
+.evolution-view .evolution-version .evolution-layer-axis{border:0;border-radius:0;background:none;box-shadow:none}
+.evolution-view .version-marker{width:32px;height:32px;border-color:#9774d5;background:#573580;color:#f5e7ff;box-shadow:0 0 0 5px #201d37,0 0 20px #a979ee75}
+.evolution-view .evolution-layer-time{max-width:140px;color:#b9c9dd;font-size:11px;line-height:1.5;overflow-wrap:anywhere}
+.evolution-view .evolution-plane{position:relative;min-width:0;min-height:154px;padding:19px clamp(14px,3vw,32px);border:1px solid #445875;border-radius:8px;background:linear-gradient(150deg,#25365399,#1a2a4380 48%,#16263a75);box-shadow:inset 0 1px #d5d8ff13,0 13px 22px #050b1570;overflow:hidden}
+.evolution-view .evolution-plane:before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 44%,#6d86ab12 44.2%,transparent 44.5%),linear-gradient(12deg,transparent 72%,#7285aa1c 72.2%,transparent 72.5%);pointer-events:none}
+.evolution-view .evolution-plane-grid{position:absolute;inset:0;background:linear-gradient(90deg,transparent calc(50% - .5px),#7082a518 50%,transparent calc(50% + .5px));pointer-events:none}
+.evolution-view .evolution-version.active .evolution-plane{border-color:#8a5fc8;background:linear-gradient(145deg,#352746d6,#1d2942c7 66%);box-shadow:inset 0 1px #e5ccff25,0 0 28px #9b6ee32c,0 13px 22px #050b1570}
+.evolution-view .evolution-version.is-before:not(.active) .evolution-plane{border-color:#6c91bf}
+.evolution-view .evolution-version.is-after:not(.active) .evolution-plane{border-color:#a26cdf}
+.evolution-view .evolution-version-card{position:relative;width:min(100%,580px);min-height:113px;padding:13px 17px;border:1px solid #5b6680;border-left:4px solid #a574eb;border-radius:7px;background:#171f31ee;box-shadow:0 10px 25px #050916a6}
+.evolution-view .evolution-version.active .evolution-version-card{border-color:#a77aec;border-left-color:#bd88ff;background:#251f39f2}
+.evolution-view .evolution-version-top{display:flex;align-items:center;gap:8px}
+.evolution-view .evolution-status,.evolution-view .evolution-selected{color:#d6c3f5;font-size:11px;font-weight:700}
+.evolution-view .evolution-version-id{min-width:0;color:#99abc6;font-size:11px;overflow-wrap:anywhere}
+.evolution-view .evolution-selected{padding:2px 7px;border:1px solid #7555a9;border-radius:4px;color:#f0dcff}
+.evolution-view .evolution-version h3{margin:5px 0;color:#f4edfc;font-size:16px;line-height:1.4}
+.evolution-view .evolution-version p.evolution-reason{margin:0;color:#b5c5da;font-size:12px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.evolution-view .evolution-version-actions{display:flex;align-items:center;flex-wrap:wrap;gap:7px 13px;margin-top:11px}
+.evolution-view .evolution-version-actions .text-button{padding:4px 0;font-size:12px;font-weight:700}
+.evolution-view .evolution-pick{padding:5px 9px;border:1px solid #516078;border-radius:5px;background:#1b293a;color:#b9c9db;font-size:11px}
+.evolution-view .evolution-pick.selected{border-color:#a67de1;background:#44305e;color:#f3e7ff}
+.evolution-view .evolution-version details{margin-top:8px;font-size:10px}
+.evolution-view .evolution-version details summary{cursor:pointer}
+.evolution-view .evolution-strata>.evolution-hint{margin:10px 2px 0;max-width:740px}
+.evolution-view .evolution-more{margin:0 0 20px}
+.evolution-view .evolution-compare,.evolution-view .evolution-candidate{max-width:1000px;border-color:#3a4861;background:#182336e8;box-shadow:0 12px 25px #080d1850}
+.evolution-view .evolution-candidate{border-color:#815f9e;border-style:dashed;background:#231d34e8}
+.evolution-view .evolution-compare h3,.evolution-view .evolution-candidate h3{font-size:18px}
+.evolution-view .evolution-pickers select{min-height:40px}
+@media(max-width:680px){.evolution-view.evolution-view{padding:19px 13px 28px}.evolution-view .evolution-strata{padding:14px 10px}.evolution-view .evolution-strata-heading{align-items:start;flex-direction:column;gap:5px}.evolution-view .evolution-version{grid-template-columns:64px minmax(0,1fr);gap:5px}.evolution-view .evolution-layer-axis{padding:11px 0 0 8px}.evolution-view .evolution-timeline:before{left:23px}.evolution-view .evolution-layer-time{font-size:10px}.evolution-view .evolution-plane{padding:10px}.evolution-view .evolution-version-card{padding:10px}.evolution-view .evolution-version-actions{gap:4px 9px}}

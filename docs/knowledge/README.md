@@ -46,6 +46,7 @@ flowchart TB
 | --- | --- | --- |
 | 理解和使用知识库 | [产品与交互](product.md)、[通用认知模型](model.md) | 认识、A/B→C→下一轮继承与纠错，以及内容关系和验收 |
 | 开发独立知识产品 | [职责与架构](architecture.md) | 通用核心、业务适配、前后端及设施如何连接 |
+| 设计或集成知识前端 | [联读研究台体验](frontend/experience.md)、[深色界面与星图语法](frontend/design-system.md)、[嵌入边界](frontend/embedding.md) | 星图怎样服务理解、如何联读，以及独立应用与未来组件的区别 |
 | 给新业务接入知识能力 | [技术接入手册](integration.md)、[能力与接入合同](capabilities.md) | Node/workspaces、构建运行、端到端步骤及能力边界 |
 | 在电商侧做适配 | [业务适配指南](https://github.com/cyl19970726/commerce-creative-lab/blob/main/docs/integrations/knowledge.md)（需业务仓读取权限） | 采集、拉片及外部任务怎样映射到知识能力 |
 | 启动或核对一个实例 | [运行与验证](operations.md) | 应获取哪个版本、如何构建、哪些证据仍缺失 |
