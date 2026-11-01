@@ -1,7 +1,8 @@
 import type { GraphEdgeView, GraphNodeView, GraphViewModel } from '../graph/view-model';
 
 export type Point3 = [number, number, number];
-export type Graph3DGroup = { id: string; name: string; members: string[]; center: Point3; tone: 'violet' | 'blue' };
+export type GraphTone = 'violet' | 'blue' | 'cyan' | 'rose' | 'teal';
+export type Graph3DGroup = { id: string; name: string; members: string[]; center: Point3; tone: GraphTone };
 export type Graph3DLayout = { positions: Record<string, Point3>; groups: Graph3DGroup[]; visibleEdges: string[]; hiddenEdgeCount: number; reading?: { focus: string; supports: string[]; challenges: string[]; sources: string[]; secondary: string[] } };
 
 const compareId = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
@@ -105,21 +106,22 @@ function externalPosition(node: GraphNodeView, graph: GraphViewModel, positions:
 /** Positions depend on the returned graph and exact IDs, never on selection or random state. */
 export function constellationLayout(graph: GraphViewModel): Graph3DLayout {
   const rawGroups = groupForDocuments(graph);
+  const tones: GraphTone[] = ['violet', 'blue', 'cyan', 'violet', 'rose', 'teal'];
   const groups: Graph3DGroup[] = rawGroups.map((group, index) => {
     const six: [number, number][] = [[-6.8, 3.5], [0, 1.5], [6.4, 3.5], [-6.4, -3.6], [6, -3.4], [0, -6.4]];
     const columns = rawGroups.length <= 4 ? 2 : 3, rows = Math.ceil(rawGroups.length / columns);
     const row = Math.floor(index / columns), column = index % columns;
     const [x, y] = rawGroups.length === 6 ? six[index] : rawGroups.length === 1 ? [0, 0] : [((column + 0.5) - columns / 2) * 7, ((rows - 1) / 2 - row) * 7];
     const center: Point3 = [x, y, index % 2 ? -0.8 : 0.6];
-    return { ...group, center, tone: index % 2 ? 'blue' : 'violet' };
+    return { ...group, center, tone: tones[index % tones.length] };
   });
   const positions: Record<string, Point3> = {};
   for (const group of groups) [group.id, ...group.members.filter(id => id !== group.id)].filter(id => group.members.includes(id)).forEach((id, index) => { positions[id] = nodePosition(group.center, index, group.members.length, id); });
   graph.nodes.filter(node => node.document === null).sort((a, b) => compareId(a.id, b.id)).forEach(node => { positions[node.id] = externalPosition(node, graph, positions); });
-  const groupOf = new Map(groups.flatMap(group => group.members.map(id => [id, group.id] as const)));
-  const internal = graph.edges.filter(edge => groupOf.has(edge.from) && groupOf.has(edge.to));
   const priority = (edge: GraphEdgeView) => edge.relation.stance === 'challenges' ? 0 : edge.relation.stance === 'supports' ? 1 : edge.relation.stance === 'context' ? 2 : 3;
-  const visible = [...internal].sort((a, b) => priority(a) - priority(b) || compareId(a.id, b.id)).slice(0, 90).map(edge => edge.id);
+  // Keep every returned relation in the overview. Quiet evidence and navigation
+  // edges become texture while support and challenge relations remain legible.
+  const visible = [...graph.edges].sort((a, b) => priority(a) - priority(b) || compareId(a.id, b.id)).map(edge => edge.id);
   return { positions, groups, visibleEdges: visible, hiddenEdgeCount: graph.edges.length - visible.length };
 }
 

@@ -24,14 +24,15 @@ function fixture(): GraphViewModel {
   };
 }
 
-test('overview groups only returned knowledge connections and keeps a shared source outside groups', () => {
+test('overview groups knowledge connections, keeps shared sources outside groups, and retains every returned relation', () => {
   const graph = fixture();
   const layout = constellationLayout(graph);
   assert.equal(layout.groups.flatMap(group => group.members).length, 5);
   assert.ok(layout.groups.every(group => !group.members.includes('S') && group.name.length > 0));
   assert.ok(layout.positions.S);
-  assert.equal(layout.visibleEdges.filter(id => id.startsWith('source-')).length, 0);
-  assert.equal(layout.hiddenEdgeCount, 64);
+  assert.equal(layout.visibleEdges.filter(id => id.startsWith('source-')).length, 64);
+  assert.equal(layout.visibleEdges.length, graph.edges.length);
+  assert.equal(layout.hiddenEdgeCount, 0);
   assert.equal(graph.edges.length, 68);
   assert.deepEqual(layout, constellationLayout(graph));
 });

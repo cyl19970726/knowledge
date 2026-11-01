@@ -1,18 +1,51 @@
 import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html, Line, OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
-import { Quaternion, Shape, Vector3, type WebGLRenderer } from 'three';
+import { AdditiveBlending, CanvasTexture, Quaternion, Shape, SRGBColorSpace, Vector3, type WebGLRenderer } from 'three';
 import type { GraphEdgeView, GraphNodeView } from '../graph/view-model';
-import { constellationLayout, questionLayout, type Graph3DGroup, type Point3 } from './layout';
+import { constellationLayout, questionLayout, type Graph3DGroup, type GraphTone, type Point3 } from './layout';
 import type { Graph3DCamera, KnowledgeGraph3DProps } from './types';
 
 export type { Graph3DCamera, KnowledgeGraph3DProps } from './types';
 
-const color = { violet: '#a473ee', blue: '#5c9cf3', amber: '#edae49', grey: '#8c9bb0' } as const;
+const color: Record<GraphTone | 'grey' | 'amber', string> = {
+  violet: '#b989ff', blue: '#73b5ff', cyan: '#6edee8', rose: '#d99bdd', teal: '#73d9c8', grey: '#9eb2c9', amber: '#efb55a',
+};
+const starTints: Record<GraphTone, string[]> = {
+  violet: ['#c49aff', '#ad86ee', '#e0b9ff'],
+  blue: ['#7fbcff', '#6fa5f6', '#8bd5ff'],
+  cyan: ['#72e1e7', '#61cbd9', '#9bdadd'],
+  rose: ['#db9ee1', '#c88ed3', '#efb9e8'],
+  teal: ['#82e4d3', '#68cabb', '#a0eadf'],
+};
 const font = 'Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif';
 const relationName = { supports: '支持', challenges: '挑战', context: '背景', navigation: '导航' } as const;
 const statusName = { observed: '已观察', untested: '未检验', unknown: '未知' } as const;
+
+function createGlowTexture(): CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 128;
+  const context = canvas.getContext('2d')!;
+  const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gradient.addColorStop(0, 'rgba(255,255,255,0.95)');
+  gradient.addColorStop(0.12, 'rgba(255,255,255,0.64)');
+  gradient.addColorStop(0.38, 'rgba(255,255,255,0.18)');
+  gradient.addColorStop(0.72, 'rgba(255,255,255,0.045)');
+  gradient.addColorStop(1, 'rgba(255,255,255,0)');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 128, 128);
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  return texture;
+}
+
+function stableTint(id: string, tone: GraphTone): string {
+  const palette = starTints[tone];
+  let hash = 0;
+  for (const character of id) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
+  return palette[(hash >>> 0) % palette.length];
+}
 
 function cameraFor(groups: Graph3DGroup[], presentation: KnowledgeGraph3DProps['presentation']): Graph3DCamera {
   if (presentation === 'question') return { position: [0, -0.4, 18], target: [0, -0.4, 0] };
@@ -47,6 +80,7 @@ function CameraRig({ initial, remembered, home, presentation, resetSignal, zoomR
   const controls = useRef<OrbitControlsImpl>(null);
   const resetSeen = useRef(resetSignal), zoomSeen = useRef(zoomRequest.sequence), viewSeen = useRef(presentation);
   const initialRef = useRef(initial), homeRef = useRef(home);
+  const transition = useRef<{ position: Vector3; target: Vector3; fromPosition: Vector3; fromTarget: Vector3; started: number } | null>(null);
   homeRef.current = home;
   const fittedHome = (): Graph3DCamera => {
     const factor = Math.min(2.6, Math.max(1, size.height / Math.max(1, size.width)));
@@ -67,13 +101,42 @@ function CameraRig({ initial, remembered, home, presentation, resetSignal, zoomR
     host.current?.setAttribute('data-camera-debug', JSON.stringify(value));
     invalidate();
   };
+  const moveTo = (value: Graph3DCamera) => {
+    const target = controls.current?.target;
+    if (!target || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      apply(value);
+      onCamera(value);
+      return;
+    }
+    transition.current = {
+      position: new Vector3(...value.position), target: new Vector3(...value.target),
+      fromPosition: camera.position.clone(), fromTarget: target.clone(), started: performance.now(),
+    };
+    invalidate();
+  };
+  useFrame(() => {
+    const current = transition.current;
+    const controlsTarget = controls.current?.target;
+    if (!current || !controlsTarget) return;
+    const progress = Math.min(1, (performance.now() - current.started) / 340);
+    const eased = 1 - (1 - progress) ** 3;
+    camera.position.lerpVectors(current.fromPosition, current.position, eased);
+    controlsTarget.lerpVectors(current.fromTarget, current.target, eased);
+    controls.current?.update();
+    host.current?.setAttribute('data-camera-debug', JSON.stringify({
+      position: camera.position.toArray(), target: controlsTarget.toArray(),
+    }));
+    if (progress < 1) invalidate();
+    else {
+      transition.current = null;
+      snapshot();
+    }
+  });
   useEffect(() => { apply(remembered ? initialRef.current : fittedHome()); }, []);
   useEffect(() => {
     if (resetSeen.current === resetSignal) return;
     resetSeen.current = resetSignal;
-    const value = fittedHome();
-    apply(value);
-    onCamera(value);
+    moveTo(fittedHome());
   }, [resetSignal]);
   useEffect(() => {
     if (viewSeen.current === presentation) return;
@@ -88,31 +151,34 @@ function CameraRig({ initial, remembered, home, presentation, resetSignal, zoomR
     const target = controls.current?.target;
     if (!target) return;
     const offset = camera.position.clone().sub(target).multiplyScalar(zoomRequest.direction === 'in' ? 0.78 : 1.28).clampLength(3, 75);
-    camera.position.copy(target.clone().add(offset));
-    controls.current?.update();
-    invalidate();
-    snapshot();
+    moveTo({ position: target.clone().add(offset).toArray() as Point3, target: target.toArray() as Point3 });
   }, [zoomRequest.sequence, zoomRequest.direction]);
-  return <OrbitControls ref={controls} enableDamping={false} enablePan enableZoom minDistance={3} maxDistance={75} maxPolarAngle={Math.PI * 0.88} onEnd={snapshot} />;
+  return <OrbitControls ref={controls} enableDamping={false} enablePan enableZoom minDistance={3} maxDistance={75} maxPolarAngle={Math.PI * 0.88} onStart={() => { transition.current = null; }} onEnd={snapshot} />;
 }
 
-function NodeGlyph({ node, position, selected, prominent, coReadingIndex, dimmed, onNode, groupTone, accent }: {
+function NodeGlyph({ node, position, selected, prominent, coReadingIndex, dimmed, onNode, groupTone, accent, glowTexture }: {
   node: GraphNodeView; position: Point3; selected: boolean; coReadingIndex: number; dimmed: boolean;
-  prominent: boolean; accent?: string;
+  prominent: boolean; accent?: string; glowTexture: CanvasTexture;
   onNode: (id: string) => void; groupTone: Graph3DGroup['tone'];
 }) {
   const source = node.document === null;
-  const tint = selected ? color.violet : coReadingIndex === 0 ? color.violet : coReadingIndex === 1 ? color.blue : accent ?? (source ? color.grey : color[groupTone]);
-  const radius = selected ? 0.58 : prominent ? 0.42 : source ? 0.18 : node.degree >= 3 ? 0.23 : 0.15;
+  const tint = selected ? color.violet : coReadingIndex === 0 ? color.violet : coReadingIndex === 1 ? color.blue : accent ?? (source ? color.grey : stableTint(node.id, groupTone));
+  const radius = selected ? 0.6 : prominent ? 0.45 : source ? 0.2 : node.degree >= 3 ? 0.27 : 0.17;
+  const glowScale = selected ? 9.5 : prominent ? 8 : source ? 6.8 : node.degree >= 3 ? 7 : 5.8;
+  const glowOpacity = dimmed ? 0.08 : selected ? 0.5 : prominent ? 0.29 : source ? 0.14 : node.degree >= 3 ? 0.22 : 0.13;
   const pick = (event: { stopPropagation: () => void }) => { event.stopPropagation(); onNode(node.id); };
   return <group position={position}>
+    <sprite scale={[radius * glowScale, radius * glowScale, 1]} renderOrder={1}>
+      <spriteMaterial map={glowTexture} color={tint} transparent opacity={glowOpacity} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
+    </sprite>
     <mesh onClick={pick}>
       {source ? <octahedronGeometry args={[radius, 0]} /> : <sphereGeometry args={[radius, 12, 10]} />}
-      <meshBasicMaterial color={tint} transparent opacity={dimmed ? 0.35 : 0.95} depthWrite={false} />
+      <meshBasicMaterial color={tint} transparent opacity={dimmed ? 0.42 : 1} depthWrite={false} toneMapped={false} />
     </mesh>
-    {selected && <mesh position={[0, 0, radius * 0.45]}><sphereGeometry args={[radius * 0.62, 16, 12]} /><meshBasicMaterial color="#d8b0ff" transparent opacity={0.88} depthWrite={false} /></mesh>}
-    {(prominent || coReadingIndex >= 0) && <mesh><torusGeometry args={[radius + 0.1, prominent ? 0.038 : 0.018, 6, 40]} /><meshBasicMaterial color={tint} transparent opacity={0.82} depthWrite={false} /></mesh>}
-    {prominent && <mesh><ringGeometry args={[radius + 0.18, radius + 0.39, 48]} /><meshBasicMaterial color={tint} transparent opacity={0.12} depthWrite={false} side={2} /></mesh>}
+    <mesh position={[0, 0, radius * 0.5]}><sphereGeometry args={[radius * (source ? 0.34 : 0.48), 16, 12]} /><meshBasicMaterial color={source ? '#dbf5ff' : '#fff8ff'} transparent opacity={dimmed ? 0.32 : 0.9} depthWrite={false} toneMapped={false} /></mesh>
+    {selected && <mesh position={[0, 0, radius * 0.62]}><sphereGeometry args={[radius * 0.7, 16, 12]} /><meshBasicMaterial color="#e3c4ff" transparent opacity={0.82} blending={AdditiveBlending} depthWrite={false} toneMapped={false} /></mesh>}
+    {(prominent || coReadingIndex >= 0) && <mesh><torusGeometry args={[radius + 0.1, prominent ? 0.038 : 0.018, 6, 40]} /><meshBasicMaterial color={tint} transparent opacity={0.86} blending={AdditiveBlending} depthWrite={false} toneMapped={false} /></mesh>}
+    {prominent && <mesh><ringGeometry args={[radius + 0.18, radius + 0.39, 48]} /><meshBasicMaterial color={tint} transparent opacity={0.14} blending={AdditiveBlending} depthWrite={false} side={2} toneMapped={false} /></mesh>}
     <mesh onClick={pick}><sphereGeometry args={[Math.max(0.38, radius), 8, 6]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>
   </group>;
 }
@@ -153,26 +219,54 @@ function Scene({ graph, layout, presentation, selectedNodeId, selectedEdgeId, co
   camera: Graph3DCamera; remembered: boolean; resetSignal: number; zoomRequest: KnowledgeGraph3DProps['zoomRequest'];
   onCamera: KnowledgeGraph3DProps['onCamera']; host: React.RefObject<HTMLDivElement | null>;
 }) {
+  const glowTexture = useMemo(createGlowTexture, []);
+  useEffect(() => () => glowTexture.dispose(), [glowTexture]);
   const reading = layout.reading;
   const focused = new Set(reading ? [reading.focus, ...reading.supports, ...reading.challenges, ...reading.sources, ...reading.secondary] : [selectedNodeId, ...graph.edges.filter(edge => edge.from === selectedNodeId || edge.to === selectedNodeId).map(edge => edge.from === selectedNodeId ? edge.to : edge.from)]);
   const visibleIds = new Set(layout.visibleEdges);
   if (selectedEdgeId) visibleIds.add(selectedEdgeId);
   const drawn = graph.edges.filter(edge => visibleIds.has(edge.id) && layout.positions[edge.from] && layout.positions[edge.to]);
   const groupTones = new Map(layout.groups.flatMap(group => group.members.map(id => [id, group.tone] as const)));
-  const labeled = graph.nodes.filter(node => presentation === 'question' ? reading && [reading.focus, ...reading.supports, ...reading.challenges, ...reading.sources].includes(node.id) : node.id === selectedNodeId)
-    .sort((a, b) => Number(b.id === selectedNodeId) - Number(a.id === selectedNodeId) || b.degree - a.degree).slice(0, presentation === 'question' ? 5 : 8);
+  const pathRoles = new Map<string, 'support' | 'challenge'>();
+  if (!reading && presentation === 'constellation' && selectedNodeId) {
+    for (const edge of graph.edges) {
+      if (edge.to !== selectedNodeId || !['supports', 'challenges'].includes(edge.relation.stance) || pathRoles.has(edge.from)) continue;
+      pathRoles.set(edge.from, edge.relation.stance === 'supports' ? 'support' : 'challenge');
+    }
+  }
+  const pathRank = (id: string) => pathRoles.get(id) === 'support' ? 0 : pathRoles.get(id) === 'challenge' ? 1 : 2;
+  const labeled = graph.nodes.filter(node => presentation === 'question'
+    ? reading && [reading.focus, ...reading.supports, ...reading.challenges, ...reading.sources].includes(node.id)
+    : node.id === selectedNodeId || pathRoles.has(node.id))
+    .sort((a, b) => Number(b.id === selectedNodeId) - Number(a.id === selectedNodeId) || pathRank(a.id) - pathRank(b.id) || b.degree - a.degree)
+    .slice(0, presentation === 'question' ? 5 : 4);
   const selectedEdge = graph.edges.find(edge => edge.id === selectedEdgeId);
+  const focusPoint = selectedNodeId ? layout.positions[selectedNodeId] : undefined;
+  const selectedGroup = selectedNodeId ? layout.groups.find(group => group.members.includes(selectedNodeId)) : undefined;
   return <>
     <color attach="background" args={['#070c16']} />
     <CameraRig initial={camera} remembered={remembered} home={cameraFor(layout.groups, presentation)} presentation={presentation} resetSignal={resetSignal} zoomRequest={zoomRequest} onCamera={onCamera} host={host} />
     {layout.groups.map(group => { const outline = groupOutline(group, presentation === 'question' ? 0.77 : 1); return <group key={group.id} position={presentation === 'question' ? [group.center[0] * 0.72, group.center[1] * 0.72, -3] : group.center}>
       <mesh><shapeGeometry args={[outline.shape]} /><meshBasicMaterial color={color[group.tone]} transparent opacity={presentation === 'question' ? 0.018 : 0.085} depthWrite={false} side={2} /></mesh>
       <Line points={outline.points} color={color[group.tone]} lineWidth={0.65} transparent opacity={presentation === 'question' ? 0.06 : 0.28} />
-      {presentation === 'constellation' && <Billboard position={[-outline.radius * 0.75, outline.radius * 1.02, 0]} prominent className={`group group-${group.tone}`}>{group.name}<small>{group.members.length} 个当前范围节点</small></Billboard>}
+      {presentation === 'constellation' && group.id !== selectedGroup?.id && <Billboard position={[-outline.radius * 0.75, outline.radius * 1.02, 0]} prominent className={`group group-${group.tone}`}>{group.name}<small>{group.members.length} 个当前范围节点</small></Billboard>}
     </group>; })}
-    {drawn.map(edge => <RelationLine key={edge.id} edge={edge} from={layout.positions[edge.from]} to={layout.positions[edge.to]} background={!!reading && edge.from !== reading.focus && edge.to !== reading.focus} highlighted={edge.id === selectedEdgeId || (reading ? edge.to === reading.focus && [...reading.supports, ...reading.challenges].includes(edge.from) : edge.from === selectedNodeId || edge.to === selectedNodeId)} accent={reading?.supports[1] === edge.from && edge.to === reading.focus && edge.relation.stance === 'supports' ? color.blue : undefined} onEdge={onEdge} />)}
-    {graph.nodes.map(node => layout.positions[node.id] && <NodeGlyph key={node.id} node={node} position={layout.positions[node.id]} selected={node.id === selectedNodeId} prominent={focused.has(node.id) && (presentation === 'constellation' ? node.isRoot || node.degree >= 5 : !!reading && [reading.focus, ...reading.supports, ...reading.challenges].includes(node.id))} coReadingIndex={coReadingIds.indexOf(node.id)} dimmed={presentation === 'question' && !focused.has(node.id)} groupTone={groupTones.get(node.id) ?? 'violet'} accent={reading?.supports[0] === node.id ? color.violet : reading?.supports[1] === node.id ? color.blue : reading?.challenges.includes(node.id) ? color.amber : undefined} onNode={onNode} />)}
-    {labeled.map(node => { const point = layout.positions[node.id]; if (!point) return null; const role = reading ? node.id === reading.focus ? 'focus' : reading.supports.includes(node.id) ? 'support' : reading.challenges.includes(node.id) ? 'challenge' : 'source' : 'overview'; const offset = role === 'focus' || role === 'overview' ? [0.8, 0.05] : role === 'source' ? [0.3, -0.5] : role === 'challenge' || role === 'support' && reading?.supports.indexOf(node.id) === 1 ? [-3.3, 0.1] : [0.6, 0.1]; return <Billboard key={node.id} position={[point[0] + offset[0], point[1] + offset[1], point[2] + 0.12]} prominent={node.id === selectedNodeId || role !== 'overview'} className={`role-${role}`}><strong>{role === 'focus' ? '当前认识' : role === 'support' ? '支持来路' : role === 'challenge' ? '挑战' : role === 'source' ? '来源资料' : '所选认识'}</strong><span>{node.shortLabel}</span></Billboard>; })}
+    {drawn.map(edge => <RelationLine key={edge.id} edge={edge} from={layout.positions[edge.from]} to={layout.positions[edge.to]} background={edge.id !== selectedEdgeId && (presentation === 'constellation' ? edge.relation.stance === 'context' || edge.relation.stance === 'navigation' : !!reading && edge.from !== reading.focus && edge.to !== reading.focus)} highlighted={edge.id === selectedEdgeId || (reading ? edge.to === reading.focus && [...reading.supports, ...reading.challenges].includes(edge.from) : edge.from === selectedNodeId || edge.to === selectedNodeId)} accent={reading?.supports[1] === edge.from && edge.to === reading.focus && edge.relation.stance === 'supports' ? color.blue : undefined} onEdge={onEdge} />)}
+    {graph.nodes.map(node => layout.positions[node.id] && <NodeGlyph key={node.id} node={node} position={layout.positions[node.id]} selected={node.id === selectedNodeId} prominent={focused.has(node.id) && (presentation === 'constellation' ? node.isRoot || node.degree >= 5 : !!reading && [reading.focus, ...reading.supports, ...reading.challenges].includes(node.id))} coReadingIndex={coReadingIds.indexOf(node.id)} dimmed={presentation === 'question' && !focused.has(node.id)} groupTone={groupTones.get(node.id) ?? 'violet'} accent={reading?.supports[0] === node.id ? color.violet : reading?.supports[1] === node.id ? color.blue : reading?.challenges.includes(node.id) ? color.amber : undefined} glowTexture={glowTexture} onNode={onNode} />)}
+    {labeled.map(node => {
+      const point = layout.positions[node.id];
+      if (!point) return null;
+      const role = reading ? node.id === reading.focus ? 'focus' : reading.supports.includes(node.id) ? 'support' : reading.challenges.includes(node.id) ? 'challenge' : 'source' : node.id === selectedNodeId ? 'overview' : pathRoles.get(node.id) ?? 'source';
+      const pathRole = !reading && pathRoles.has(node.id);
+      let offset: Point3 = [0.6, 0.1, 0];
+      if (role === 'focus' || role === 'overview') offset = [0.8, 0.05, 0];
+      else if (role === 'source') offset = [0.3, -0.5, 0];
+      else if (pathRole && focusPoint) {
+        const dx = point[0] - focusPoint[0], dy = point[1] - focusPoint[1], distance = Math.max(1, Math.hypot(dx, dy));
+        offset = [dx / distance * 0.62, dy / distance * 0.62, 0];
+      } else if (role === 'challenge' || role === 'support' && reading?.supports.indexOf(node.id) === 1) offset = [-3.3, 0.1, 0];
+      return <Billboard key={node.id} position={[point[0] + offset[0], point[1] + offset[1], point[2] + 0.12]} prominent={node.id === selectedNodeId || role !== 'overview'} className={`role-${role}${pathRole ? ' role-path' : ''}`}><strong>{role === 'focus' ? '当前认识' : role === 'support' ? '支持来路' : role === 'challenge' ? '挑战' : role === 'source' ? '来源资料' : '所选认识'}</strong><span>{node.shortLabel}</span></Billboard>;
+    })}
     {reading && drawn.filter(edge => edge.to === reading.focus && (reading.supports.includes(edge.from) || reading.challenges.includes(edge.from))).map(edge => { const from = layout.positions[edge.from], to = layout.positions[edge.to]; return <Billboard key={`label:${edge.id}`} position={[(from[0] + to[0]) / 2, (from[1] + to[1]) / 2, 3.1]} className={edge.relation.stance === 'challenges' ? 'edge-challenge' : 'edge-support'}>{relationName[edge.relation.stance]}</Billboard>; })}
     {selectedEdge && layout.positions[selectedEdge.from] && layout.positions[selectedEdge.to] && <Billboard position={[(layout.positions[selectedEdge.from][0] + layout.positions[selectedEdge.to][0]) / 2, (layout.positions[selectedEdge.from][1] + layout.positions[selectedEdge.to][1]) / 2 + 0.38, (layout.positions[selectedEdge.from][2] + layout.positions[selectedEdge.to][2]) / 2]} prominent>{relationName[selectedEdge.relation.stance]} · 依据{statusName[selectedEdge.relation.evidenceStatus]}</Billboard>}
   </>;
@@ -224,8 +318,8 @@ export function KnowledgeGraph3D({ graph, presentation, selectedNodeId, selected
     {rendererState !== 'unavailable' && <RenderBoundary onError={unavailable}><Canvas frameloop="demand" dpr={[1, 1.7]} gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }} camera={{ position: initialCamera.current.position, fov: 48, near: 0.1, far: 200 }} onCreated={onCreated}>
       <Scene graph={graph} layout={layout} presentation={presentation} selectedNodeId={selectedNodeId} selectedEdgeId={selectedEdgeId} coReadingIds={coReadingIds} onNode={onNode} onEdge={onEdge} camera={initialCamera.current} remembered={initiallyRemembered.current} resetSignal={resetSignal} zoomRequest={zoomRequest} onCamera={onCamera} host={host} />
     </Canvas></RenderBoundary>}
-    <details style={{ position: 'absolute', left: 12, bottom: 12, maxWidth: 'min(380px, calc(100% - 24px))', color: '#d4dced', font: `12px ${font}`, background: 'rgba(10,16,29,.86)', border: '1px solid #293448', borderRadius: 7, padding: '5px 8px' }}>
-      <summary style={{ cursor: 'pointer' }}>当前范围 · {counts.nodes} 节点 · {counts.edges} 关系 · {counts.edges - shownEdges} 条未画出</summary>
+    <details style={{ position: 'absolute', zIndex: 2, left: 12, bottom: 12, maxWidth: 'min(380px, calc(100% - 24px))', color: '#d4dced', font: `12px ${font}`, background: 'rgba(10,16,29,.86)', border: '1px solid #293448', borderRadius: 7, padding: '5px 8px' }}>
+      <summary style={{ cursor: 'pointer' }}>当前范围 · {counts.nodes} 节点 · {counts.edges} 关系 · {counts.edges - shownEdges ? `${counts.edges - shownEdges} 条未画出` : '全部已画出'}</summary>
       <div style={{ maxHeight: 230, overflow: 'auto', marginTop: 7 }}>
         <p>分组按当前返回连接生成，不代表全库主题。线按来源 → 目标；依据状态以原记录为准。</p>
         {graph.nodes.map(node => <button key={node.id} type="button" onClick={() => onNode(node.id)} style={listButton}>{node.document === null ? '◇ 来源' : '● 认识'} · {node.title}</button>)}
