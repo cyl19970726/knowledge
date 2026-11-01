@@ -2,7 +2,7 @@ import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html, Line, OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
-import { AdditiveBlending, CanvasTexture, Quaternion, Shape, SRGBColorSpace, Vector3, type WebGLRenderer } from 'three';
+import { AdditiveBlending, CanvasTexture, Quaternion, Shape, SRGBColorSpace, Vector3, type Sprite, type SpriteMaterial, type WebGLRenderer } from 'three';
 import type { GraphEdgeView, GraphNodeView } from '../graph/view-model';
 import { constellationLayout, questionLayout, type Graph3DGroup, type GraphTone, type Point3 } from './layout';
 import type { Graph3DCamera, KnowledgeGraph3DProps } from './types';
@@ -13,11 +13,11 @@ const color: Record<GraphTone | 'grey' | 'amber', string> = {
   violet: '#b989ff', blue: '#73b5ff', cyan: '#6edee8', rose: '#d99bdd', teal: '#73d9c8', grey: '#9eb2c9', amber: '#efb55a',
 };
 const starTints: Record<GraphTone, string[]> = {
-  violet: ['#c49aff', '#ad86ee', '#e0b9ff'],
-  blue: ['#7fbcff', '#6fa5f6', '#8bd5ff'],
-  cyan: ['#72e1e7', '#61cbd9', '#9bdadd'],
-  rose: ['#db9ee1', '#c88ed3', '#efb9e8'],
-  teal: ['#82e4d3', '#68cabb', '#a0eadf'],
+  violet: ['#c1a8f2', '#b495e8', '#d2b8f6'],
+  blue: ['#8bc5f3', '#77b4e9', '#a2d6f4'],
+  cyan: ['#91dce2', '#7bcbd7', '#a7e4e4'],
+  rose: ['#cda9d3', '#bd95c7', '#ddb9de'],
+  teal: ['#92d9cc', '#7bc8bd', '#a8e3d9'],
 };
 const font = 'Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif';
 const relationName = { supports: '支持', challenges: '挑战', context: '背景', navigation: '导航' } as const;
@@ -29,9 +29,9 @@ function createGlowTexture(): CanvasTexture {
   const context = canvas.getContext('2d')!;
   const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
   gradient.addColorStop(0, 'rgba(255,255,255,0.95)');
-  gradient.addColorStop(0.12, 'rgba(255,255,255,0.64)');
-  gradient.addColorStop(0.38, 'rgba(255,255,255,0.18)');
-  gradient.addColorStop(0.72, 'rgba(255,255,255,0.045)');
+  gradient.addColorStop(0.12, 'rgba(255,255,255,0.5)');
+  gradient.addColorStop(0.38, 'rgba(255,255,255,0.125)');
+  gradient.addColorStop(0.72, 'rgba(255,255,255,0.03)');
   gradient.addColorStop(1, 'rgba(255,255,255,0)');
   context.fillStyle = gradient;
   context.fillRect(0, 0, 128, 128);
@@ -85,8 +85,9 @@ function CameraRig({ initial, remembered, home, presentation, resetSignal, zoomR
   const transition = useRef<{ position: Vector3; target: Vector3; fromPosition: Vector3; fromTarget: Vector3; started: number; duration: number } | null>(null);
   homeRef.current = home;
   const fittedHome = (): Graph3DCamera => {
-    const responsiveMargin = size.width < 520 ? 1.1 : 1;
-    const factor = Math.min(2.6, Math.max(1, size.height / Math.max(1, size.width)) * responsiveMargin);
+    const responsiveMargin = size.width < 520 ? 1.08 : 1;
+    const density = presentation === 'constellation' ? 0.96 : 1;
+    const factor = Math.min(2.6, Math.max(1, size.height / Math.max(1, size.width)) * responsiveMargin * density);
     return { position: homeRef.current.position.map((part, index) => homeRef.current.target[index] + (part - homeRef.current.target[index]) * factor) as Point3, target: homeRef.current.target };
   };
   const snapshot = () => {
@@ -182,27 +183,51 @@ function NodeGlyph({ node, position, selected, prominent, coReadingIndex, dimmed
   onNode: (id: string) => void; groupTone: Graph3DGroup['tone'];
 }) {
   const [hovered, setHovered] = useState(false);
+  const { invalidate } = useThree();
+  const halo = useRef<SpriteMaterial>(null), haloObject = useRef<Sprite>(null), pulseStart = useRef<number | null>(null);
   const source = node.document === null;
   const hollow = prominent && !selected && coReadingIndex < 0 && !source;
-  const tint = selected ? color.violet : coReadingIndex === 0 ? color.violet : coReadingIndex === 1 ? color.blue : accent ?? (source ? color.grey : stableTint(node.id, groupTone));
-  const radius = selected ? 0.4 : prominent ? 0.3 : source ? connectionCount >= 20 ? 0.27 : connectionCount >= 8 ? 0.21 : 0.18 : node.degree >= 3 ? 0.24 : 0.17;
-  const glowScale = selected ? 8.4 : prominent ? 7.2 : source ? connectionCount >= 20 ? 7.8 : 6.6 : node.degree >= 3 ? 6.8 : 5.8;
-  const glowOpacity = dimmed ? 0.07 : selected ? 0.34 : prominent ? 0.19 : source ? connectionCount >= 20 ? 0.18 : 0.13 : node.degree >= 3 ? 0.17 : 0.12;
+  const tint = selected ? color.violet : coReadingIndex === 0 ? color.violet : coReadingIndex === 1 ? color.blue : accent ?? (source ? color[groupTone] : stableTint(node.id, groupTone));
+  const radius = selected ? 0.48 : prominent ? 0.32 : source ? connectionCount >= 20 ? 0.31 : connectionCount >= 8 ? 0.25 : 0.22 : node.degree >= 3 ? 0.24 : 0.17;
+  const glowScale = selected ? 8.8 : prominent ? 7.8 : source ? connectionCount >= 20 ? 7.8 : 6.6 : node.degree >= 3 ? 7.2 : 6.6;
+  const glowOpacity = dimmed ? 0.06 : selected ? 0.34 : prominent ? 0.2 : source ? connectionCount >= 20 ? 0.2 : 0.15 : node.degree >= 3 ? 0.12 : 0.1;
+  const glowSize = radius * glowScale;
   const sourceHub = source && connectionCount >= 8;
   const pick = (event: { stopPropagation: () => void }) => { event.stopPropagation(); onNode(node.id); };
   const hover = (next: boolean) => (event: { stopPropagation: () => void }) => { event.stopPropagation(); setHovered(next); };
+  useEffect(() => {
+    if (!selected || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      pulseStart.current = null;
+      return;
+    }
+    pulseStart.current = performance.now();
+    invalidate();
+  }, [selected, invalidate]);
+  useFrame(() => {
+    if (!selected || pulseStart.current === null) return;
+    const progress = Math.min(1, (performance.now() - pulseStart.current) / 760);
+    const lift = Math.sin(progress * Math.PI);
+    if (halo.current) halo.current.opacity = glowOpacity + lift * 0.05;
+    haloObject.current?.scale.set(glowSize * (1 + lift * 0.05), glowSize * (1 + lift * 0.05), 1);
+    if (progress < 1) invalidate();
+    else pulseStart.current = null;
+  });
   return <group position={position}>
-    <sprite scale={[radius * glowScale, radius * glowScale, 1]} renderOrder={1}>
-      <spriteMaterial map={glowTexture} color={tint} transparent opacity={glowOpacity} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
+    <sprite ref={haloObject} scale={[glowSize, glowSize, 1]} renderOrder={1}>
+      <spriteMaterial ref={halo} map={glowTexture} color={tint} transparent opacity={glowOpacity} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
     </sprite>
     <mesh rotation={source ? [0, 0, -0.12] : [0, 0, 0]} onClick={pick} onPointerOver={hover(true)} onPointerOut={hover(false)}>
       {source ? <boxGeometry args={[radius * 1.15, radius * 1.48, radius * 0.22]} /> : <sphereGeometry args={[radius, 12, 10]} />}
-      <meshBasicMaterial color={tint} transparent opacity={dimmed ? 0.28 : source ? 1 : selected ? 0.56 : hollow ? 0.15 : prominent ? 0.38 : 0.82} blending={!source && (selected || prominent) ? AdditiveBlending : undefined} depthWrite={false} toneMapped={false} />
+      <meshBasicMaterial color={tint} transparent opacity={dimmed ? 0.3 : source ? 1 : selected ? 0.56 : hollow ? 0.15 : prominent ? 0.36 : 0.72} blending={!source && (selected || prominent) ? AdditiveBlending : undefined} depthWrite={false} toneMapped={false} />
     </mesh>
     <mesh position={[0, 0, radius * 0.5]}>
       {source ? <boxGeometry args={[radius * 0.52, radius * 0.1, radius * 0.06]} /> : <sphereGeometry args={[radius * (hollow ? 0.18 : 0.26), 16, 12]} />}
       <meshBasicMaterial color={source ? '#dbf5ff' : '#fff8ff'} transparent opacity={dimmed ? 0.28 : hollow ? 0.9 : 0.76} depthWrite={false} toneMapped={false} />
     </mesh>
+    {source && <mesh position={[0, -radius * 0.22, radius * 0.5]}>
+      <boxGeometry args={[radius * 0.36, radius * 0.065, radius * 0.05]} />
+      <meshBasicMaterial color="#d9f3ff" transparent opacity={0.78} depthWrite={false} toneMapped={false} />
+    </mesh>}
     {(selected || coReadingIndex >= 0 || sourceHub || hollow) && <mesh><torusGeometry args={[radius + 0.1, selected ? 0.018 : hollow ? 0.008 : sourceHub ? 0.01 : 0.013, 6, 40]} /><meshBasicMaterial color={tint} transparent opacity={hollow ? 0.54 : 0.68} blending={AdditiveBlending} depthWrite={false} toneMapped={false} /></mesh>}
     {selected && <mesh><ringGeometry args={[radius + 0.22, radius + 0.31, 48]} /><meshBasicMaterial color={tint} transparent opacity={0.07} blending={AdditiveBlending} depthWrite={false} side={2} toneMapped={false} /></mesh>}
     <mesh onClick={pick} onPointerOver={hover(true)} onPointerOut={hover(false)}><sphereGeometry args={[Math.max(0.38, radius), 8, 6]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>
@@ -277,6 +302,30 @@ function SpatialField({ presentation }: { presentation: KnowledgeGraph3DProps['p
   </group>;
 }
 
+function Stardust({ glowTexture, presentation }: { glowTexture: CanvasTexture; presentation: KnowledgeGraph3DProps['presentation'] }) {
+  const layers = useMemo(() => [
+    { seed: 17, color: '#8b9be0', count: presentation === 'question' ? 58 : 84 },
+    { seed: 71, color: '#a087d7', count: presentation === 'question' ? 44 : 60 },
+  ], [presentation]);
+  return <group renderOrder={-3} position={[0, -0.2, -4.15]}>
+    {layers.map(layer => {
+      const positions = new Float32Array(layer.count * 3);
+      for (let index = 0; index < layer.count; index += 1) {
+        const x = Math.sin((index + 1) * 12.9898 + layer.seed) * 43758.5453;
+        const y = Math.sin((index + 1) * 39.3467 + layer.seed * 1.7) * 24634.6345;
+        const z = Math.sin((index + 1) * 73.156 + layer.seed * 0.37) * 18274.235;
+        positions[index * 3] = (x - Math.floor(x) - 0.5) * 21;
+        positions[index * 3 + 1] = (y - Math.floor(y) - 0.5) * 12.5;
+        positions[index * 3 + 2] = (z - Math.floor(z)) * 0.8;
+      }
+      return <points key={layer.seed}>
+        <bufferGeometry><bufferAttribute attach="attributes-position" args={[positions, 3]} /></bufferGeometry>
+        <pointsMaterial map={glowTexture} color={layer.color} size={presentation === 'question' ? 0.078 : 0.074} sizeAttenuation transparent opacity={presentation === 'question' ? 0.22 : 0.26} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
+      </points>;
+    })}
+  </group>;
+}
+
 function Scene({ graph, layout, presentation, selectedNodeId, selectedEdgeId, coReadingIds, onNode, onEdge, camera, remembered, resetSignal, zoomRequest, onCamera, host }: {
   graph: KnowledgeGraph3DProps['graph']; layout: ReturnType<typeof constellationLayout>;
   presentation: KnowledgeGraph3DProps['presentation']; selectedNodeId: string | null; selectedEdgeId: string | null;
@@ -332,17 +381,18 @@ function Scene({ graph, layout, presentation, selectedNodeId, selectedEdgeId, co
   return <>
     <color attach="background" args={['#070c16']} />
     <SpatialField presentation={presentation} />
+    <Stardust glowTexture={glowTexture} presentation={presentation} />
     <CameraRig initial={camera} remembered={remembered} home={cameraFor(layout.groups, presentation)} presentation={presentation} resetSignal={resetSignal} zoomRequest={zoomRequest} onCamera={onCamera} host={host} />
     {layout.groups.map((group, groupIndex) => { const outline = groupOutline(group, presentation === 'question' ? 0.77 : 1); const activeGroup = group.id === selectedGroup?.id; const bridgeKindsForGroup = bridgeKinds.get(group.id); const bridgeSummary = [
       bridgeKindsForGroup?.supports ? `${bridgeKindsForGroup.supports} 支持桥` : '',
       bridgeKindsForGroup?.challenges ? `${bridgeKindsForGroup.challenges} 挑战桥` : '',
     ].filter(Boolean).join(' · '); return <group key={group.id} position={presentation === 'question' ? [group.center[0] * 0.72, group.center[1] * 0.72, -3] : group.center}>
-      <sprite position={[0, 0, -0.08]} scale={[outline.radius * 2.8, outline.radius * 1.92, 1]} renderOrder={-1}>
-        <spriteMaterial map={glowTexture} color={color[group.tone]} transparent opacity={presentation === 'question' ? 0.04 : activeGroup ? 0.15 : 0.09} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
+      <sprite position={[0, 0, -0.08]} scale={[outline.radius * 2.9, outline.radius * 2, 1]} renderOrder={-1}>
+        <spriteMaterial map={glowTexture} color={color[group.tone]} transparent opacity={presentation === 'question' ? 0.035 : activeGroup ? 0.12 : 0.08} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
       </sprite>
-      <mesh><shapeGeometry args={[outline.shape]} /><meshBasicMaterial color={color[group.tone]} transparent opacity={presentation === 'question' ? 0.022 : activeGroup ? 0.14 : 0.085} depthWrite={false} side={2} /></mesh>
-      <Line points={outline.points} color={color[group.tone]} lineWidth={activeGroup ? 0.85 : 0.6} transparent opacity={presentation === 'question' ? 0.06 : activeGroup ? 0.44 : 0.28} dashed={!activeGroup} dashSize={0.1} gapSize={0.14} />
-      <Line points={outline.points.map(([x, y, z]) => [x * 0.82, y * 0.82, z + 0.03] as Point3)} color={color[group.tone]} lineWidth={0.32} transparent opacity={presentation === 'question' ? 0.032 : activeGroup ? 0.15 : 0.09} dashed />
+      <mesh><shapeGeometry args={[outline.shape]} /><meshBasicMaterial color={color[group.tone]} transparent opacity={presentation === 'question' ? 0.014 : activeGroup ? 0.075 : 0.035} depthWrite={false} side={2} /></mesh>
+      <Line points={outline.points} color={color[group.tone]} lineWidth={activeGroup ? 0.78 : 0.55} transparent opacity={presentation === 'question' ? 0.045 : activeGroup ? 0.24 : 0.14} dashed={!activeGroup} dashSize={0.1} gapSize={0.14} />
+      <Line points={outline.points.map(([x, y, z]) => [x * 0.82, y * 0.82, z + 0.03] as Point3)} color={color[group.tone]} lineWidth={0.3} transparent opacity={presentation === 'question' ? 0.024 : activeGroup ? 0.13 : 0.075} dashed />
       {presentation === 'constellation' && group.id !== selectedGroup?.id && <Billboard position={[-outline.radius * 0.75, outline.radius * 1.02 - 0.2, 0]} prominent className={`group group-${group.tone} group-index-${groupIndex}${pathGroupIds.has(group.id) ? ' group-path' : ''}`} delayMs={groupIndex * 45}>{group.name}<small>{group.members.length} 节点{bridgeSummary ? ` · ${bridgeSummary}` : ''}</small></Billboard>}
     </group>; })}
     {drawn.map(edge => <RelationLine key={edge.id} edge={edge} from={layout.positions[edge.from]} to={layout.positions[edge.to]} bridge={bridgeIds.has(edge.id)} background={edge.id !== selectedEdgeId && (presentation === 'constellation' ? edge.relation.stance === 'context' || edge.relation.stance === 'navigation' : !!reading && edge.from !== reading.focus && edge.to !== reading.focus)} highlighted={edge.id === selectedEdgeId || (reading ? edge.to === reading.focus && [...reading.supports, ...reading.challenges].includes(edge.from) : edge.from === selectedNodeId || edge.to === selectedNodeId)} accent={reading?.supports[1] === edge.from && edge.to === reading.focus && edge.relation.stance === 'supports' ? color.blue : undefined} onEdge={onEdge} />)}
@@ -426,7 +476,7 @@ export function KnowledgeGraph3D({ graph, presentation, selectedNodeId, selected
     <details className="graph-scope-details">
       <summary title={scopeSummary}>{scopeSummary}</summary>
       <div style={{ maxHeight: 230, overflow: 'auto', marginTop: 7 }}>
-        <p>分组按当前返回连接生成，不代表全库主题。来源靠近其主要连接群落；跨群支持/挑战使用更明显的桥梁。A/B/C/D只表示本次视角的阅读位置。线按来源 → 目标，依据状态以原记录为准。</p>
+        <p>背景微尘是空间纹理，不是知识节点或关系。分组按当前返回连接生成，不代表全库主题。来源靠近其主要连接群落；跨群支持/挑战使用更明显的桥梁。A/B/C/D只表示本次视角的阅读位置。线按来源 → 目标，依据状态以原记录为准。</p>
         {graph.nodes.map(node => <button key={node.id} type="button" onClick={() => onNode(node.id)} style={listButton}>{node.document === null ? '◇ 来源' : '● 认识'} · {node.title}</button>)}
         {graph.edges.map((edge, index) => <button key={edge.id} type="button" onClick={() => onEdge(edge.id)} style={listButton} title={`${edge.id} · ${edge.relation.relationVersion}`} aria-label={`关系 ${index + 1}，${edge.id}，${relationName[edge.relation.stance]}，${edge.from} 到 ${edge.to}，依据${statusName[edge.relation.evidenceStatus]}`}>#{index + 1} {relationName[edge.relation.stance]} · {graph.nodes.find(node => node.id === edge.from)?.shortLabel ?? edge.from} → {graph.nodes.find(node => node.id === edge.to)?.shortLabel ?? edge.to} · 依据{statusName[edge.relation.evidenceStatus]}</button>)}
       </div>

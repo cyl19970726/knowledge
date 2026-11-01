@@ -45,7 +45,7 @@ body{background:#0b1119;color:#e9edf5}
 .research-trail h3 span{color:#8b97ad;font-weight:500}
 .research-trail p{font-size:12px;line-height:1.7;margin:0;color:#d2d8e6;overflow-wrap:anywhere}
 .research-trail .trail-coverage{padding:3px 10px;color:#8795ac;font-size:11px}
-.trail-list{max-height:35vh;overflow:auto}
+.trail-list{max-height:35vh;overflow-y:auto;overflow-x:hidden}
 .trail-item{display:flex;align-items:flex-start;gap:8px;width:100%;text-align:left;border:0;background:transparent;color:#d1daea;font-size:12px;line-height:1.55;padding:7px 0;overflow-wrap:anywhere}
 .trail-item.chosen{color:#d9baff}.trail-item svg{margin-left:auto;flex:none}
 .trail-dot{width:10px;height:10px;flex:none;border-radius:50%;background:#8b70c8;margin-top:4px}.trail-item.chosen .trail-dot{background:#b57aff}
@@ -181,7 +181,7 @@ body{background:#0b1119;color:#e9edf5}
 
 /* One workbench, three views over the same authorized selection. */
 .perspective-tabs{display:flex;align-items:center;gap:3px;padding:3px;border:1px solid #344258;border-radius:9px;background:#111b27;flex:none}
-.perspective-tabs button{border:0;background:transparent;color:#a9b8ce;border-radius:7px;padding:10px 17px;font-weight:700;font-size:13px;transition:background .18s ease,color .18s ease,box-shadow .18s ease}
+.perspective-tabs button{border:0;background:transparent;color:#a9b8ce;border-radius:7px;padding:10px 17px;font-weight:700;font-size:13px;transition:color .16s ease,box-shadow .16s ease}
 .perspective-tabs button.selected{background:#302044;color:#e4c8ff;box-shadow:inset 0 0 0 1px #8157bb}
 .view-explore .workbench-heading{height:auto;min-height:58px}
 .view-explore .workbench-heading>div:first-child{min-width:0}
@@ -261,7 +261,7 @@ body{background:#0b1119;color:#e9edf5}
 .view-explore .graph-caption{background:#0c1622;color:#a4b5ca;border-top:1px solid #203047}
 .view-explore .graph-caption span{display:inline}
 .view-explore .graph-caption span+span:before{content:' · '}
-.trail-item.current{background:linear-gradient(90deg,#43306b7c,#30284c6b);color:#f0dcff;border-left:3px solid #a56df3;padding:10px 8px;margin:0 -8px;width:calc(100% + 16px);border-radius:4px}
+.trail-item.current{background:linear-gradient(90deg,#43306b7c,#30284c6b);color:#f0dcff;border-left:3px solid #a56df3;padding:10px 8px;margin:0;width:100%;border-radius:4px}
 .trail-item.current .trail-dot{background:#b771ff;box-shadow:0 0 12px #a458f1}
 .view-explore .inspector-card{background:#101a26;border-color:#2a394b;padding:15px 16px}
 .view-explore .inspector-body h2{font-size:22px;line-height:1.35;margin:9px 0 12px;color:#f4edfc}
@@ -304,7 +304,7 @@ body{background:#0b1119;color:#e9edf5}
 .graph-scope-details>summary{cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @keyframes workbench-surface-in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 @keyframes workbench-label-in{from{opacity:0;transform:translateY(3px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
-@media(max-width:680px){.view-explore .workbench-heading h1{font-size:22px}.view-explore .perspective-tabs{width:calc(100% - 6px);justify-content:space-between;margin-bottom:9px}.view-explore .graph-toolbar{overflow-x:auto}.graph3d-label{max-width:115px;padding:4px 6px}.graph3d-label span{font-size:11px}.graph3d-label.role-focus{max-width:145px;translate:-6px -12px}.graph3d-label.role-focus span{font-size:12px}.graph3d-label.role-support.support-0{translate:-5px 0}.graph3d-label.role-challenge{translate:-7px -14px}.graph3d-label.role-source{translate:-24px -48px}.graph3d-label.role-path,.graph3d-label.group-path,.graph3d-label.group-index-3{display:none}.graph3d-label.group-index-0{translate:40px 0}.graph3d-label.group-index-2{translate:-28px 0}.graph3d-label.role-overview{min-width:0;max-width:none;padding:2px 7px;border-radius:999px;translate:0 22px}.graph3d-label.role-overview strong{display:block;font-size:9px;color:#e8ceff}.graph3d-label.role-overview span{display:none}.view-explore .graph-caption{font-size:11px;color:#9fb1c7}.graph-scope-details{left:7px;right:7px;bottom:8px;max-width:none;padding:4px 7px;font-size:11px}.graph-scope-details>summary{line-height:1.45}}
+@media(max-width:680px){.view-explore .workbench-heading h1{font-size:22px}.view-explore .perspective-tabs{width:calc(100% - 6px);justify-content:space-between;margin-bottom:9px}.view-explore .graph-toolbar{overflow-x:auto}.graph3d-label{max-width:115px;padding:4px 6px}.graph3d-label span{font-size:11px}.graph3d-label.role-focus{max-width:145px;translate:-6px -12px}.graph3d-label.role-focus span{font-size:12px}.graph3d-label.role-support.support-0{translate:-5px 0}.graph3d-label.role-challenge{translate:-7px -14px}.graph3d-label.role-source{translate:-24px -48px}.graph3d-label.role-path,.graph3d-label.group-path,.graph3d-label.group-index-3{display:none}.graph3d-label.group-index-0{translate:40px 0}.graph3d-label.group-index-2{translate:-28px 0}.graph3d-label.role-overview{min-width:0;max-width:none;padding:2px 7px;border-radius:999px;translate:0 14px}.graph3d-label.role-overview strong{display:block;font-size:9px;color:#e8ceff}.graph3d-label.role-overview span{display:none}.view-explore .graph-caption{font-size:11px;color:#9fb1c7}.graph-scope-details{left:7px;right:7px;bottom:8px;max-width:none;padding:4px 7px;font-size:11px}.graph-scope-details>summary{line-height:1.45}}
 @media(min-width:681px){.graph3d-label.group-index-0{translate:5px 0}.graph3d-label.group-index-4{translate:20px 24px}}
 @media(prefers-reduced-motion:reduce){.perspective-tabs button{transition:none}.graph-surface,.graph3d-label{animation:none}}
 
@@ -317,7 +317,7 @@ body{background:#0b1119;color:#e9edf5}
 .view-explore .perspective-tabs{margin:0;align-self:center;background:#0c1521;border-color:#263548;box-shadow:inset 0 1px #ffffff05,0 8px 24px #0004}
 .view-explore .perspective-tabs button{min-width:76px;padding:10px 15px}
 .view-explore .explore-grid{grid-template-columns:minmax(0,1fr) 282px;gap:10px}
-.view-explore .research-trail{width:190px;flex-basis:190px}
+.view-explore .research-trail{width:190px;flex-basis:190px;overflow-x:hidden}
 .view-explore .graph-card{border-color:#223348;box-shadow:inset 0 1px #ffffff05,0 18px 44px #0004}
 .view-explore .graph-surface-3d{background:radial-gradient(ellipse at 51% 44%,#111b2a 0%,#090f19 52%,#060a12 100%)}
 .view-explore .research-trail{background:linear-gradient(180deg,#111a27,#0d151f);border-color:#263447}
@@ -328,7 +328,7 @@ body{background:#0b1119;color:#e9edf5}
 @media(min-width:681px){.graph3d-label.group-path{display:none}}
 @media(min-width:981px) and (max-width:1180px){.graph3d-label.role-path{display:none}.graph3d-label.role-overview{min-width:0;max-width:none;padding:2px 7px;border-radius:999px;translate:0 22px}.graph3d-label.role-overview strong{display:block;font-size:9px;color:#e8ceff}.graph3d-label.role-overview span{display:none}}
 @media(max-width:980px){.view-explore .workbench-heading{height:auto;min-height:64px;align-items:flex-start;flex-direction:column;gap:9px;margin-bottom:10px}.view-explore .perspective-tabs{align-self:flex-start}.view-explore .explore-grid{grid-template-columns:1fr}}
-@media(max-width:680px){.view-explore .graph-surface{height:430px}}
+@media(max-width:680px){.view-explore .graph-surface{height:390px}}
 .view-explore .graph-card{position:relative}
 @media(min-width:981px){.view-explore .graph-toolbar{position:absolute;z-index:5;top:12px;left:12px;right:12px;height:auto;padding:0;background:transparent;border:0;pointer-events:none}.view-explore .graph-toolbar .view-switch,.view-explore .graph-toolbar .toolbar-actions{pointer-events:auto;padding:3px;border:1px solid #29394ee8;border-radius:9px;background:#09131fe8;box-shadow:0 8px 24px #0008,inset 0 1px #ffffff08;backdrop-filter:blur(12px)}.view-explore .graph-toolbar .seg{border:0;background:transparent;padding:7px 11px}.view-explore .graph-toolbar .seg.selected{background:#29223d;box-shadow:inset 0 0 0 1px #70539d}.view-explore .graph-toolbar .small-icon{width:31px;height:31px;border:0;background:transparent}.view-explore .graph-toolbar .toolbar-separator{height:19px;background:#354258;margin:0 4px}}
 @media(max-width:980px){.view-explore .graph-toolbar{position:relative;top:auto;left:auto;right:auto;height:44px;pointer-events:auto;background:#0b1521}}

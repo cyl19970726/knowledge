@@ -1,14 +1,14 @@
 {
   "schemaVersion": "visual-review-r1@1",
   "status": "blocked",
-  "gitHead": "29f12ddc339b38e945fa9d7940378d01bc354067",
-  "reviewedAt": "2026-11-01T21:10:00+08:00",
+  "gitHead": "pending-refined-r1-commit",
+  "reviewedAt": "2026-11-01T21:42:00+08:00",
   "build": {
     "mode": "production-preview",
     "url": "http://127.0.0.1:4334/",
     "apiScope": "isolated synthetic knowledge-workbench-synthetic / 认知示例; no business database",
     "synthetic": true,
-    "browserZoom": "75% IAB device scale; CSS viewports were measured from window.innerWidth and innerHeight"
+    "browserZoom": "Isolated Chromium with CDP viewport override; CSS dimensions were measured from window.innerWidth and innerHeight at deviceScaleFactor 1"
   },
   "viewports": {
     "desktop": {
@@ -78,41 +78,76 @@
   },
   "scores": {
     "composition": 4.5,
-    "focusNarrative": 4,
-    "relationHierarchy": 4.5,
-    "starMaterial": 4,
-    "typographyCards": 4,
+    "focusNarrative": 4.5,
+    "relationHierarchy": 4,
+    "starMaterial": 4.5,
+    "typographyCards": 4.5,
     "motionFeedback": 4.5,
-    "responsive": 4.5,
-    "accessibility": 3,
-    "performanceStability": 3,
-    "referenceConsistency": 4,
-    "weightedTotal": 83
+    "responsive": 4,
+    "accessibility": 4,
+    "performanceStability": 4.5,
+    "referenceConsistency": 3,
+    "weightedTotal": 85.5
   },
   "performance": {
-    "graphReadyMs": 1069,
-    "medianFrameMs": 33,
-    "p95FrameMs": 37,
-    "bestObservedMedianFrameMs": 9,
-    "bestObservedP95FrameMs": 11,
-    "maxFrameMs": 35,
+    "graphReadyMs": 1647,
+    "medianFrameMs": 8.4,
+    "p95FrameMs": 9.8,
+    "bestObservedMedianFrameMs": 8.3,
+    "bestObservedP95FrameMs": 9.2,
+    "maxFrameMs": 11.5,
     "selectionFeedbackMs": 37,
-    "cameraTransitionEndMs": 390,
+    "cameraTransitionEndMs": 325,
     "viewSwitchCycles": 12,
     "graphModeSwitches": 10,
     "contextLosses": 0,
+    "frameRuns": [
+      {
+        "name": "question-to-constellation",
+        "samples": 8,
+        "medianFrameMs": 7.8,
+        "p95FrameMs": 268.9,
+        "note": "Cold first transition after reconnect; excluded from the steady foreground result."
+      },
+      {
+        "name": "constellation-to-question",
+        "samples": 39,
+        "medianFrameMs": 8.3,
+        "p95FrameMs": 9.2
+      },
+      {
+        "name": "question-to-constellation",
+        "samples": 39,
+        "medianFrameMs": 8.3,
+        "p95FrameMs": 9.8
+      },
+      {
+        "name": "constellation-to-question",
+        "samples": 38,
+        "medianFrameMs": 8.3,
+        "p95FrameMs": 9.3
+      },
+      {
+        "name": "question-to-constellation",
+        "samples": 39,
+        "medianFrameMs": 8.3,
+        "p95FrameMs": 9.5
+      }
+    ],
     "stressGraph": {
       "nodes": 200,
       "edges": 500,
       "status": "pass",
-      "readyMs": 183,
+      "readyMs": 205,
       "drawnEdges": 500,
-      "frameSamples": 21,
-      "medianFrameMs": 33,
-      "p95FrameMs": 34.3,
-      "bestObservedMedianFrameMs": 8.3
+      "frameSamples": 76,
+      "frameSampleRuns": [74, 76, 76],
+      "medianFrameMs": 8.4,
+      "p95FrameMs": 9.6,
+      "bestObservedMedianFrameMs": 8.3,
+      "bestObservedP95FrameMs": 9.1
     },
-    "environmentNote": "The IAB frame cadence was not stable across repeated foreground runs. The same 47/138 view once produced a 9 ms median / 11 ms p95 and later produced 33 ms / 37 ms at the selected visible tab; the 200/500 scene likewise moved from 8.3 ms / 9.2 ms to 33 ms / 34.3 ms. The R1 <=20 ms target is therefore not proven on a stable foreground runtime."
+    "environmentNote": "Unfocused or occluded browser windows were capped near 30 Hz. With a dedicated Chromium window brought to the foreground, focus emulation enabled, and the page lifecycle set to active, four steady 47/138 transitions and three 200/500 runs were stable below 12 ms p95. The pass is scoped to this focused foreground runtime."
   },
   "console": {
     "errors": [],
@@ -136,13 +171,15 @@
     "docs/assets/knowledge-workbench/r1/question-mobile.jpg",
     "docs/assets/knowledge-workbench/r1/list-mobile.jpg",
     "docs/assets/knowledge-workbench/r1/reader-mobile.jpg",
-    "docs/assets/knowledge-workbench/r1/stress-200x500.jpg"
+    "docs/assets/knowledge-workbench/r1/stress-200x500.jpg",
+    "docs/assets/knowledge-workbench/r1/motion-sequence.jpg",
+    "docs/assets/knowledge-workbench/r1/reduced-motion-1440.jpg"
   ],
   "userAcceptance": null,
   "limitations": [
-    "The independent review reached 85.0 when using the fastest performance sample. Repeating the same frame checks under the selected visible IAB produced a 33 ms median, so the conservative structured total is 83.0 and remains below threshold.",
-    "Reduced-motion behavior was implemented and inspected in code, but the operating-system media preference could not be changed in this environment, so it is recorded as not_run.",
-    "Foreground and stress frame pacing varied between roughly 9 ms and 33 ms medians across repeated runs. Results are specific to this Mac/IAB runtime and the synthetic graph sizes, and the R1 continuous frame target remains unproven.",
+    "The strict independent visual review scores the revised candidate 85.5/100, with every dimension at least 3/5. Final visual acceptance by the user is still required for the later `passed` state.",
+    "Browser media emulation confirms reduced motion: the media query is true, CSS animations are none, the camera is settled immediately and remains unchanged after 900 ms. The actual macOS accessibility preference was not changed, so the system-level hard blocker remains `not_run`.",
+    "Unfocused browser tabs and windows are capped near 30 Hz in this environment. Three focused 200/500 runs produced 8.3–8.4 ms medians and 9.1–9.6 ms p95 values with all 500 edges drawn; results apply only to this Mac, focused runtime and synthetic graph sizes.",
     "The current API still does not expose an authoritative graph-as-of or cursor projection, so the evolution view remains a single-object published-version comparison rather than whole-network history.",
     "All data are the isolated synthetic engineering fixture. This review does not establish real semantic quality, reader comprehension, business effect, deployment, or user visual acceptance."
   ],
