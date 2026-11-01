@@ -1,8 +1,8 @@
 {
   "schemaVersion": "visual-review-r1@1",
   "status": "blocked",
-  "gitHead": "f0be9c890e93e267c3baeeee88f8aae23b3fa649",
-  "reviewedAt": "2026-11-01T19:45:00+08:00",
+  "gitHead": "pending-structural-review-commit",
+  "reviewedAt": "2026-11-01T21:10:00+08:00",
   "build": {
     "mode": "production-preview",
     "url": "http://127.0.0.1:4334/",
@@ -44,9 +44,9 @@
   },
   "visual": {
     "graphStartY": 148.7,
-    "graphWidth": 836.7,
-    "graphHeight": 835.5,
-    "rightNoteWidth": 292,
+    "graphWidth": 864.7,
+    "graphHeight": 832.2,
+    "rightNoteWidth": 282,
     "persistentLabelCount": {
       "constellation": 8,
       "question": 5
@@ -77,22 +77,25 @@
     "T8_assistive_technology": "pass"
   },
   "scores": {
-    "composition": 4,
-    "focusNarrative": 3.5,
-    "relationHierarchy": 3.5,
-    "starMaterial": 3.5,
-    "typographyCards": 3.5,
-    "motionFeedback": 4,
-    "responsive": 3.5,
-    "accessibility": 2.5,
+    "composition": 4.5,
+    "focusNarrative": 4,
+    "relationHierarchy": 4.5,
+    "starMaterial": 4,
+    "typographyCards": 4,
+    "motionFeedback": 4.5,
+    "responsive": 4.5,
+    "accessibility": 3,
     "performanceStability": 3,
-    "referenceConsistency": 3,
-    "weightedTotal": 71.5
+    "referenceConsistency": 4,
+    "weightedTotal": 83
   },
   "performance": {
-    "graphReadyMs": 1679,
+    "graphReadyMs": 1069,
     "medianFrameMs": 33,
     "p95FrameMs": 37,
+    "bestObservedMedianFrameMs": 9,
+    "bestObservedP95FrameMs": 11,
+    "maxFrameMs": 35,
     "selectionFeedbackMs": 37,
     "cameraTransitionEndMs": 390,
     "viewSwitchCycles": 12,
@@ -102,12 +105,14 @@
       "nodes": 200,
       "edges": 500,
       "status": "pass",
-      "readyMs": 197,
+      "readyMs": 183,
       "drawnEdges": 500,
-      "medianFrameMs": 33.2,
-      "p95FrameMs": 33.9
+      "frameSamples": 21,
+      "medianFrameMs": 33,
+      "p95FrameMs": 34.3,
+      "bestObservedMedianFrameMs": 8.3
     },
-    "environmentNote": "The active IAB page and a bare requestAnimationFrame probe both measured a 33.30 ms median. The R1 <=20 ms frame interval therefore cannot be verified on this 30 Hz-capped environment; no uncapped hardware result is claimed."
+    "environmentNote": "The IAB frame cadence was not stable across repeated foreground runs. The same 47/138 view once produced a 9 ms median / 11 ms p95 and later produced 33 ms / 37 ms at the selected visible tab; the 200/500 scene likewise moved from 8.3 ms / 9.2 ms to 33 ms / 34.3 ms. The R1 <=20 ms target is therefore not proven on a stable foreground runtime."
   },
   "console": {
     "errors": [],
@@ -135,9 +140,9 @@
   ],
   "userAcceptance": null,
   "limitations": [
-    "The independent visual review remained below the R1 threshold; later removal of the final mobile label collision does not substitute for a new complete visual sign-off.",
+    "The independent review reached 85.0 when using the fastest performance sample. Repeating the same frame checks under the selected visible IAB produced a 33 ms median, so the conservative structured total is 83.0 and remains below threshold.",
     "Reduced-motion behavior was implemented and inspected in code, but the operating-system media preference could not be changed in this environment, so it is recorded as not_run.",
-    "The available IAB runtime is capped near 30 Hz; the 47/138 graph matched the bare 33.30 ms frame interval, but the R1 <=20 ms target remains unverified on an uncapped desktop runtime.",
+    "Foreground and stress frame pacing varied between roughly 9 ms and 33 ms medians across repeated runs. Results are specific to this Mac/IAB runtime and the synthetic graph sizes, and the R1 continuous frame target remains unproven.",
     "The current API still does not expose an authoritative graph-as-of or cursor projection, so the evolution view remains a single-object published-version comparison rather than whole-network history.",
     "All data are the isolated synthetic engineering fixture. This review does not establish real semantic quality, reader comprehension, business effect, deployment, or user visual acceptance."
   ],

@@ -183,10 +183,11 @@ function NodeGlyph({ node, position, selected, prominent, coReadingIndex, dimmed
 }) {
   const [hovered, setHovered] = useState(false);
   const source = node.document === null;
+  const hollow = prominent && !selected && coReadingIndex < 0 && !source;
   const tint = selected ? color.violet : coReadingIndex === 0 ? color.violet : coReadingIndex === 1 ? color.blue : accent ?? (source ? color.grey : stableTint(node.id, groupTone));
-  const radius = selected ? 0.4 : prominent ? 0.3 : source ? connectionCount >= 20 ? 0.27 : connectionCount >= 8 ? 0.21 : 0.17 : node.degree >= 3 ? 0.21 : 0.14;
-  const glowScale = selected ? 8.4 : prominent ? 7.2 : source ? connectionCount >= 20 ? 7.8 : 6.6 : node.degree >= 3 ? 6.6 : 5.5;
-  const glowOpacity = dimmed ? 0.06 : selected ? 0.34 : prominent ? 0.19 : source ? connectionCount >= 20 ? 0.18 : 0.12 : node.degree >= 3 ? 0.15 : 0.09;
+  const radius = selected ? 0.4 : prominent ? 0.3 : source ? connectionCount >= 20 ? 0.27 : connectionCount >= 8 ? 0.21 : 0.18 : node.degree >= 3 ? 0.24 : 0.17;
+  const glowScale = selected ? 8.4 : prominent ? 7.2 : source ? connectionCount >= 20 ? 7.8 : 6.6 : node.degree >= 3 ? 6.8 : 5.8;
+  const glowOpacity = dimmed ? 0.07 : selected ? 0.34 : prominent ? 0.19 : source ? connectionCount >= 20 ? 0.18 : 0.13 : node.degree >= 3 ? 0.17 : 0.12;
   const sourceHub = source && connectionCount >= 8;
   const pick = (event: { stopPropagation: () => void }) => { event.stopPropagation(); onNode(node.id); };
   const hover = (next: boolean) => (event: { stopPropagation: () => void }) => { event.stopPropagation(); setHovered(next); };
@@ -196,13 +197,13 @@ function NodeGlyph({ node, position, selected, prominent, coReadingIndex, dimmed
     </sprite>
     <mesh rotation={source ? [0, 0, -0.12] : [0, 0, 0]} onClick={pick} onPointerOver={hover(true)} onPointerOut={hover(false)}>
       {source ? <boxGeometry args={[radius * 1.15, radius * 1.48, radius * 0.22]} /> : <sphereGeometry args={[radius, 12, 10]} />}
-      <meshBasicMaterial color={tint} transparent opacity={dimmed ? 0.32 : source ? 1 : selected ? 0.56 : prominent ? 0.48 : 0.88} blending={!source && (selected || prominent) ? AdditiveBlending : undefined} depthWrite={false} toneMapped={false} />
+      <meshBasicMaterial color={tint} transparent opacity={dimmed ? 0.28 : source ? 1 : selected ? 0.56 : hollow ? 0.15 : prominent ? 0.38 : 0.82} blending={!source && (selected || prominent) ? AdditiveBlending : undefined} depthWrite={false} toneMapped={false} />
     </mesh>
     <mesh position={[0, 0, radius * 0.5]}>
-      {source ? <boxGeometry args={[radius * 0.52, radius * 0.1, radius * 0.06]} /> : <sphereGeometry args={[radius * 0.26, 16, 12]} />}
-      <meshBasicMaterial color={source ? '#dbf5ff' : '#fff8ff'} transparent opacity={dimmed ? 0.28 : 0.82} depthWrite={false} toneMapped={false} />
+      {source ? <boxGeometry args={[radius * 0.52, radius * 0.1, radius * 0.06]} /> : <sphereGeometry args={[radius * (hollow ? 0.18 : 0.26), 16, 12]} />}
+      <meshBasicMaterial color={source ? '#dbf5ff' : '#fff8ff'} transparent opacity={dimmed ? 0.28 : hollow ? 0.9 : 0.76} depthWrite={false} toneMapped={false} />
     </mesh>
-    {(selected || coReadingIndex >= 0 || sourceHub) && <mesh><torusGeometry args={[radius + 0.1, selected ? 0.018 : sourceHub ? 0.01 : 0.013, 6, 40]} /><meshBasicMaterial color={tint} transparent opacity={0.68} blending={AdditiveBlending} depthWrite={false} toneMapped={false} /></mesh>}
+    {(selected || coReadingIndex >= 0 || sourceHub || hollow) && <mesh><torusGeometry args={[radius + 0.1, selected ? 0.018 : hollow ? 0.008 : sourceHub ? 0.01 : 0.013, 6, 40]} /><meshBasicMaterial color={tint} transparent opacity={hollow ? 0.54 : 0.68} blending={AdditiveBlending} depthWrite={false} toneMapped={false} /></mesh>}
     {selected && <mesh><ringGeometry args={[radius + 0.22, radius + 0.31, 48]} /><meshBasicMaterial color={tint} transparent opacity={0.07} blending={AdditiveBlending} depthWrite={false} side={2} toneMapped={false} /></mesh>}
     <mesh onClick={pick} onPointerOver={hover(true)} onPointerOut={hover(false)}><sphereGeometry args={[Math.max(0.38, radius), 8, 6]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>
     {hovered && <Billboard position={[0, radius + 0.62, 0.25]} className={source ? 'role-source source-hover' : 'role-overview hover-card'} title={node.title}><strong><b>{source ? 'S' : 'i'}</b>{source ? '来源资料' : '认识'}</strong><span>{source ? `${connectionCount} 个相邻认识` : node.shortLabel}</span></Billboard>}
@@ -221,8 +222,10 @@ function RelationLine({ edge, from, to, highlighted, background, bridge, accent,
   const middle = start.clone().add(end).multiplyScalar(0.5);
   const bendSeed = [...edge.id].reduce((sum, character) => sum + character.charCodeAt(0), 0) % 2 ? 1 : -1;
   const perpendicular = new Vector3(-direction.y, direction.x, 0);
-  const control = middle.clone().addScaledVector(perpendicular, bridge ? bendSeed * 0.42 : 0);
-  const linePoints: Point3[] = bridge
+  const curved = bridge || edge.relation.stance === 'context' || edge.relation.stance === 'navigation';
+  const curveSize = bridge ? 0.42 : edge.relation.stance === 'context' ? 0.14 : 0.09;
+  const control = middle.clone().addScaledVector(perpendicular, curved ? bendSeed * curveSize : 0);
+  const linePoints: Point3[] = curved
     ? Array.from({ length: 13 }, (_, index) => {
       const t = index / 12, oneMinus = 1 - t;
       return [
@@ -334,8 +337,12 @@ function Scene({ graph, layout, presentation, selectedNodeId, selectedEdgeId, co
       bridgeKindsForGroup?.supports ? `${bridgeKindsForGroup.supports} 支持桥` : '',
       bridgeKindsForGroup?.challenges ? `${bridgeKindsForGroup.challenges} 挑战桥` : '',
     ].filter(Boolean).join(' · '); return <group key={group.id} position={presentation === 'question' ? [group.center[0] * 0.72, group.center[1] * 0.72, -3] : group.center}>
-      <mesh><shapeGeometry args={[outline.shape]} /><meshBasicMaterial color={color[group.tone]} transparent opacity={presentation === 'question' ? 0.014 : activeGroup ? 0.095 : 0.052} depthWrite={false} side={2} /></mesh>
-      <Line points={outline.points} color={color[group.tone]} lineWidth={activeGroup ? 0.85 : 0.6} transparent opacity={presentation === 'question' ? 0.05 : activeGroup ? 0.38 : 0.2} dashed={!activeGroup} dashSize={0.1} gapSize={0.14} />
+      <sprite position={[0, 0, -0.08]} scale={[outline.radius * 2.8, outline.radius * 1.92, 1]} renderOrder={-1}>
+        <spriteMaterial map={glowTexture} color={color[group.tone]} transparent opacity={presentation === 'question' ? 0.04 : activeGroup ? 0.15 : 0.09} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
+      </sprite>
+      <mesh><shapeGeometry args={[outline.shape]} /><meshBasicMaterial color={color[group.tone]} transparent opacity={presentation === 'question' ? 0.022 : activeGroup ? 0.14 : 0.085} depthWrite={false} side={2} /></mesh>
+      <Line points={outline.points} color={color[group.tone]} lineWidth={activeGroup ? 0.85 : 0.6} transparent opacity={presentation === 'question' ? 0.06 : activeGroup ? 0.44 : 0.28} dashed={!activeGroup} dashSize={0.1} gapSize={0.14} />
+      <Line points={outline.points.map(([x, y, z]) => [x * 0.82, y * 0.82, z + 0.03] as Point3)} color={color[group.tone]} lineWidth={0.32} transparent opacity={presentation === 'question' ? 0.032 : activeGroup ? 0.15 : 0.09} dashed />
       {presentation === 'constellation' && group.id !== selectedGroup?.id && <Billboard position={[-outline.radius * 0.75, outline.radius * 1.02 - 0.2, 0]} prominent className={`group group-${group.tone} group-index-${groupIndex}${pathGroupIds.has(group.id) ? ' group-path' : ''}`} delayMs={groupIndex * 45}>{group.name}<small>{group.members.length} 节点{bridgeSummary ? ` · ${bridgeSummary}` : ''}</small></Billboard>}
     </group>; })}
     {drawn.map(edge => <RelationLine key={edge.id} edge={edge} from={layout.positions[edge.from]} to={layout.positions[edge.to]} bridge={bridgeIds.has(edge.id)} background={edge.id !== selectedEdgeId && (presentation === 'constellation' ? edge.relation.stance === 'context' || edge.relation.stance === 'navigation' : !!reading && edge.from !== reading.focus && edge.to !== reading.focus)} highlighted={edge.id === selectedEdgeId || (reading ? edge.to === reading.focus && [...reading.supports, ...reading.challenges].includes(edge.from) : edge.from === selectedNodeId || edge.to === selectedNodeId)} accent={reading?.supports[1] === edge.from && edge.to === reading.focus && edge.relation.stance === 'supports' ? color.blue : undefined} onEdge={onEdge} />)}

@@ -258,7 +258,7 @@ body{background:#0b1119;color:#e9edf5}
 .view-explore .graph-card{border-color:#253448;background:#09121d}
 .view-explore .graph-toolbar{height:46px;background:#0d1723;border-bottom:1px solid #26374c}
 .view-explore .graph-surface{background:#070c16}
-.view-explore .graph-caption{background:#0c1622;color:#8fa4ba;border-top:1px solid #203047}
+.view-explore .graph-caption{background:#0c1622;color:#a4b5ca;border-top:1px solid #203047}
 .view-explore .graph-caption span{display:inline}
 .view-explore .graph-caption span+span:before{content:' · '}
 .trail-item.current{background:linear-gradient(90deg,#43306b7c,#30284c6b);color:#f0dcff;border-left:3px solid #a56df3;padding:10px 8px;margin:0 -8px;width:calc(100% + 16px);border-radius:4px}
@@ -285,15 +285,15 @@ body{background:#0b1119;color:#e9edf5}
 .graph3d-label.role-source{border-color:#5b6c82;background:#15202df0}
 .graph3d-label.role-focus{max-width:205px;padding:9px 12px}
 .graph3d-label.role-focus span{font-size:16px}
-.graph3d-label.group{min-width:0;max-width:160px;border-color:#7953aa;background:#261b3deb;font-size:16px;font-weight:700;color:#e9c9ff}
+.graph3d-label.group{min-width:0;max-width:174px;border:0;border-left:2px solid #7953aa;border-radius:0 7px 7px 0;background:linear-gradient(90deg,#261b3dc7,#261b3d3d 68%,transparent);box-shadow:0 8px 20px #0002;font-size:16px;font-weight:700;color:#e9c9ff;text-shadow:0 1px 12px #000}
 .graph3d-label.group small{display:block;font-size:11px;font-weight:500;color:#bba9d8}
-.graph3d-label.group-blue{border-color:#4778ac;background:#0b2438eb;color:#a5dcff}
+.graph3d-label.group-blue{border-left-color:#4778ac;background:linear-gradient(90deg,#0b2438c9,#0b24383d 68%,transparent);color:#a5dcff}
 .graph3d-label.group-blue small{color:#91b9d5}
-.graph3d-label.group-cyan{border-color:#4e999f;background:#0c2830eb;color:#b7f5f5}
+.graph3d-label.group-cyan{border-left-color:#4e999f;background:linear-gradient(90deg,#0c2830c9,#0c28303d 68%,transparent);color:#b7f5f5}
 .graph3d-label.group-cyan small{color:#91c9cd}
-.graph3d-label.group-rose{border-color:#9b659f;background:#2b1730eb;color:#f1c7ef}
+.graph3d-label.group-rose{border-left-color:#9b659f;background:linear-gradient(90deg,#2b1730c9,#2b17303d 68%,transparent);color:#f1c7ef}
 .graph3d-label.group-rose small{color:#c8a2c8}
-.graph3d-label.group-teal{border-color:#4f978a;background:#0b2826eb;color:#c1f2e9}
+.graph3d-label.group-teal{border-left-color:#4f978a;background:linear-gradient(90deg,#0b2826c9,#0b28263d 68%,transparent);color:#c1f2e9}
 .graph3d-label.group-teal small{color:#95c8bf}
 .graph3d-label.role-overview{min-width:140px;border-color:#a56bea;background:#1c1837ec}
 .graph3d-label.role-path{display:inline-flex;flex-direction:row;align-items:flex-start;gap:5px;min-width:0;max-width:200px;padding:4px 8px;border-radius:8px;box-shadow:0 4px 18px #0008}
@@ -304,7 +304,7 @@ body{background:#0b1119;color:#e9edf5}
 .graph-scope-details>summary{cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @keyframes workbench-surface-in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 @keyframes workbench-label-in{from{opacity:0;transform:translateY(3px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
-@media(max-width:680px){.view-explore .workbench-heading h1{font-size:22px}.view-explore .perspective-tabs{width:calc(100% - 6px);justify-content:space-between;margin-bottom:9px}.view-explore .graph-toolbar{overflow-x:auto}.graph3d-label{max-width:115px;padding:4px 6px}.graph3d-label span{font-size:11px}.graph3d-label.role-focus{max-width:145px;translate:-6px 0}.graph3d-label.role-focus span{font-size:12px}.graph3d-label.role-support.support-0{translate:-5px 0}.graph3d-label.role-challenge{translate:-7px 0}.graph3d-label.role-source{translate:-24px -48px}.graph3d-label.role-path,.graph3d-label.group-path,.graph3d-label.group-index-3{display:none}.graph3d-label.group-index-0{translate:40px 0}.graph3d-label.group-index-2{translate:-28px 0}.graph3d-label.role-overview{min-width:0;max-width:none;padding:2px 7px;border-radius:999px;translate:0 22px}.graph3d-label.role-overview strong{display:block;font-size:9px;color:#e8ceff}.graph3d-label.role-overview span{display:none}.graph-scope-details{left:7px;right:7px;bottom:8px;max-width:none;padding:3px 7px;font-size:10px}.graph-scope-details>summary{line-height:1.4}}
+@media(max-width:680px){.view-explore .workbench-heading h1{font-size:22px}.view-explore .perspective-tabs{width:calc(100% - 6px);justify-content:space-between;margin-bottom:9px}.view-explore .graph-toolbar{overflow-x:auto}.graph3d-label{max-width:115px;padding:4px 6px}.graph3d-label span{font-size:11px}.graph3d-label.role-focus{max-width:145px;translate:-6px -12px}.graph3d-label.role-focus span{font-size:12px}.graph3d-label.role-support.support-0{translate:-5px 0}.graph3d-label.role-challenge{translate:-7px -14px}.graph3d-label.role-source{translate:-24px -48px}.graph3d-label.role-path,.graph3d-label.group-path,.graph3d-label.group-index-3{display:none}.graph3d-label.group-index-0{translate:40px 0}.graph3d-label.group-index-2{translate:-28px 0}.graph3d-label.role-overview{min-width:0;max-width:none;padding:2px 7px;border-radius:999px;translate:0 22px}.graph3d-label.role-overview strong{display:block;font-size:9px;color:#e8ceff}.graph3d-label.role-overview span{display:none}.view-explore .graph-caption{font-size:11px;color:#9fb1c7}.graph-scope-details{left:7px;right:7px;bottom:8px;max-width:none;padding:4px 7px;font-size:11px}.graph-scope-details>summary{line-height:1.45}}
 @media(min-width:681px){.graph3d-label.group-index-0{translate:5px 0}.graph3d-label.group-index-4{translate:20px 24px}}
 @media(prefers-reduced-motion:reduce){.perspective-tabs button{transition:none}.graph-surface,.graph3d-label{animation:none}}
 
@@ -316,15 +316,15 @@ body{background:#0b1119;color:#e9edf5}
 .view-explore .workbench-heading h1{font-family:"Avenir Next","PingFang SC",-apple-system,BlinkMacSystemFont,sans-serif;font-size:clamp(28px,2.25vw,35px);line-height:1.16;letter-spacing:-.012em;text-wrap:balance}
 .view-explore .perspective-tabs{margin:0;align-self:center;background:#0c1521;border-color:#263548;box-shadow:inset 0 1px #ffffff05,0 8px 24px #0004}
 .view-explore .perspective-tabs button{min-width:76px;padding:10px 15px}
-.view-explore .explore-grid{grid-template-columns:minmax(0,1fr) 292px;gap:10px}
-.view-explore .research-trail{width:208px;flex-basis:208px}
+.view-explore .explore-grid{grid-template-columns:minmax(0,1fr) 282px;gap:10px}
+.view-explore .research-trail{width:190px;flex-basis:190px}
 .view-explore .graph-card{border-color:#223348;box-shadow:inset 0 1px #ffffff05,0 18px 44px #0004}
 .view-explore .graph-surface-3d{background:radial-gradient(ellipse at 51% 44%,#111b2a 0%,#090f19 52%,#060a12 100%)}
 .view-explore .research-trail{background:linear-gradient(180deg,#111a27,#0d151f);border-color:#263447}
 .view-explore .inspector-card{font-family:"Avenir Next","PingFang SC",-apple-system,BlinkMacSystemFont,sans-serif;background:radial-gradient(420px 180px at 75% 0%,#252a4750,transparent 72%),linear-gradient(180deg,#111b28,#0d1622);border-color:#29384d;box-shadow:inset 0 1px #ffffff06,0 14px 35px #0003}
-.view-explore .graph-caption{background:linear-gradient(180deg,#0b1521,#09121c);color:#91a4ba;font-size:11px;line-height:1.5;padding:6px 12px}
+.view-explore .graph-caption{background:linear-gradient(180deg,#0b1521,#09121c);color:#a4b5ca;font-size:11.5px;line-height:1.55;padding:7px 12px}
 @media(max-width:1270px){.view-explore .explore-grid{grid-template-columns:minmax(0,1fr) 286px}}
-@media(max-width:1080px){.view-explore .explore-grid{grid-template-columns:minmax(0,1fr) 292px}.view-explore .workbench-heading{gap:12px}.view-explore .workbench-heading h1{font-size:clamp(25px,3vw,31px)}}
+@media(max-width:1080px){.view-explore .explore-grid{grid-template-columns:minmax(0,1fr) 282px}.view-explore .workbench-heading{gap:12px}.view-explore .workbench-heading h1{font-size:clamp(25px,3vw,31px)}}
 @media(min-width:681px){.graph3d-label.group-path{display:none}}
 @media(min-width:981px) and (max-width:1180px){.graph3d-label.role-path{display:none}.graph3d-label.role-overview{min-width:0;max-width:none;padding:2px 7px;border-radius:999px;translate:0 22px}.graph3d-label.role-overview strong{display:block;font-size:9px;color:#e8ceff}.graph3d-label.role-overview span{display:none}}
 @media(max-width:980px){.view-explore .workbench-heading{height:auto;min-height:64px;align-items:flex-start;flex-direction:column;gap:9px;margin-bottom:10px}.view-explore .perspective-tabs{align-self:flex-start}.view-explore .explore-grid{grid-template-columns:1fr}}
