@@ -1,28 +1,49 @@
 {
   "schemaVersion": "knowledge-workbench-reference-assets@1",
   "generatedAt": "2026-11-02T01:05:00+08:00",
-  "baselineGitSha": "48b74a6e7e0b35c678ea27ef38752c7f8f0a9530",
+  "updatedAt": "2026-11-02T01:35:00+08:00",
+  "implementationComparisonBase": "48b74a6e7e0b35c678ea27ef38752c7f8f0a9530",
+  "minimumHandoffCommit": "321a26b8a549e36f08a238c656078a8fa1762c3e",
+  "requiredCheckout": "Fetch origin/main and branch from the latest revision containing this manifest; the comparison base is not the handoff checkout.",
   "purpose": "Visual direction and regression references for the optional 2.5D experiment. These images are not knowledge data, runtime captures, or proof that the illustrated nodes and relations exist.",
   "referencePriority": [
-    "comprehensive-shell",
+    "unified-target-corrected",
     "overview",
     "question",
     "evolution"
   ],
   "assets": [
     {
+      "path": "unified-target-corrected.png",
+      "kind": "generated_reference",
+      "role": "unified-target-corrected",
+      "priority": 1,
+      "format": "png",
+      "width": 1487,
+      "height": 1058,
+      "bytes": 1942884,
+      "sha256": "80b87ab9fe72414faeb46ea45298f34122eac5f1a4bebd49b6de66f227774133",
+      "screenshotState": "reference_only_not_browser_capture",
+      "source": "User-provided 2026-11-01 current corrected workbench visual target; original bytes copied unchanged.",
+      "limitations": [
+        "Illustrative information and layout are not an authoritative graph projection.",
+        "The image does not prove responsive behavior, keyboard access, performance, or user acceptance."
+      ]
+    },
+    {
       "path": "../selected-reference.png",
       "kind": "generated_reference",
-      "role": "comprehensive-shell",
-      "priority": 1,
+      "role": "historical-selected-shell",
+      "priority": 99,
       "format": "png",
       "width": 1487,
       "height": 1058,
       "bytes": 1737730,
       "sha256": "c05f9301d0a525ab1d90686c61bd54f0657ef3416eba760297c34db80975d872",
-      "screenshotState": "reference_only_not_browser_capture",
-      "source": "Existing corrected shell reference retained in the repository.",
+      "screenshotState": "historical_reference_only",
+      "source": "Earlier 2026-10-30 selected reading draft retained as history; superseded as the highest-priority target by unified-target-corrected.png.",
       "limitations": [
+        "This earlier draft must not be treated as the current comprehensive target.",
         "Illustrative information and layout are not an authoritative graph projection.",
         "The image does not prove responsive behavior, keyboard access, performance, or user acceptance."
       ]
