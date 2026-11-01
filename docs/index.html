@@ -1410,8 +1410,10 @@
 <h2 id="knowledge-handoff-2p5d-experiment--2-固定起点">2. 固定起点</h2>
 <ul>
 <li>仓库：<code>cyl19970726/knowledge</code></li>
-<li>主线基线：<code>48b74a6e7e0b35c678ea27ef38752c7f8f0a9530</code></li>
+<li>工作台实现基线：<code>48b74a6e7e0b35c678ea27ef38752c7f8f0a9530</code></li>
+<li>交接文档与参考资产合入后的主线：<code>321a26b8a549e36f08a238c656078a8fa1762c3e</code></li>
 <li>已合并基实现：<a href="https://github.com/cyl19970726/knowledge/pull/5" target="_blank" rel="noopener noreferrer">PR #5</a></li>
+<li>已合并交接资产：<a href="https://github.com/cyl19970726/knowledge/pull/7" target="_blank" rel="noopener noreferrer">PR #7</a></li>
 <li>建议新分支：<code>codex/knowledge-2p5d-experiment-&lt;YYYYMMDD&gt;</code></li>
 <li>Node 版本：<code>24.x</code>，以仓库 <code>.node-version</code> 为准</li>
 <li>当前 R1 量化复核：<code>85.5/100</code>，十维均不低于 3</li>
@@ -1648,7 +1650,12 @@ manifest.json
 </ul>
 <p>完成不等于“看起来像目标图”。只有真实任务可用、语义不漂移、失败边界可见，并且用户明确选择是否采用后，2.5D 才能从实验进入正式路径。</p>
 <h2 id="knowledge-handoff-2p5d-experiment--12-可直接交给-claude-的任务描述">12. 可直接交给 Claude 的任务描述</h2>
-<pre><code class="language-text">从 repository main 的 48b74a6e7e0b35c678ea27ef38752c7f8f0a9530 开始，
+<pre><code class="language-text">先 `git fetch origin`，从包含本文件的当前 `origin/main` 创建工作分支。
+工作台实现基线为 48b74a6e7e0b35c678ea27ef38752c7f8f0a9530；
+交接文档和参考资产由 PR #7 合入（编写时 merge commit 为
+321a26b8a549e36f08a238c656078a8fa1762c3e）。不要从旧的实现基线
+检出后误以为交接文件缺失。
+
 阅读 docs/knowledge/frontend/handoffs/2p5d-experiment-20261102.md 及其链接。
 
 目标是新增一个默认关闭的“实验 · 2.5D”图形方式，与现有 2D、3D、列表共享

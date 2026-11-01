@@ -3,7 +3,7 @@
   "updated": "2026-10-29",
   "documents": 40,
   "diagrams": 0,
-  "output_sha256": "79afd3ac195bed595e8449a534e845c5ad0922fc1ab1929572af6a9fbba1f374",
+  "output_sha256": "6cf0fff0a36c5304fa8f3e40d937712d80a7e06b462cae244438717bb669c428",
   "source_sha256": {
     "README.md": "720da5c490933452fbe82bf87ef1ee3b49bc9cc9fb68427add66ea392dd227dd",
     "_site/mermaid.bundle.js": "ace4ee4658ac7ecdb9a53096dfa379ad76a921228ea143f5e994389af76b662f",
@@ -85,7 +85,7 @@
     "knowledge/frontend/embedding.md": "227f46880482f406cef121ae43729e528745e459130f7cc9dc137313a55a24dd",
     "knowledge/frontend/experience.md": "8f88eee804e2d0fa0cdee7479c5c526dd298a9eb16e3a9ab435854cb2dfd7360",
     "knowledge/frontend/graph-space.md": "dcbc3a88c733533096f6aec52b3e1afa38667a5e3d90567771a3255b88c8f1a2",
-    "knowledge/frontend/handoffs/2p5d-experiment-20261102.md": "de1acd94582b589919ce068b7ac4bef801aff3754c27208f94d4eb8337c1ad4a",
+    "knowledge/frontend/handoffs/2p5d-experiment-20261102.md": "69f4941e54aa4841c308f10a1809aa97e1f73c75757695a3b0eb476f2d5b2351",
     "knowledge/frontend/visual-acceptance-r1.md": "955a9170ff4be043c2f2a7a9d9a0dfa9e8428ec41ff99482cf0de6c2489f20cf",
     "knowledge/frontend/workbench-plan.md": "470de8292f1b6365a1d03c3cf5751431be8da4b47df6ad3cafdc586d8fb5b267",
     "knowledge/integration.md": "c01d615e624252203f7751539cbaec0c18d2a49c4de64e2457ada26861d7f527",

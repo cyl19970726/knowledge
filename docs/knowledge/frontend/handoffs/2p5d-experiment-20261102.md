@@ -19,8 +19,10 @@
 ## 2. 固定起点
 
 - 仓库：`cyl19970726/knowledge`
-- 主线基线：`48b74a6e7e0b35c678ea27ef38752c7f8f0a9530`
+- 工作台实现基线：`48b74a6e7e0b35c678ea27ef38752c7f8f0a9530`
+- 交接文档与参考资产合入后的主线：`321a26b8a549e36f08a238c656078a8fa1762c3e`
 - 已合并基实现：[PR #5](https://github.com/cyl19970726/knowledge/pull/5)
+- 已合并交接资产：[PR #7](https://github.com/cyl19970726/knowledge/pull/7)
 - 建议新分支：`codex/knowledge-2p5d-experiment-<YYYYMMDD>`
 - Node 版本：`24.x`，以仓库 `.node-version` 为准
 - 当前 R1 量化复核：`85.5/100`，十维均不低于 3
@@ -256,7 +258,12 @@ manifest.json
 ## 12. 可直接交给 Claude 的任务描述
 
 ```text
-从 repository main 的 48b74a6e7e0b35c678ea27ef38752c7f8f0a9530 开始，
+先 `git fetch origin`，从包含本文件的当前 `origin/main` 创建工作分支。
+工作台实现基线为 48b74a6e7e0b35c678ea27ef38752c7f8f0a9530；
+交接文档和参考资产由 PR #7 合入（编写时 merge commit 为
+321a26b8a549e36f08a238c656078a8fa1762c3e）。不要从旧的实现基线
+检出后误以为交接文件缺失。
+
 阅读 docs/knowledge/frontend/handoffs/2p5d-experiment-20261102.md 及其链接。
 
 目标是新增一个默认关闭的“实验 · 2.5D”图形方式，与现有 2D、3D、列表共享
