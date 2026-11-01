@@ -1397,7 +1397,7 @@
 <h2 id="knowledge-handoff-2p5d-experiment--1-决策与边界">1. 决策与边界</h2>
 <p>用户在看完当前实现与目标设计图后，提出增加一个 2.5D 版本并标记为实验，再比较美观和实际使用价值。Lead 的结论是：</p>
 <ul>
-<li>只实现一个默认关闭、可明确识别的“实验 · 2.5D”入口。</li>
+<li>只实现一个默认关闭、可明确识别的“实验 · 2.5D”入口。关闭实验开关时必须完全不渲染该入口或实验标签；“默认仍选 3D”不能代替关闭。</li>
 <li>现有默认 3D、2D 和列表路径保持不变，2.5D 可以在验收后被撤下、替换或继续保留。</li>
 <li>2.5D 是同一知识投影的另一种图形方式；“星群 / 问题 / 演化”仍然是任务视角。</li>
 <li>先以真实数据、可操作性和理解效果判定，再决定是否把它提升为默认方式。</li>
@@ -1410,8 +1410,12 @@
 <h2 id="knowledge-handoff-2p5d-experiment--2-固定起点">2. 固定起点</h2>
 <ul>
 <li>仓库：<code>cyl19970726/knowledge</code></li>
-<li>主线基线：<code>48b74a6e7e0b35c678ea27ef38752c7f8f0a9530</code></li>
+<li>工作台实现基线：<code>48b74a6e7e0b35c678ea27ef38752c7f8f0a9530</code></li>
+<li>交接文档与参考资产合入后的主线：<code>321a26b8a549e36f08a238c656078a8fa1762c3e</code></li>
+<li>最低可用交接提交：<code>321a26b8a549e36f08a238c656078a8fa1762c3e</code></li>
+<li>实现者必须从包含本次目标图修正的最新 <code>origin/main</code> 新建分支，并记录实际起始 SHA</li>
 <li>已合并基实现：<a href="https://github.com/cyl19970726/knowledge/pull/5" target="_blank" rel="noopener noreferrer">PR #5</a></li>
+<li>已合并交接资产：<a href="https://github.com/cyl19970726/knowledge/pull/7" target="_blank" rel="noopener noreferrer">PR #7</a></li>
 <li>建议新分支：<code>codex/knowledge-2p5d-experiment-&lt;YYYYMMDD&gt;</code></li>
 <li>Node 版本：<code>24.x</code>，以仓库 <code>.node-version</code> 为准</li>
 <li>当前 R1 量化复核：<code>85.5/100</code>，十维均不低于 3</li>
@@ -1431,8 +1435,10 @@
 <p>参考图用于视觉方向和比例判断，不是知识数据，也不是运行时截图。</p>
 <ol>
 <li>
-<p><strong>综合外壳校正目标</strong></p>
-<p><img src="assets/knowledge-workbench/selected-reference.png" alt="综合外壳校正目标" loading="lazy" /></p>
+<p><strong>当前综合校正目标</strong></p>
+<p><img src="assets/knowledge-workbench/references/unified-target-corrected.png" alt="当前综合校正目标" loading="lazy" /></p>
+<p>原字节 SHA-256：<code>80b87ab9fe72414faeb46ea45298f34122eac5f1a4bebd49b6de66f227774133</code>。</p>
+<p><code>selected-reference.png</code> 是 2026-10-30 的早期选稿，只保留为历史，不作为最高优先级目标。</p>
 </li>
 <li>
 <p><strong>星群目标</strong></p>
@@ -1507,7 +1513,7 @@
 <li>实现相同节点/关系选择、联读高亮、缩放、适配、重置、键盘可达列表和错误回退。</li>
 <li>保持演化视角与版本比较的现有语义；2.5D 切换只作用于适用于星图的任务视角。</li>
 <li>保持列表作为无 WebGL/标签拥挤时的人工降级路径。</li>
-<li>默认值继续为 <code>3d</code>，直到用户明确选择新的默认。</li>
+<li>默认值继续为 <code>3d</code>，直到用户明确选择新的默认；实验开关关闭时不显示 2.5D 入口。</li>
 </ol>
 <p>推荐的表现方向：</p>
 <ul>
@@ -1568,6 +1574,7 @@
 <p>视觉证据：</p>
 <ul>
 <li>在同尺寸下分别截取 2D、2.5D、3D 的星群和问题状态。</li>
+<li>必须同时检查原始目标图与同尺寸实际截图；现成 comparison 可以作为索引，不能代替原图和实拍。</li>
 <li>生成同对象、同缩放、同选择的三模式并排对照。</li>
 <li>记录标签数、框交叠、关键安全区、页面横向溢出和画布可读尺度。</li>
 <li>分别给出优点、失败任务和“不适合使用 2.5D”的条件。</li>
@@ -1630,7 +1637,7 @@ manifest.json
 <ul>
 <li>Product Design <code>index</code>，用于确认设计审查流程与证据边界。</li>
 <li>Product Design <code>image-to-code</code>，用于把目标图映射为受控视觉语言。</li>
-<li>Product Design <code>audit</code> 或项目现有 <code>design-qa.md</code> 流程，用于截图后审查。</li>
+<li>Product Design <code>design-qa</code> 及项目现有 <code>design-qa.md</code> 中的同框源图/实拍检查为必须步骤；环境只能发现 <code>audit</code> 时也必须使用它补充，不能用 audit 替代 design QA。</li>
 <li><code>reader-centered-docs</code>，用于更新唯一产品/前端说明和交接，不制造第二套规格。</li>
 <li><code>unknowns-to-gates</code>，用于在动工前列出数据、视觉、性能和授权未知。</li>
 </ul>
@@ -1648,10 +1655,16 @@ manifest.json
 </ul>
 <p>完成不等于“看起来像目标图”。只有真实任务可用、语义不漂移、失败边界可见，并且用户明确选择是否采用后，2.5D 才能从实验进入正式路径。</p>
 <h2 id="knowledge-handoff-2p5d-experiment--12-可直接交给-claude-的任务描述">12. 可直接交给 Claude 的任务描述</h2>
-<pre><code class="language-text">从 repository main 的 48b74a6e7e0b35c678ea27ef38752c7f8f0a9530 开始，
+<pre><code class="language-text">先 `git fetch origin`，从包含本文件的当前 `origin/main` 创建工作分支。
+工作台实现基线为 48b74a6e7e0b35c678ea27ef38752c7f8f0a9530；
+交接文档和参考资产由 PR #7 合入（编写时 merge commit 为
+321a26b8a549e36f08a238c656078a8fa1762c3e）。不要从旧的实现基线
+检出后误以为交接文件缺失。
+
 阅读 docs/knowledge/frontend/handoffs/2p5d-experiment-20261102.md 及其链接。
 
-目标是新增一个默认关闭的“实验 · 2.5D”图形方式，与现有 2D、3D、列表共享
+目标是新增一个默认关闭的“实验 · 2.5D”图形方式。关闭实验时不渲染入口或实验
+标签；不能只靠默认选择 3D 代替。它与现有 2D、3D、列表共享
 完全相同的 GraphViewModel、真实节点/关系/来源、选择、联读、scope/purpose
 和研究笔记。用受控的 2.5D 投影接近 references/ 中的视觉语言，但不得从参考图
 复制或推断知识数据。默认视图保持 3D，先提交可撤回的实验 PR。
