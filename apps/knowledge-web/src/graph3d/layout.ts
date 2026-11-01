@@ -3,9 +3,10 @@ import type { GraphEdgeView, GraphNodeView, GraphViewModel } from '../graph/view
 export type Point3 = [number, number, number];
 export type GraphTone = 'violet' | 'blue' | 'cyan' | 'rose' | 'teal';
 export type Graph3DGroup = { id: string; name: string; members: string[]; center: Point3; tone: GraphTone };
-export type Graph3DLayout = { positions: Record<string, Point3>; groups: Graph3DGroup[]; visibleEdges: string[]; hiddenEdgeCount: number; reading?: { focus: string; supports: string[]; challenges: string[]; sources: string[]; secondary: string[] } };
+export type Graph3DLayout = { positions: Record<string, Point3>; groups: Graph3DGroup[]; visibleEdges: string[]; bridgeEdges: string[]; connectionCounts: Record<string, number>; hiddenEdgeCount: number; reading?: { focus: string; supports: string[]; challenges: string[]; sources: string[]; secondary: string[] } };
 
 const compareId = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
+const relationWeight = (stance: GraphEdgeView['relation']['stance']) => stance === 'supports' || stance === 'challenges' ? 2 : stance === 'context' ? 1 : 0.4;
 
 function hashId(id: string): number {
   let value = 2166136261;
@@ -91,9 +92,27 @@ function nodePosition(center: Point3, index: number, total: number, id: string):
   return [center[0] + Math.cos(angle) * radius * 1.13, center[1] + Math.sin(angle) * radius * 0.88, center[2] + (hashId(`${id}:z`) % 1000 / 1000 - 0.5) * 0.75];
 }
 
-function externalPosition(node: GraphNodeView, graph: GraphViewModel, positions: Record<string, Point3>): Point3 {
-  const connected = graph.edges.filter(edge => edge.from === node.id || edge.to === node.id)
-    .map(edge => positions[edge.from === node.id ? edge.to : edge.from]).filter((point): point is Point3 => !!point);
+function externalPosition(node: GraphNodeView, positions: Record<string, Point3>, groups: Graph3DGroup[], groupOf: Map<string, Graph3DGroup>, neighborWeights: Map<string, Map<string, number>>): Point3 {
+  const targetsByGroup = new Map<string, Map<string, number>>();
+  for (const [other, weight] of neighborWeights.get(node.id) ?? []) {
+    const group = groupOf.get(other);
+    if (!group) continue;
+    const targets = targetsByGroup.get(group.id) ?? new Map<string, number>();
+    targets.set(other, Math.max(targets.get(other) ?? 0, weight));
+    targetsByGroup.set(group.id, targets);
+  }
+  const dominant = groups.map(group => ({ group, score: [...(targetsByGroup.get(group.id)?.values() ?? [])].reduce((sum, weight) => sum + weight, 0) }))
+    .sort((a, b) => b.score - a.score || compareId(a.group.id, b.group.id))[0];
+  if (dominant?.score) {
+    const angle = (hashId(`${node.id}:source`) % 10000) / 10000 * Math.PI * 2;
+    const radius = dominant.group.members.length > 12 ? 4.7 : dominant.group.members.length > 6 ? 3.75 : dominant.group.members.length > 3 ? 3.4 : 2.95;
+    return [
+      dominant.group.center[0] + Math.cos(angle) * radius,
+      dominant.group.center[1] + Math.sin(angle) * radius * 0.78,
+      dominant.group.center[2] - 1.45,
+    ];
+  }
+  const connected = [...(neighborWeights.get(node.id)?.keys() ?? [])].map(id => positions[id]).filter((point): point is Point3 => !!point);
   if (connected.length) {
     const x = connected.reduce((sum, point) => sum + point[0], 0) / connected.length;
     const y = connected.reduce((sum, point) => sum + point[1], 0) / connected.length;
@@ -117,12 +136,31 @@ export function constellationLayout(graph: GraphViewModel): Graph3DLayout {
   });
   const positions: Record<string, Point3> = {};
   for (const group of groups) [group.id, ...group.members.filter(id => id !== group.id)].filter(id => group.members.includes(id)).forEach((id, index) => { positions[id] = nodePosition(group.center, index, group.members.length, id); });
-  graph.nodes.filter(node => node.document === null).sort((a, b) => compareId(a.id, b.id)).forEach(node => { positions[node.id] = externalPosition(node, graph, positions); });
+  const groupOf = new Map(groups.flatMap(group => group.members.map(id => [id, group] as const)));
+  const neighborWeights = new Map(graph.nodes.map(node => [node.id, new Map<string, number>()]));
+  for (const edge of graph.edges) {
+    const from = neighborWeights.get(edge.from), to = neighborWeights.get(edge.to);
+    if (!from || !to) continue;
+    const weight = relationWeight(edge.relation.stance);
+    from.set(edge.to, Math.max(from.get(edge.to) ?? 0, weight));
+    to.set(edge.from, Math.max(to.get(edge.from) ?? 0, weight));
+  }
+  graph.nodes.filter(node => node.document === null).sort((a, b) => compareId(a.id, b.id)).forEach(node => { positions[node.id] = externalPosition(node, positions, groups, groupOf, neighborWeights); });
+  const neighbors = new Map(graph.nodes.map(node => [node.id, new Set<string>()]));
+  for (const edge of graph.edges) {
+    neighbors.get(edge.from)?.add(edge.to);
+    neighbors.get(edge.to)?.add(edge.from);
+  }
+  const connectionCounts = Object.fromEntries([...neighbors].map(([id, ids]) => [id, ids.size]));
+  const groupIdOf = new Map([...groupOf].map(([id, group]) => [id, group.id] as const));
+  const bridgePriority = (edge: GraphEdgeView) => edge.relation.stance === 'challenges' ? 0 : edge.relation.stance === 'supports' ? 1 : edge.relation.stance === 'context' ? 2 : 3;
+  const bridgeEdges = graph.edges.filter(edge => groupIdOf.has(edge.from) && groupIdOf.has(edge.to) && groupIdOf.get(edge.from) !== groupIdOf.get(edge.to))
+    .sort((a, b) => bridgePriority(a) - bridgePriority(b) || compareId(a.id, b.id)).map(edge => edge.id);
   const priority = (edge: GraphEdgeView) => edge.relation.stance === 'challenges' ? 0 : edge.relation.stance === 'supports' ? 1 : edge.relation.stance === 'context' ? 2 : 3;
   // Keep every returned relation in the overview. Quiet evidence and navigation
   // edges become texture while support and challenge relations remain legible.
   const visible = [...graph.edges].sort((a, b) => priority(a) - priority(b) || compareId(a.id, b.id)).map(edge => edge.id);
-  return { positions, groups, visibleEdges: visible, hiddenEdgeCount: graph.edges.length - visible.length };
+  return { positions, groups, visibleEdges: visible, bridgeEdges, connectionCounts, hiddenEdgeCount: graph.edges.length - visible.length };
 }
 
 /** Only the focus and its directly returned neighbors move into a reading plane. */
@@ -157,7 +195,8 @@ export function questionLayout(graph: GraphViewModel, base: Graph3DLayout, focus
     pairs.add(key);
     return true;
   }).map(edge => edge.id);
-  const backgroundEdges = base.visibleEdges.filter(id => !primaryEdges.includes(id) && !adjacent.some(edge => edge.id === id)).slice(0, 48);
+  const primaryEdgeIds = new Set(primaryEdges), adjacentEdgeIds = new Set(adjacent.map(edge => edge.id));
+  const backgroundEdges = base.visibleEdges.filter(id => !primaryEdgeIds.has(id) && !adjacentEdgeIds.has(id)).slice(0, 48);
   const visibleEdges = [...backgroundEdges, ...primaryEdges];
-  return { positions, groups: base.groups, visibleEdges, hiddenEdgeCount: graph.edges.length - visibleEdges.length, reading: { focus: focusId, supports, challenges, sources, secondary } };
+  return { positions, groups: base.groups, visibleEdges, bridgeEdges: base.bridgeEdges, connectionCounts: base.connectionCounts, hiddenEdgeCount: graph.edges.length - visibleEdges.length, reading: { focus: focusId, supports, challenges, sources, secondary } };
 }

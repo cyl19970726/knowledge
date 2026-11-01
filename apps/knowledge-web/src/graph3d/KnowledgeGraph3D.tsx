@@ -156,16 +156,17 @@ function CameraRig({ initial, remembered, home, presentation, resetSignal, zoomR
   return <OrbitControls ref={controls} enableDamping={false} enablePan enableZoom minDistance={3} maxDistance={75} maxPolarAngle={Math.PI * 0.88} onStart={() => { transition.current = null; }} onEnd={snapshot} />;
 }
 
-function NodeGlyph({ node, position, selected, prominent, coReadingIndex, dimmed, onNode, groupTone, accent, glowTexture }: {
+function NodeGlyph({ node, position, selected, prominent, coReadingIndex, dimmed, onNode, groupTone, accent, glowTexture, connectionCount }: {
   node: GraphNodeView; position: Point3; selected: boolean; coReadingIndex: number; dimmed: boolean;
-  prominent: boolean; accent?: string; glowTexture: CanvasTexture;
+  prominent: boolean; accent?: string; glowTexture: CanvasTexture; connectionCount: number;
   onNode: (id: string) => void; groupTone: Graph3DGroup['tone'];
 }) {
   const source = node.document === null;
   const tint = selected ? color.violet : coReadingIndex === 0 ? color.violet : coReadingIndex === 1 ? color.blue : accent ?? (source ? color.grey : stableTint(node.id, groupTone));
-  const radius = selected ? 0.6 : prominent ? 0.45 : source ? 0.2 : node.degree >= 3 ? 0.27 : 0.17;
-  const glowScale = selected ? 9.5 : prominent ? 8 : source ? 6.8 : node.degree >= 3 ? 7 : 5.8;
-  const glowOpacity = dimmed ? 0.08 : selected ? 0.5 : prominent ? 0.29 : source ? 0.14 : node.degree >= 3 ? 0.22 : 0.13;
+  const radius = selected ? 0.6 : prominent ? 0.45 : source ? connectionCount >= 20 ? 0.33 : connectionCount >= 8 ? 0.26 : 0.2 : node.degree >= 3 ? 0.27 : 0.17;
+  const glowScale = selected ? 9.5 : prominent ? 8 : source ? connectionCount >= 20 ? 8.4 : 7 : node.degree >= 3 ? 7 : 5.8;
+  const glowOpacity = dimmed ? 0.08 : selected ? 0.5 : prominent ? 0.29 : source ? connectionCount >= 20 ? 0.25 : 0.16 : node.degree >= 3 ? 0.22 : 0.13;
+  const sourceHub = source && connectionCount >= 8;
   const pick = (event: { stopPropagation: () => void }) => { event.stopPropagation(); onNode(node.id); };
   return <group position={position}>
     <sprite scale={[radius * glowScale, radius * glowScale, 1]} renderOrder={1}>
@@ -177,14 +178,14 @@ function NodeGlyph({ node, position, selected, prominent, coReadingIndex, dimmed
     </mesh>
     <mesh position={[0, 0, radius * 0.5]}><sphereGeometry args={[radius * (source ? 0.34 : 0.48), 16, 12]} /><meshBasicMaterial color={source ? '#dbf5ff' : '#fff8ff'} transparent opacity={dimmed ? 0.32 : 0.9} depthWrite={false} toneMapped={false} /></mesh>
     {selected && <mesh position={[0, 0, radius * 0.62]}><sphereGeometry args={[radius * 0.7, 16, 12]} /><meshBasicMaterial color="#e3c4ff" transparent opacity={0.82} blending={AdditiveBlending} depthWrite={false} toneMapped={false} /></mesh>}
-    {(prominent || coReadingIndex >= 0) && <mesh><torusGeometry args={[radius + 0.1, prominent ? 0.038 : 0.018, 6, 40]} /><meshBasicMaterial color={tint} transparent opacity={0.86} blending={AdditiveBlending} depthWrite={false} toneMapped={false} /></mesh>}
+    {(prominent || coReadingIndex >= 0 || sourceHub) && <mesh><torusGeometry args={[radius + 0.1, prominent ? 0.038 : sourceHub ? 0.014 : 0.018, 6, 40]} /><meshBasicMaterial color={tint} transparent opacity={0.86} blending={AdditiveBlending} depthWrite={false} toneMapped={false} /></mesh>}
     {prominent && <mesh><ringGeometry args={[radius + 0.18, radius + 0.39, 48]} /><meshBasicMaterial color={tint} transparent opacity={0.14} blending={AdditiveBlending} depthWrite={false} side={2} toneMapped={false} /></mesh>}
     <mesh onClick={pick}><sphereGeometry args={[Math.max(0.38, radius), 8, 6]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>
   </group>;
 }
 
-function RelationLine({ edge, from, to, highlighted, background, accent, onEdge }: {
-  edge: GraphEdgeView; from: Point3; to: Point3; highlighted: boolean; background: boolean; accent?: string; onEdge: (id: string) => void;
+function RelationLine({ edge, from, to, highlighted, background, bridge, accent, onEdge }: {
+  edge: GraphEdgeView; from: Point3; to: Point3; highlighted: boolean; background: boolean; bridge: boolean; accent?: string; onEdge: (id: string) => void;
 }) {
   const delta = new Vector3(...to).sub(new Vector3(...from));
   const length = delta.length();
@@ -197,11 +198,11 @@ function RelationLine({ edge, from, to, highlighted, background, accent, onEdge 
   const rotation = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), direction);
   const stance = edge.relation.stance;
   const tint = accent ?? (stance === 'challenges' ? color.amber : stance === 'supports' ? color.violet : stance === 'navigation' ? color.blue : color.grey);
-  const opacity = background ? 0.16 : highlighted ? 0.95 : stance === 'navigation' || stance === 'context' ? 0.34 : 0.62;
+  const opacity = background ? 0.16 : highlighted ? 0.95 : bridge ? stance === 'navigation' || stance === 'context' ? 0.52 : 0.8 : stance === 'navigation' || stance === 'context' ? 0.34 : 0.62;
   const pick = (event: { stopPropagation: () => void }) => { event.stopPropagation(); onEdge(edge.id); };
   return <group>
-    <Line points={[start.toArray(), end.toArray()]} color={tint} lineWidth={highlighted ? 2 : background ? 0.6 : 1.2} transparent opacity={opacity} dashed={!background && (stance === 'challenges' || stance === 'navigation')} dashSize={stance === 'challenges' ? 0.18 : 0.07} gapSize={0.11} onClick={pick} />
-    {!background && <mesh position={arrow.toArray()} quaternion={rotation} onClick={pick}><coneGeometry args={[highlighted ? 0.09 : 0.06, highlighted ? 0.2 : 0.14, 5]} /><meshBasicMaterial color={tint} transparent opacity={opacity} depthWrite={false} /></mesh>}
+    <Line points={[start.toArray(), end.toArray()]} color={tint} lineWidth={highlighted ? 2 : bridge ? 1.55 : background ? 0.6 : 1.2} transparent opacity={opacity} dashed={!background && (stance === 'challenges' || stance === 'navigation')} dashSize={stance === 'challenges' ? 0.18 : 0.07} gapSize={0.11} onClick={pick} />
+    {!background && <mesh position={arrow.toArray()} quaternion={rotation} onClick={pick}><coneGeometry args={[highlighted ? 0.09 : bridge ? 0.075 : 0.06, highlighted ? 0.2 : bridge ? 0.17 : 0.14, 5]} /><meshBasicMaterial color={tint} transparent opacity={opacity} depthWrite={false} /></mesh>}
     <mesh position={middle.toArray()} quaternion={rotation} onClick={pick}><cylinderGeometry args={[0.18, 0.18, Math.max(0.1, start.distanceTo(end)), 5]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>
   </group>;
 }
@@ -227,6 +228,21 @@ function Scene({ graph, layout, presentation, selectedNodeId, selectedEdgeId, co
   if (selectedEdgeId) visibleIds.add(selectedEdgeId);
   const drawn = graph.edges.filter(edge => visibleIds.has(edge.id) && layout.positions[edge.from] && layout.positions[edge.to]);
   const groupTones = new Map(layout.groups.flatMap(group => group.members.map(id => [id, group.tone] as const)));
+  const groupByNode = new Map(layout.groups.flatMap(group => group.members.map(id => [id, group] as const)));
+  const edgeById = new Map(graph.edges.map(edge => [edge.id, edge]));
+  const bridgeIds = new Set(layout.bridgeEdges);
+  const bridgeKinds = new Map<string, { supports: number; challenges: number; context: number; navigation: number }>();
+  for (const id of layout.bridgeEdges) {
+    const edge = edgeById.get(id);
+    const fromGroup = edge ? groupByNode.get(edge.from) : undefined, toGroup = edge ? groupByNode.get(edge.to) : undefined;
+    if (!edge) continue;
+    for (const group of [fromGroup, toGroup]) {
+      if (!group) continue;
+      const kinds = bridgeKinds.get(group.id) ?? { supports: 0, challenges: 0, context: 0, navigation: 0 };
+      kinds[edge.relation.stance] += 1;
+      bridgeKinds.set(group.id, kinds);
+    }
+  }
   const pathRoles = new Map<string, 'support' | 'challenge'>();
   if (!reading && presentation === 'constellation' && selectedNodeId) {
     for (const edge of graph.edges) {
@@ -246,13 +262,16 @@ function Scene({ graph, layout, presentation, selectedNodeId, selectedEdgeId, co
   return <>
     <color attach="background" args={['#070c16']} />
     <CameraRig initial={camera} remembered={remembered} home={cameraFor(layout.groups, presentation)} presentation={presentation} resetSignal={resetSignal} zoomRequest={zoomRequest} onCamera={onCamera} host={host} />
-    {layout.groups.map(group => { const outline = groupOutline(group, presentation === 'question' ? 0.77 : 1); return <group key={group.id} position={presentation === 'question' ? [group.center[0] * 0.72, group.center[1] * 0.72, -3] : group.center}>
+    {layout.groups.map(group => { const outline = groupOutline(group, presentation === 'question' ? 0.77 : 1); const bridgeKindsForGroup = bridgeKinds.get(group.id); const bridgeSummary = [
+      bridgeKindsForGroup?.supports ? `${bridgeKindsForGroup.supports} 支持桥` : '',
+      bridgeKindsForGroup?.challenges ? `${bridgeKindsForGroup.challenges} 挑战桥` : '',
+    ].filter(Boolean).join(' · '); return <group key={group.id} position={presentation === 'question' ? [group.center[0] * 0.72, group.center[1] * 0.72, -3] : group.center}>
       <mesh><shapeGeometry args={[outline.shape]} /><meshBasicMaterial color={color[group.tone]} transparent opacity={presentation === 'question' ? 0.018 : 0.085} depthWrite={false} side={2} /></mesh>
       <Line points={outline.points} color={color[group.tone]} lineWidth={0.65} transparent opacity={presentation === 'question' ? 0.06 : 0.28} />
-      {presentation === 'constellation' && group.id !== selectedGroup?.id && <Billboard position={[-outline.radius * 0.75, outline.radius * 1.02, 0]} prominent className={`group group-${group.tone}`}>{group.name}<small>{group.members.length} 个当前范围节点</small></Billboard>}
+      {presentation === 'constellation' && group.id !== selectedGroup?.id && <Billboard position={[-outline.radius * 0.75, outline.radius * 1.02, 0]} prominent className={`group group-${group.tone}`}>{group.name}<small>{group.members.length} 节点{bridgeSummary ? ` · ${bridgeSummary}` : ''}</small></Billboard>}
     </group>; })}
-    {drawn.map(edge => <RelationLine key={edge.id} edge={edge} from={layout.positions[edge.from]} to={layout.positions[edge.to]} background={edge.id !== selectedEdgeId && (presentation === 'constellation' ? edge.relation.stance === 'context' || edge.relation.stance === 'navigation' : !!reading && edge.from !== reading.focus && edge.to !== reading.focus)} highlighted={edge.id === selectedEdgeId || (reading ? edge.to === reading.focus && [...reading.supports, ...reading.challenges].includes(edge.from) : edge.from === selectedNodeId || edge.to === selectedNodeId)} accent={reading?.supports[1] === edge.from && edge.to === reading.focus && edge.relation.stance === 'supports' ? color.blue : undefined} onEdge={onEdge} />)}
-    {graph.nodes.map(node => layout.positions[node.id] && <NodeGlyph key={node.id} node={node} position={layout.positions[node.id]} selected={node.id === selectedNodeId} prominent={focused.has(node.id) && (presentation === 'constellation' ? node.isRoot || node.degree >= 5 : !!reading && [reading.focus, ...reading.supports, ...reading.challenges].includes(node.id))} coReadingIndex={coReadingIds.indexOf(node.id)} dimmed={presentation === 'question' && !focused.has(node.id)} groupTone={groupTones.get(node.id) ?? 'violet'} accent={reading?.supports[0] === node.id ? color.violet : reading?.supports[1] === node.id ? color.blue : reading?.challenges.includes(node.id) ? color.amber : undefined} glowTexture={glowTexture} onNode={onNode} />)}
+    {drawn.map(edge => <RelationLine key={edge.id} edge={edge} from={layout.positions[edge.from]} to={layout.positions[edge.to]} bridge={bridgeIds.has(edge.id)} background={edge.id !== selectedEdgeId && (presentation === 'constellation' ? edge.relation.stance === 'context' || edge.relation.stance === 'navigation' : !!reading && edge.from !== reading.focus && edge.to !== reading.focus)} highlighted={edge.id === selectedEdgeId || (reading ? edge.to === reading.focus && [...reading.supports, ...reading.challenges].includes(edge.from) : edge.from === selectedNodeId || edge.to === selectedNodeId)} accent={reading?.supports[1] === edge.from && edge.to === reading.focus && edge.relation.stance === 'supports' ? color.blue : undefined} onEdge={onEdge} />)}
+    {graph.nodes.map(node => layout.positions[node.id] && <NodeGlyph key={node.id} node={node} position={layout.positions[node.id]} selected={node.id === selectedNodeId} prominent={focused.has(node.id) && (presentation === 'constellation' ? node.isRoot || node.degree >= 5 : !!reading && [reading.focus, ...reading.supports, ...reading.challenges].includes(node.id))} coReadingIndex={coReadingIds.indexOf(node.id)} dimmed={presentation === 'question' && !focused.has(node.id)} groupTone={groupTones.get(node.id) ?? 'violet'} accent={reading?.supports[0] === node.id ? color.violet : reading?.supports[1] === node.id ? color.blue : reading?.challenges.includes(node.id) ? color.amber : undefined} glowTexture={glowTexture} connectionCount={layout.connectionCounts[node.id] ?? 0} onNode={onNode} />)}
     {labeled.map(node => {
       const point = layout.positions[node.id];
       if (!point) return null;
@@ -265,7 +284,7 @@ function Scene({ graph, layout, presentation, selectedNodeId, selectedEdgeId, co
         const dx = point[0] - focusPoint[0], dy = point[1] - focusPoint[1], distance = Math.max(1, Math.hypot(dx, dy));
         offset = [dx / distance * 0.62, dy / distance * 0.62, 0];
       } else if (role === 'challenge' || role === 'support' && reading?.supports.indexOf(node.id) === 1) offset = [-3.3, 0.1, 0];
-      return <Billboard key={node.id} position={[point[0] + offset[0], point[1] + offset[1], point[2] + 0.12]} prominent={node.id === selectedNodeId || role !== 'overview'} className={`role-${role}${pathRole ? ' role-path' : ''}`}><strong>{role === 'focus' ? '当前认识' : role === 'support' ? '支持来路' : role === 'challenge' ? '挑战' : role === 'source' ? '来源资料' : '所选认识'}</strong><span>{node.shortLabel}</span></Billboard>;
+      return <Billboard key={node.id} position={[point[0] + offset[0], point[1] + offset[1], point[2] + 0.12]} prominent={node.id === selectedNodeId || role !== 'overview'} className={`role-${role}${pathRole ? ' role-path' : ''}`}><strong>{role === 'focus' ? '当前认识' : role === 'support' ? '支持来路' : role === 'challenge' ? '挑战' : role === 'source' ? '来源资料' : '当前认识'}</strong><span>{node.shortLabel}</span></Billboard>;
     })}
     {reading && drawn.filter(edge => edge.to === reading.focus && (reading.supports.includes(edge.from) || reading.challenges.includes(edge.from))).map(edge => { const from = layout.positions[edge.from], to = layout.positions[edge.to]; return <Billboard key={`label:${edge.id}`} position={[(from[0] + to[0]) / 2, (from[1] + to[1]) / 2, 3.1]} className={edge.relation.stance === 'challenges' ? 'edge-challenge' : 'edge-support'}>{relationName[edge.relation.stance]}</Billboard>; })}
     {selectedEdge && layout.positions[selectedEdge.from] && layout.positions[selectedEdge.to] && <Billboard position={[(layout.positions[selectedEdge.from][0] + layout.positions[selectedEdge.to][0]) / 2, (layout.positions[selectedEdge.from][1] + layout.positions[selectedEdge.to][1]) / 2 + 0.38, (layout.positions[selectedEdge.from][2] + layout.positions[selectedEdge.to][2]) / 2]} prominent>{relationName[selectedEdge.relation.stance]} · 依据{statusName[selectedEdge.relation.evidenceStatus]}</Billboard>}
@@ -289,6 +308,8 @@ export function KnowledgeGraph3D({ graph, presentation, selectedNodeId, selected
   const initiallyRemembered = useRef(validCamera(rememberedCamera));
   const counts = { nodes: graph.nodes.length, edges: graph.edges.length, groups: base.groups.length };
   const shownEdges = layout.visibleEdges.length + (selectedEdgeId && !layout.visibleEdges.includes(selectedEdgeId) && graph.edges.some(edge => edge.id === selectedEdgeId) ? 1 : 0);
+  const edgesById = new Map(graph.edges.map(edge => [edge.id, edge]));
+  const judgmentBridgeCount = base.bridgeEdges.filter(id => ['supports', 'challenges'].includes(edgesById.get(id)?.relation.stance ?? '')).length;
   const unavailable = (reason: string) => {
     if (failed.current) return;
     failed.current = true;
@@ -312,16 +333,16 @@ export function KnowledgeGraph3D({ graph, presentation, selectedNodeId, selected
     gl.domElement.addEventListener('webglcontextlost', lost);
     cleanup.current = () => gl.domElement.removeEventListener('webglcontextlost', lost);
   };
-  return <div ref={host} data-testid="knowledge-graph-3d" data-renderer-state={rendererState} data-node-count={counts.nodes} data-edge-count={counts.edges} data-group-count={counts.groups} data-visible-edge-count={shownEdges} data-hidden-edge-count={counts.edges - shownEdges}
-    data-layout-debug={JSON.stringify({ presentation, groups: base.groups.map(group => ({ id: group.id, name: group.name, members: group.members.length, center: group.center })), positions: layout.positions })}
+  return <div ref={host} data-testid="knowledge-graph-3d" data-renderer-state={rendererState} data-node-count={counts.nodes} data-edge-count={counts.edges} data-group-count={counts.groups} data-visible-edge-count={shownEdges} data-hidden-edge-count={counts.edges - shownEdges} data-bridge-count={base.bridgeEdges.length} data-judgment-bridge-count={judgmentBridgeCount}
+    data-layout-debug={JSON.stringify({ presentation, groups: base.groups.map(group => ({ id: group.id, name: group.name, members: group.members.length, center: group.center })), bridges: base.bridgeEdges, positions: layout.positions })}
     style={{ width: '100%', height: '100%', minHeight: 320, position: 'relative', overflow: 'hidden', background: '#070c16', visibility: visible ? 'visible' : 'hidden' }}>
     {rendererState !== 'unavailable' && <RenderBoundary onError={unavailable}><Canvas frameloop="demand" dpr={[1, 1.7]} gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }} camera={{ position: initialCamera.current.position, fov: 48, near: 0.1, far: 200 }} onCreated={onCreated}>
       <Scene graph={graph} layout={layout} presentation={presentation} selectedNodeId={selectedNodeId} selectedEdgeId={selectedEdgeId} coReadingIds={coReadingIds} onNode={onNode} onEdge={onEdge} camera={initialCamera.current} remembered={initiallyRemembered.current} resetSignal={resetSignal} zoomRequest={zoomRequest} onCamera={onCamera} host={host} />
     </Canvas></RenderBoundary>}
     <details style={{ position: 'absolute', zIndex: 2, left: 12, bottom: 12, maxWidth: 'min(380px, calc(100% - 24px))', color: '#d4dced', font: `12px ${font}`, background: 'rgba(10,16,29,.86)', border: '1px solid #293448', borderRadius: 7, padding: '5px 8px' }}>
-      <summary style={{ cursor: 'pointer' }}>当前范围 · {counts.nodes} 节点 · {counts.edges} 关系 · {counts.edges - shownEdges ? `${counts.edges - shownEdges} 条未画出` : '全部已画出'}</summary>
+      <summary style={{ cursor: 'pointer' }}>当前范围 · {counts.nodes} 节点 · {counts.edges} 关系 · {counts.edges - shownEdges ? `${counts.edges - shownEdges} 条未画出` : '全部已画出'}{base.bridgeEdges.length ? ` · ${base.bridgeEdges.length} 跨群/${judgmentBridgeCount} 判断` : ''}</summary>
       <div style={{ maxHeight: 230, overflow: 'auto', marginTop: 7 }}>
-        <p>分组按当前返回连接生成，不代表全库主题。线按来源 → 目标；依据状态以原记录为准。</p>
+        <p>分组按当前返回连接生成，不代表全库主题。来源靠近其主要连接群落；跨群支持/挑战使用更明显的桥梁。线按来源 → 目标，依据状态以原记录为准。</p>
         {graph.nodes.map(node => <button key={node.id} type="button" onClick={() => onNode(node.id)} style={listButton}>{node.document === null ? '◇ 来源' : '● 认识'} · {node.title}</button>)}
         {graph.edges.map((edge, index) => <button key={edge.id} type="button" onClick={() => onEdge(edge.id)} style={listButton} title={`${edge.id} · ${edge.relation.relationVersion}`} aria-label={`关系 ${index + 1}，${edge.id}，${relationName[edge.relation.stance]}，${edge.from} 到 ${edge.to}，依据${statusName[edge.relation.evidenceStatus]}`}>#{index + 1} {relationName[edge.relation.stance]} · {graph.nodes.find(node => node.id === edge.from)?.shortLabel ?? edge.from} → {graph.nodes.find(node => node.id === edge.to)?.shortLabel ?? edge.to} · 依据{statusName[edge.relation.evidenceStatus]}</button>)}
       </div>

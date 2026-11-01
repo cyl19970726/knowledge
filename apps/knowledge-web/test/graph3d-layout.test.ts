@@ -24,6 +24,35 @@ function fixture(): GraphViewModel {
   };
 }
 
+function sourceFixture(): GraphViewModel {
+  return {
+    nodes: [node('A'), node('B'), node('C'), node('D'), node('S', true)],
+    edges: [
+      edge('a-b', 'A', 'B', 'context'),
+      edge('c-d', 'C', 'D', 'context'),
+      edge('s-a', 'S', 'A', 'context'),
+      edge('s-b', 'S', 'B', 'context'),
+      edge('s-c', 'S', 'C', 'supports'),
+    ],
+    rootId: 'C', mode: 'global',
+  };
+}
+
+function duplicateSourceFixture(): GraphViewModel {
+  return {
+    nodes: [node('A'), node('B'), node('C'), node('D'), node('S', true)],
+    edges: [
+      edge('a-b', 'A', 'B', 'context'),
+      edge('c-d', 'C', 'D', 'context'),
+      edge('s-a-1', 'S', 'A', 'context'),
+      edge('s-a-2', 'S', 'A', 'context'),
+      edge('s-c', 'S', 'C', 'context'),
+      edge('s-d', 'S', 'D', 'context'),
+    ],
+    rootId: 'C', mode: 'global',
+  };
+}
+
 test('overview groups knowledge connections, keeps shared sources outside groups, and retains every returned relation', () => {
   const graph = fixture();
   const layout = constellationLayout(graph);
@@ -63,4 +92,60 @@ test('source focus folds duplicate directional lines while every original relati
   assert.equal(question.visibleEdges.filter(id => id.startsWith('source-')).length, 2);
   assert.equal(question.hiddenEdgeCount, graph.edges.length - question.visibleEdges.length);
   assert.equal(graph.edges.filter(item => item.from === 'S').length, 64);
+});
+
+test('a shared source sits near its dominant connected group without dropping other links', () => {
+  const graph = sourceFixture();
+  const layout = constellationLayout(graph);
+  const dominant = layout.groups.find(group => group.members.includes('A'));
+  assert.ok(dominant);
+  const source = layout.positions.S;
+  assert.ok(Math.hypot(source[0] - dominant.center[0], source[1] - dominant.center[1]) < 3.1);
+  assert.equal(layout.visibleEdges.length, graph.edges.length);
+  assert.equal(layout.hiddenEdgeCount, 0);
+  assert.equal(layout.bridgeEdges.length, 0);
+});
+
+test('cross-group judgment edges are identified as bridges from the same returned relations', () => {
+  const ids = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
+  const chain = ids.slice(1).map((id, index) => edge(`chain-${index}`, ids[index], id, 'navigation'));
+  const graph: GraphViewModel = { nodes: ids.map(id => node(id)), edges: chain, rootId: 'C', mode: 'global' };
+  const bridgeId = constellationLayout(graph).bridgeEdges[0];
+  assert.ok(bridgeId);
+  const upgraded: GraphViewModel = {
+    ...graph,
+    edges: chain.map(item => item.id === bridgeId ? { ...item, relation: { ...item.relation, stance: 'supports' } } : item),
+  };
+  const layout = constellationLayout(upgraded);
+  const groupOf = new Map(layout.groups.flatMap(group => group.members.map(id => [id, group.id] as const)));
+  assert.ok(layout.bridgeEdges.includes(bridgeId));
+  assert.ok(layout.bridgeEdges.every(id => {
+    const relation = upgraded.edges.find(item => item.id === id)!;
+    const fromGroup = groupOf.get(relation.from), toGroup = groupOf.get(relation.to);
+    return !!fromGroup && !!toGroup && fromGroup !== toGroup;
+  }));
+});
+
+test('duplicate source relations do not inflate its dominant group or visible degree', () => {
+  const graph = duplicateSourceFixture();
+  const layout = constellationLayout(graph);
+  const dominant = layout.groups.find(group => group.members.includes('C'));
+  const other = layout.groups.find(group => group.members.includes('A'));
+  assert.ok(dominant && other);
+  const source = layout.positions.S;
+  assert.ok(Math.hypot(source[0] - dominant.center[0], source[1] - dominant.center[1]) < 3.1);
+  assert.ok(Math.hypot(source[0] - dominant.center[0], source[1] - dominant.center[1]) < Math.hypot(source[0] - other.center[0], source[1] - other.center[1]));
+  assert.equal(layout.connectionCounts.S, 3);
+});
+
+test('empty and single-node graphs keep bridge and source layout state finite', () => {
+  const empty = constellationLayout({ nodes: [], edges: [], rootId: null, mode: 'global' });
+  assert.deepEqual(empty.groups, []);
+  assert.deepEqual(empty.visibleEdges, []);
+  assert.deepEqual(empty.bridgeEdges, []);
+  assert.deepEqual(empty.connectionCounts, {});
+  const single = constellationLayout({ nodes: [node('A')], edges: [], rootId: 'A', mode: 'global' });
+  assert.deepEqual(single.positions.A, [0, 0, 0.6]);
+  assert.deepEqual(single.bridgeEdges, []);
+  assert.equal(single.connectionCounts.A, 0);
 });
