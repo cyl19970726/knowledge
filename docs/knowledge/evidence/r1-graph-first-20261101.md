@@ -2,7 +2,7 @@
 
 2026-11-01 · **结论：blocked。** 本轮完成了 Graph-first 构图、真实关系与来源投影、三视角、克制动效、移动端任务和稳定构建复验；桌面构图、标签碰撞、横向溢出、稳定切换、键盘与T1–T8已通过，独立视觉复核在使用最快性能样本时达到85.0/100且十维均不低于3。重复前台性能采样出现明显的9ms与33ms两种帧节奏，不能证明R1持续帧率；系统级减少动态也未运行。保守结构化总分为83.0，因此不得记为 `passed_local` 或 `passed`。
 
-本轮继续使用独立工作树 `local/worktrees/unified-cognitive-workbench` 和隔离合成知识服务。实现证据提交为 `f0be9c890e93e267c3baeeee88f8aae23b3fa649`。没有连接业务数据库、调用真实模型研究、发表知识、推送或部署。结构化记录见[visual-review-r1.json](../../assets/knowledge-workbench/visual-review-r1.json)。
+本轮继续使用独立工作树 `local/worktrees/unified-cognitive-workbench` 和隔离合成知识服务。最终结构与视觉证据提交为 `29f12ddc339b38e945fa9d7940378d01bc354067`。没有连接业务数据库、调用真实模型研究、发表知识、推送或部署。结构化记录见[visual-review-r1.json](../../assets/knowledge-workbench/visual-review-r1.json)。
 
 ## 实际数据与构图
 
