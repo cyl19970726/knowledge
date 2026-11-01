@@ -1,7 +1,7 @@
 {
   "schemaVersion": "visual-review-r1@1",
   "status": "blocked",
-  "gitHead": "pending-refined-r1-commit",
+  "gitHead": "c8f9cc0d155542ad929e4675862c6c9c17df7d57",
   "reviewedAt": "2026-11-01T21:42:00+08:00",
   "build": {
     "mode": "production-preview",
