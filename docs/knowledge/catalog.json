@@ -2,7 +2,7 @@
   "title": "通用认知知识库 · 产品、能力与实现",
   "brand": "知识库",
   "home_id": "knowledge-overview",
-  "updated": "2026-11-01",
+  "updated": "2026-11-02",
   "documents": [
     {
       "id": "knowledge-overview",
@@ -83,6 +83,16 @@
       "summary": "硬阻断、桌面构图预算、三视角任务、视觉评分、响应式、性能和证据包",
       "date": "2026-11-01",
       "lifecycle": "current"
+    },
+    {
+      "id": "knowledge-handoff-2p5d-experiment",
+      "path": "frontend/handoffs/2p5d-experiment-20261102.md",
+      "title": "2.5D 实验原型与 2D/3D 对照",
+      "group": "开发与接入",
+      "status": "实验范围已确认 · 等待实现",
+      "summary": "Claude 可独立执行的 2.5D 入口、同数据对照、验收与交接边界",
+      "date": "2026-11-02",
+      "lifecycle": "instructions"
     },
     {
       "id": "knowledge-frontend-embedding",
@@ -475,6 +485,10 @@
     "../assets/knowledge-workbench/final-1024.png",
     "../assets/knowledge-workbench/validation.json",
     "../assets/knowledge-workbench/visual-review-r1.json",
+    "../assets/knowledge-workbench/references/manifest.json",
+    "../assets/knowledge-workbench/references/overview-1440x1024-reference.jpg",
+    "../assets/knowledge-workbench/references/question-1440x1024-reference.jpg",
+    "../assets/knowledge-workbench/references/evolution-1440x1024-reference.jpg",
     "../assets/knowledge-workbench/r1/star-1440.jpg",
     "../assets/knowledge-workbench/r1/question-1440.jpg",
     "../assets/knowledge-workbench/r1/evolution-1440.jpg",
