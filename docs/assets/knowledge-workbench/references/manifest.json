@@ -1,0 +1,98 @@
+{
+  "schemaVersion": "knowledge-workbench-reference-assets@1",
+  "generatedAt": "2026-11-02T01:05:00+08:00",
+  "baselineGitSha": "48b74a6e7e0b35c678ea27ef38752c7f8f0a9530",
+  "purpose": "Visual direction and regression references for the optional 2.5D experiment. These images are not knowledge data, runtime captures, or proof that the illustrated nodes and relations exist.",
+  "referencePriority": [
+    "comprehensive-shell",
+    "overview",
+    "question",
+    "evolution"
+  ],
+  "assets": [
+    {
+      "path": "../selected-reference.png",
+      "kind": "generated_reference",
+      "role": "comprehensive-shell",
+      "priority": 1,
+      "format": "png",
+      "width": 1487,
+      "height": 1058,
+      "bytes": 1737730,
+      "sha256": "c05f9301d0a525ab1d90686c61bd54f0657ef3416eba760297c34db80975d872",
+      "screenshotState": "reference_only_not_browser_capture",
+      "source": "Existing corrected shell reference retained in the repository.",
+      "limitations": [
+        "Illustrative information and layout are not an authoritative graph projection.",
+        "The image does not prove responsive behavior, keyboard access, performance, or user acceptance."
+      ]
+    },
+    {
+      "path": "overview-1440x1024-reference.jpg",
+      "kind": "generated_reference",
+      "role": "overview",
+      "priority": 2,
+      "format": "jpeg",
+      "width": 1440,
+      "height": 1024,
+      "bytes": 348638,
+      "sha256": "602bead4caf3955539971d2944786e37b0737f241574eed09735971d882179cb",
+      "screenshotState": "reference_only_not_browser_capture",
+      "derivation": "Right panel of the committed r1/star-comparison.jpg was cropped at 1440x1024 and encoded as JPEG quality 92.",
+      "sourceComparison": "../r1/star-comparison.jpg",
+      "limitations": [
+        "Illustrative clusters and relation counts must not be copied into runtime data.",
+        "Compression can slightly change colors and fine glow appearance."
+      ]
+    },
+    {
+      "path": "question-1440x1024-reference.jpg",
+      "kind": "generated_reference",
+      "role": "question",
+      "priority": 3,
+      "format": "jpeg",
+      "width": 1440,
+      "height": 1024,
+      "bytes": 322662,
+      "sha256": "842abb7ae74d8bf0c8f2dfc0dab27de88d8d86d95866068590f154b5069c5559",
+      "screenshotState": "reference_only_not_browser_capture",
+      "derivation": "Right panel of the committed r1/question-comparison.jpg was cropped at 1440x1024 and encoded as JPEG quality 92.",
+      "sourceComparison": "../r1/question-comparison.jpg",
+      "limitations": [
+        "The design's supporting nodes and labels are illustrative and cannot establish a real A/B/D projection.",
+        "Compression can slightly change colors and fine glow appearance."
+      ]
+    },
+    {
+      "path": "evolution-1440x1024-reference.jpg",
+      "kind": "generated_reference",
+      "role": "evolution",
+      "priority": 4,
+      "format": "jpeg",
+      "width": 1440,
+      "height": 1024,
+      "bytes": 353585,
+      "sha256": "8a039199f3472351895525dadc52ef17745e82d88da89f720a1c2c0c763f5a95",
+      "screenshotState": "reference_only_not_browser_capture",
+      "derivation": "Right panel of the committed r1/evolution-comparison.jpg was cropped at 1440x1024 and encoded as JPEG quality 92.",
+      "sourceComparison": "../r1/evolution-comparison.jpg",
+      "limitations": [
+        "The design includes illustrative historical planes that the current API does not expose as an authoritative graph-as-of projection.",
+        "Candidate revisions must stay visually and semantically separate from published history.",
+        "Compression can slightly change colors and fine glow appearance."
+      ]
+    }
+  ],
+  "storagePolicy": {
+    "preferredCaptureFormats": [
+      "jpeg",
+      "webp"
+    ],
+    "losslessWhenNeeded": "png",
+    "targetBytesPerImage": 1048576,
+    "reviewAfterBytesPerImage": 3145728,
+    "targetBytesPerExperiment": 10485760,
+    "reviewWholeDirectoryAtBytes": 31457280,
+    "largeVideoFramesTraces": "local_only"
+  }
+}
