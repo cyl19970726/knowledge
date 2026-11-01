@@ -191,7 +191,7 @@ body{background:#0b1119;color:#e9edf5}
 .graph-toolbar .toolbar-actions{min-width:0}
 .graph-toolbar .toolbar-actions>.seg{white-space:nowrap}
 .graph-card>.graph-status.error{flex:none;color:#ffd5b2;background:#493021;border-bottom:1px solid #755239}
-.graph-surface{position:relative;isolation:isolate;animation:workbench-surface-in .32s cubic-bezier(.2,.75,.2,1) both}
+.graph-surface{position:relative;isolation:isolate;animation:workbench-surface-in .58s cubic-bezier(.2,.75,.2,1) both}
 .graph-surface-3d{width:100%;min-height:320px;flex:1;overflow:hidden}
 .graph-surface-3d:after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at 50% 44%,transparent 45%,#02060d42 100%),linear-gradient(180deg,#02060d24,transparent 18%,transparent 82%,#02060d38)}
 .view-explore .inspector-card>.inspector-body{order:1;flex:none}
@@ -271,12 +271,15 @@ body{background:#0b1119;color:#e9edf5}
 .view-explore .notebook-selection{padding:10px 0;border-top:1px solid #28384d}
 .view-explore .notebook-selection:has(.notebook-choice){background:#1b2032;border:1px solid #433957;border-radius:7px;padding:11px}
 .view-explore .co-reading-bar{min-height:0}
-.graph3d-label{display:inline-flex;flex-direction:column;gap:3px;width:max-content;min-width:135px;max-width:175px;white-space:normal;overflow-wrap:anywhere;padding:6px 9px;border-radius:6px;background:#0c1421e8;border:1px solid #45546b;color:#d9e5f4;font:500 12px/1.4 Inter,-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;box-shadow:0 6px 25px #0006;animation:workbench-label-in .24s cubic-bezier(.2,.75,.2,1) both;transform-origin:center}
+.graph3d-label{display:inline-flex;flex-direction:column;gap:3px;width:max-content;min-width:135px;max-width:175px;white-space:normal;overflow-wrap:anywhere;padding:6px 9px;border-radius:6px;background:#0c1421e8;border:1px solid #45546b;color:#d9e5f4;font:500 12px/1.4 "Avenir Next",-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;box-shadow:0 6px 25px #0006;animation:workbench-label-in .38s cubic-bezier(.2,.75,.2,1) both;transform-origin:center}
 .graph3d-label strong{font-size:11px;font-weight:700;color:#abbbd0}
+.graph3d-label strong b{display:inline-grid;place-items:center;width:18px;height:18px;margin-right:6px;border:1px solid currentColor;border-radius:50%;font:700 9px/1 "Avenir Next",Inter,sans-serif;vertical-align:middle}
 .graph3d-label span{font-size:14px;font-weight:650;line-height:1.35;color:#f1f3fb}
 .graph3d-label.prominent{border-color:#a56bea;background:linear-gradient(125deg,#281b43ed,#0c1422f2)}
 .graph3d-label.role-support{border-color:#5b8de4;background:#101d35ef}
 .graph3d-label.role-support strong{color:#8ab8ff}
+.graph3d-label.role-support.support-0{border-color:#9766d5;background:#1e1835ef}
+.graph3d-label.role-support.support-0 strong{color:#d0a7ff}
 .graph3d-label.role-challenge,.graph3d-label.edge-challenge{border-color:#d99c38;background:#291c10ed}
 .graph3d-label.role-challenge strong{color:#ffc46d}
 .graph3d-label.role-source{border-color:#5b6c82;background:#15202df0}
@@ -293,11 +296,39 @@ body{background:#0b1119;color:#e9edf5}
 .graph3d-label.group-teal{border-color:#4f978a;background:#0b2826eb;color:#c1f2e9}
 .graph3d-label.group-teal small{color:#95c8bf}
 .graph3d-label.role-overview{min-width:140px;border-color:#a56bea;background:#1c1837ec}
-.graph3d-label.role-path{display:inline-flex;flex-direction:row;align-items:center;gap:5px;min-width:0;max-width:155px;padding:3px 7px;border-radius:999px;box-shadow:0 4px 18px #0008}
-.graph3d-label.role-path strong{font-size:9px;letter-spacing:.08em;text-transform:uppercase}
-.graph3d-label.role-path span{max-width:112px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;line-height:1.3}
+.graph3d-label.role-path{display:inline-flex;flex-direction:row;align-items:flex-start;gap:5px;min-width:0;max-width:200px;padding:4px 8px;border-radius:8px;box-shadow:0 4px 18px #0008}
+.graph3d-label.role-path strong{font-size:9px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.graph3d-label.role-path span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;max-width:126px;overflow:hidden;white-space:normal;font-size:12px;line-height:1.28}
 .graph3d-label.edge-support,.graph3d-label.edge-challenge{min-width:0;font-size:12px;font-weight:700;padding:4px 7px}
+.graph-scope-details{position:absolute;z-index:2;left:12px;bottom:12px;max-width:min(380px,calc(100% - 24px));color:#d4dced;font:12px "Avenir Next","PingFang SC",-apple-system,BlinkMacSystemFont,sans-serif;background:rgba(10,16,29,.86);border:1px solid #293448;border-radius:7px;padding:5px 8px}
+.graph-scope-details>summary{cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @keyframes workbench-surface-in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 @keyframes workbench-label-in{from{opacity:0;transform:translateY(3px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
-@media(max-width:680px){.view-explore .workbench-heading h1{font-size:22px}.view-explore .perspective-tabs{width:calc(100% - 6px);justify-content:space-between;margin-bottom:9px}.view-explore .graph-toolbar{overflow-x:auto}.graph3d-label{max-width:115px;padding:4px 6px}.graph3d-label span{font-size:11px}.graph3d-label.role-focus{max-width:145px}.graph3d-label.role-focus span{font-size:12px}.graph3d-label.role-path{display:none}.graph3d-label.role-overview{min-width:0;max-width:none;padding:2px 7px;border-radius:999px;translate:0 22px}.graph3d-label.role-overview strong{display:block;font-size:9px;color:#e8ceff}.graph3d-label.role-overview span{display:none}}
+@media(max-width:680px){.view-explore .workbench-heading h1{font-size:22px}.view-explore .perspective-tabs{width:calc(100% - 6px);justify-content:space-between;margin-bottom:9px}.view-explore .graph-toolbar{overflow-x:auto}.graph3d-label{max-width:115px;padding:4px 6px}.graph3d-label span{font-size:11px}.graph3d-label.role-focus{max-width:145px;translate:-6px 0}.graph3d-label.role-focus span{font-size:12px}.graph3d-label.role-support.support-0{translate:-5px 0}.graph3d-label.role-challenge{translate:-7px 0}.graph3d-label.role-source{translate:-24px -48px}.graph3d-label.role-path,.graph3d-label.group-path,.graph3d-label.group-index-3{display:none}.graph3d-label.group-index-0{translate:40px 0}.graph3d-label.group-index-2{translate:-28px 0}.graph3d-label.role-overview{min-width:0;max-width:none;padding:2px 7px;border-radius:999px;translate:0 22px}.graph3d-label.role-overview strong{display:block;font-size:9px;color:#e8ceff}.graph3d-label.role-overview span{display:none}.graph-scope-details{left:7px;right:7px;bottom:8px;max-width:none;padding:3px 7px;font-size:10px}.graph-scope-details>summary{line-height:1.4}}
+@media(min-width:681px){.graph3d-label.group-index-0{translate:5px 0}.graph3d-label.group-index-4{translate:20px 24px}}
 @media(prefers-reduced-motion:reduce){.perspective-tabs button{transition:none}.graph-surface,.graph3d-label{animation:none}}
+
+/* Graph-first desktop frame: reserve the viewport for the network, not stacked chrome. */
+.body-shell.view-explore{background:radial-gradient(900px 620px at 56% 30%,#15243a66 0%,transparent 68%),linear-gradient(180deg,#090f18,#070c14)}
+.view-explore .main-content{width:auto;flex:1 1 auto;padding:10px 10px 10px}
+.view-explore .workbench-heading{height:64px;min-height:64px;margin:0 2px 8px;display:flex;align-items:center;justify-content:space-between;gap:22px}
+.view-explore .workbench-heading-copy{min-width:0;flex:1}
+.view-explore .workbench-heading h1{font-family:"Avenir Next","PingFang SC",-apple-system,BlinkMacSystemFont,sans-serif;font-size:clamp(28px,2.25vw,35px);line-height:1.16;letter-spacing:-.012em;text-wrap:balance}
+.view-explore .perspective-tabs{margin:0;align-self:center;background:#0c1521;border-color:#263548;box-shadow:inset 0 1px #ffffff05,0 8px 24px #0004}
+.view-explore .perspective-tabs button{min-width:76px;padding:10px 15px}
+.view-explore .explore-grid{grid-template-columns:minmax(0,1fr) 292px;gap:10px}
+.view-explore .research-trail{width:208px;flex-basis:208px}
+.view-explore .graph-card{border-color:#223348;box-shadow:inset 0 1px #ffffff05,0 18px 44px #0004}
+.view-explore .graph-surface-3d{background:radial-gradient(ellipse at 51% 44%,#111b2a 0%,#090f19 52%,#060a12 100%)}
+.view-explore .research-trail{background:linear-gradient(180deg,#111a27,#0d151f);border-color:#263447}
+.view-explore .inspector-card{font-family:"Avenir Next","PingFang SC",-apple-system,BlinkMacSystemFont,sans-serif;background:radial-gradient(420px 180px at 75% 0%,#252a4750,transparent 72%),linear-gradient(180deg,#111b28,#0d1622);border-color:#29384d;box-shadow:inset 0 1px #ffffff06,0 14px 35px #0003}
+.view-explore .graph-caption{background:linear-gradient(180deg,#0b1521,#09121c);color:#91a4ba;font-size:11px;line-height:1.5;padding:6px 12px}
+@media(max-width:1270px){.view-explore .explore-grid{grid-template-columns:minmax(0,1fr) 286px}}
+@media(max-width:1080px){.view-explore .explore-grid{grid-template-columns:minmax(0,1fr) 292px}.view-explore .workbench-heading{gap:12px}.view-explore .workbench-heading h1{font-size:clamp(25px,3vw,31px)}}
+@media(min-width:681px){.graph3d-label.group-path{display:none}}
+@media(min-width:981px) and (max-width:1180px){.graph3d-label.role-path{display:none}.graph3d-label.role-overview{min-width:0;max-width:none;padding:2px 7px;border-radius:999px;translate:0 22px}.graph3d-label.role-overview strong{display:block;font-size:9px;color:#e8ceff}.graph3d-label.role-overview span{display:none}}
+@media(max-width:980px){.view-explore .workbench-heading{height:auto;min-height:64px;align-items:flex-start;flex-direction:column;gap:9px;margin-bottom:10px}.view-explore .perspective-tabs{align-self:flex-start}.view-explore .explore-grid{grid-template-columns:1fr}}
+@media(max-width:680px){.view-explore .graph-surface{height:430px}}
+.view-explore .graph-card{position:relative}
+@media(min-width:981px){.view-explore .graph-toolbar{position:absolute;z-index:5;top:12px;left:12px;right:12px;height:auto;padding:0;background:transparent;border:0;pointer-events:none}.view-explore .graph-toolbar .view-switch,.view-explore .graph-toolbar .toolbar-actions{pointer-events:auto;padding:3px;border:1px solid #29394ee8;border-radius:9px;background:#09131fe8;box-shadow:0 8px 24px #0008,inset 0 1px #ffffff08;backdrop-filter:blur(12px)}.view-explore .graph-toolbar .seg{border:0;background:transparent;padding:7px 11px}.view-explore .graph-toolbar .seg.selected{background:#29223d;box-shadow:inset 0 0 0 1px #70539d}.view-explore .graph-toolbar .small-icon{width:31px;height:31px;border:0;background:transparent}.view-explore .graph-toolbar .toolbar-separator{height:19px;background:#354258;margin:0 4px}}
+@media(max-width:980px){.view-explore .graph-toolbar{position:relative;top:auto;left:auto;right:auto;height:44px;pointer-events:auto;background:#0b1521}}

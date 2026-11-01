@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { HistoryResult, KnowledgeRef } from '@commerce/knowledge-contracts';
 import { refKey } from '../src/graph/view-model.ts';
-import { publishedPair, versionDate } from '../src/evolution/versions.ts';
+import { publishedPair, versionDate, versionDateParts } from '../src/evolution/versions.ts';
 
 const ref = (versionId: string): KnowledgeRef => ({ projectId: 'project', spaceId: 'space', domain: 'knowledge', objectId: 'C', versionId, contentDigest: versionId.padEnd(64, 'a') });
 const history: HistoryResult['versions'] = [
@@ -22,6 +22,7 @@ test('candidate or unrelated reference cannot enter published compare', () => {
 
 test('publication time is explicit and missing time stays unknown', () => {
   assert.match(versionDate('2026-11-01T10:00:00.000Z'), /2026.*11.*01.*18:00.*台北/);
+  assert.deepEqual(versionDateParts('2026-11-01T10:00:00.000Z'), { date: '2026/11/01', time: '18:00', zone: '台北' });
   assert.equal(versionDate(null), '发表时间未记录');
   assert.equal(versionDate('invalid'), '发表时间无效');
 });

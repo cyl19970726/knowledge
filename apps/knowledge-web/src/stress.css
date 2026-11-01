@@ -1,0 +1,5 @@
+html,body,#root{width:100%;height:100%;margin:0;background:#050a12}
+.stress-shell{width:100%;height:100%;display:grid;grid-template-rows:48px minmax(0,1fr);color:#dce6f5;background:radial-gradient(circle at 50% 40%,#101b2d,#050a12 70%)}
+.stress-shell header{display:flex;align-items:center;gap:18px;padding:0 18px;border-bottom:1px solid #27364a;font:500 12px/1.4 "Avenir Next","PingFang SC",sans-serif}
+.stress-shell header strong{font-size:15px;color:#f0e8ff}.stress-shell header span{color:#9aabc2}.stress-shell header small{margin-left:auto;color:#9be0bd}
+.stress-graph{min-width:0;min-height:0;position:relative}

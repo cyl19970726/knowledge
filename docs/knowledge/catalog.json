@@ -185,6 +185,16 @@
       "lifecycle": "record"
     },
     {
+      "id": "knowledge-r1-graph-first-20261101",
+      "path": "evidence/r1-graph-first-20261101.md",
+      "title": "视觉重构 R1：Graph-first 本地实现与复验",
+      "group": "当前实现回执",
+      "status": "本地实现与复验 · 视觉门槛未通过 · 未部署",
+      "summary": "三视角构图、星点材质、真实关系与来源、响应式、T1–T8、稳定切换和性能边界",
+      "date": "2026-11-01",
+      "lifecycle": "record"
+    },
+    {
       "id": "knowledge-document-onboarding-20261028",
       "path": "evidence/document-onboarding-20261028.md",
       "title": "真实公开文档接入验收",
@@ -464,6 +474,21 @@
     "../assets/knowledge-workbench/final-source-390.png",
     "../assets/knowledge-workbench/final-1024.png",
     "../assets/knowledge-workbench/validation.json",
+    "../assets/knowledge-workbench/visual-review-r1.json",
+    "../assets/knowledge-workbench/r1/star-1440.jpg",
+    "../assets/knowledge-workbench/r1/question-1440.jpg",
+    "../assets/knowledge-workbench/r1/evolution-1440.jpg",
+    "../assets/knowledge-workbench/r1/star-comparison.jpg",
+    "../assets/knowledge-workbench/r1/question-comparison.jpg",
+    "../assets/knowledge-workbench/r1/evolution-comparison.jpg",
+    "../assets/knowledge-workbench/r1/star-1024.jpg",
+    "../assets/knowledge-workbench/r1/question-1024.jpg",
+    "../assets/knowledge-workbench/r1/evolution-1024.jpg",
+    "../assets/knowledge-workbench/r1/star-mobile.jpg",
+    "../assets/knowledge-workbench/r1/question-mobile.jpg",
+    "../assets/knowledge-workbench/r1/list-mobile.jpg",
+    "../assets/knowledge-workbench/r1/reader-mobile.jpg",
+    "../assets/knowledge-workbench/r1/stress-200x500.jpg",
     "../assets/knowledge-graph-space-20261031/02-fitted-overview.png",
     "../assets/knowledge-graph-space-20261031/03-challenge-context.png",
     "../assets/knowledge-graph-space-20261031/current-graph-metrics.json"

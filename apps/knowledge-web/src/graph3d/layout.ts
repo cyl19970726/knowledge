@@ -127,11 +127,11 @@ export function constellationLayout(graph: GraphViewModel): Graph3DLayout {
   const rawGroups = groupForDocuments(graph);
   const tones: GraphTone[] = ['violet', 'blue', 'cyan', 'violet', 'rose', 'teal'];
   const groups: Graph3DGroup[] = rawGroups.map((group, index) => {
-    const six: [number, number][] = [[-6.8, 3.5], [0, 1.5], [6.4, 3.5], [-6.4, -3.6], [6, -3.4], [0, -6.4]];
+    const six: [number, number, number][] = [[-7.2, 3.25, 0.8], [0.55, 0.85, -0.35], [6.65, 3.2, -1.1], [-5.45, -3.7, -1.35], [5.2, -3.25, 0.55], [-0.75, -6.25, -0.7]];
     const columns = rawGroups.length <= 4 ? 2 : 3, rows = Math.ceil(rawGroups.length / columns);
     const row = Math.floor(index / columns), column = index % columns;
-    const [x, y] = rawGroups.length === 6 ? six[index] : rawGroups.length === 1 ? [0, 0] : [((column + 0.5) - columns / 2) * 7, ((rows - 1) / 2 - row) * 7];
-    const center: Point3 = [x, y, index % 2 ? -0.8 : 0.6];
+    const [x, y, z] = rawGroups.length === 6 ? six[index] : rawGroups.length === 1 ? [0, 0, 0.6] : [((column + 0.5) - columns / 2) * 7, ((rows - 1) / 2 - row) * 7, index % 2 ? -0.8 : 0.6];
+    const center: Point3 = [x, y, z];
     return { ...group, center, tone: tones[index % tones.length] };
   });
   const positions: Record<string, Point3> = {};

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { CandidateView, KnowledgeRef, ResearchResult } from '@commerce/knowledge-contracts';
 import type { KnowledgeClient } from '@commerce/knowledge-client';
 import { refKey } from '../graph/view-model';
-import { publishedPair, versionDate } from './versions';
+import { publishedPair, versionDate, versionDateParts } from './versions';
 import './evolution.css';
 
 type History = Awaited<ReturnType<KnowledgeClient['history']>>['data'];
@@ -84,7 +84,7 @@ export function EvolutionPanel({ client, purpose, selected, title, candidate, re
   }
 
   return <div className="evolution-view">
-    <div className="evolution-intro"><span className="eyebrow">认知演化 / 单对象</span><h2>{title ?? '选择一条认识查看演化'}</h2><p>每层是一条已发表的准确版本，位置表示历史返回顺序；时间标注是该版的发表时间。层次不表示可信度或整网快照。</p></div>
+    <div className="evolution-intro"><div><span className="eyebrow">认知演化 / 单对象</span><h2>{title ?? '选择一条认识查看演化'}</h2></div><p>每层是一条已发表的准确版本，位置表示历史返回顺序；时间标注是该版的发表时间。层次不表示可信度或整网快照。</p></div>
     {!selected && <div className="state-note">从星群或问题视角选一条认识，再查看它的版本。</div>}
     {historyLoading && <div className="state-note" role="status">正在读取这条认识的准确历史…</div>}
     {historyError && <div className="inline-error" role="alert">历史读取失败：{historyError}</div>}
@@ -92,7 +92,8 @@ export function EvolutionPanel({ client, purpose, selected, title, candidate, re
     {versions.length > 0 && <section className="evolution-strata" aria-label="单对象已发表版本剖面"><div className="evolution-strata-heading"><div><span className="eyebrow">PUBLISHED HISTORY</span><h3>发表版本剖面</h3></div><span>{versions.length} 层已读取{nextCursor ? ' · 后续历史待读取' : ''}</span></div><div className="evolution-timeline" aria-label="准确版本线">{versions.map((version, index) => {
       const key = refKey(version.ref);
       const active = key === refKey(selected!);
-      return <article className={`evolution-version${active ? ' active' : ''}${before === key ? ' is-before' : ''}${after === key ? ' is-after' : ''}`} key={key}><div className="evolution-layer-axis"><span className="version-marker">{String(index + 1).padStart(2, '0')}</span><span className="evolution-layer-time">{versionDate(version.publishedAt)}</span></div><div className="evolution-plane"><div className="evolution-plane-grid" aria-hidden="true" /><div className="evolution-version-card"><div className="evolution-version-top"><span className="evolution-status">已发表</span><span className="evolution-version-id">版本 {version.ref.versionId}</span>{active && <span className="evolution-selected">当前选择</span>}</div><h3>{active ? title ?? '当前选择的准确版本' : `历史版本 ${index + 1}`}</h3><p className="evolution-reason">{recordedReason(version.reason)}</p><div className="evolution-version-actions"><button className="text-button" type="button" onClick={() => onRead(version.ref)}>阅读正文与来源 →</button>{versions.length > 1 && <><button type="button" className={before === key ? 'evolution-pick selected' : 'evolution-pick'} onClick={() => changePair('before', key)} aria-pressed={before === key}>设为基准</button><button type="button" className={after === key ? 'evolution-pick selected' : 'evolution-pick'} onClick={() => changePair('after', key)} aria-pressed={after === key}>设为对照</button></>}</div><details><summary>准确版本引用</summary><code>{key}</code></details></div></div></article>;
+      const published = versionDateParts(version.publishedAt);
+      return <article className={`evolution-version${active ? ' active' : ''}${before === key ? ' is-before' : ''}${after === key ? ' is-after' : ''}`} key={key}><div className="evolution-layer-axis"><span className="version-marker">{String(index + 1).padStart(2, '0')}</span><time className="evolution-layer-time" dateTime={version.publishedAt ?? undefined}><strong>{published.date}</strong><small>{published.time ? `${published.time} · ${published.zone}` : '时间状态见正文'}</small></time></div><div className="evolution-plane"><div className="evolution-plane-grid" aria-hidden="true" /><div className="evolution-version-card"><div className="evolution-version-top"><span className="evolution-status">已发表</span><span className="evolution-version-id">版本 {version.ref.versionId}</span>{active && <span className="evolution-selected">当前选择</span>}</div><h3>{active ? title ?? '当前选择的准确版本' : `历史版本 ${index + 1}`}</h3><p className={`evolution-reason${active ? ' primary-change' : ''}`}>{recordedReason(version.reason)}</p><div className="evolution-version-actions"><button className="text-button" type="button" onClick={() => onRead(version.ref)}>阅读正文与来源 →</button>{versions.length > 1 && <><button type="button" className={before === key ? 'evolution-pick selected' : 'evolution-pick'} onClick={() => changePair('before', key)} aria-pressed={before === key}>设为基准</button><button type="button" className={after === key ? 'evolution-pick selected' : 'evolution-pick'} onClick={() => changePair('after', key)} aria-pressed={after === key}>设为对照</button></>}</div><details><summary>准确版本引用</summary><code>{key}</code></details></div></div></article>;
     })}</div><p className="evolution-hint">剖面仅含这条认识的可读历史；层与层之间的视觉连接仅表示同一对象的版本顺序，不证明变更原因或研究支持。</p></section>}
     {nextCursor && <button className="secondary-button evolution-more" onClick={() => void loadMore()} disabled={moreLoading}>{moreLoading ? '继续读取中…' : '读取更多历史版本'}</button>}
     {versions.length === 1 && <p className="evolution-hint">目前只有一版可读；还没有两个已发表版本可比较。</p>}
