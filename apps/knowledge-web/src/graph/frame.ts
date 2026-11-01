@@ -3,6 +3,22 @@ import type { Position } from './layout';
 
 export type ViewportSize = { width: number; height: number };
 
+export function nextGraphZoom(current: number, direction: 'in' | 'out', min = 0.2, max = 2.6): number {
+  if (!Number.isFinite(current) || !Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max < min) return current;
+  const factor = direction === 'in' ? 1.25 : 1 / 1.25;
+  return Math.max(min, Math.min(max, current * factor));
+}
+
+export function zoomCameraAroundCenter(zoom: number, pan: Position, viewport: ViewportSize, direction: 'in' | 'out', min = 0.2, max = 2.6): { zoom: number; pan: Position } {
+  if (!Number.isFinite(zoom) || zoom <= 0 || viewport.width <= 0 || viewport.height <= 0) return { zoom, pan };
+  const nextZoom = nextGraphZoom(zoom, direction, min, max);
+  const center = { x: viewport.width / 2, y: viewport.height / 2 };
+  return { zoom: nextZoom, pan: {
+    x: center.x - (center.x - pan.x) / zoom * nextZoom,
+    y: center.y - (center.y - pan.y) / zoom * nextZoom,
+  } };
+}
+
 export function panKeepingWorldCenter(pan: Position, before: ViewportSize, after: ViewportSize): Position {
   if (![before.width, before.height, after.width, after.height].every(value => Number.isFinite(value) && value > 0)) return pan;
   return { x: pan.x + (after.width - before.width) / 2, y: pan.y + (after.height - before.height) / 2 };

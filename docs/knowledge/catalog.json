@@ -2,7 +2,7 @@
   "title": "通用认知知识库 · 产品、能力与实现",
   "brand": "知识库",
   "home_id": "knowledge-overview",
-  "updated": "2026-10-29",
+  "updated": "2026-11-01",
   "documents": [
     {
       "id": "knowledge-overview",
@@ -20,7 +20,7 @@
       "title": "产品与交互",
       "group": "产品与交互",
       "status": "现行说明 · 实现与部署分别见状态页",
-      "date": "2026-10-29",
+      "date": "2026-11-01",
       "summary": "认识、三种成长入口、连续两轮综合与纠错、使用和验收",
       "lifecycle": "current"
     },
@@ -33,6 +33,66 @@
       "date": "2026-10-27",
       "summary": "认知成长、内容关系、研究行为、采用反馈与连续两轮验收",
       "lifecycle": "current"
+    },
+    {
+      "id": "knowledge-frontend-experience",
+      "path": "frontend/experience.md",
+      "title": "联读研究台体验",
+      "group": "产品与交互",
+      "status": "体验与验收目标 · 本地实现范围见复验回执",
+      "summary": "问题、星图、联读选区、实际读集、研究与下一轮判断",
+      "date": "2026-10-31",
+      "lifecycle": "current"
+    },
+    {
+      "id": "knowledge-frontend-design-system",
+      "path": "frontend/design-system.md",
+      "title": "深色界面与星图语法",
+      "group": "产品与交互",
+      "status": "设计约束 · 不等同已实现或语义验收",
+      "summary": "黑阶与阅读层次、知识关系、状态、键盘和窄屏",
+      "date": "2026-10-30",
+      "lifecycle": "current"
+    },
+    {
+      "id": "knowledge-graph-space",
+      "path": "frontend/graph-space.md",
+      "title": "认知星图与3D空间提案",
+      "group": "产品与交互",
+      "status": "设计提案 · 尚未实施3D或取得读者验收",
+      "summary": "星图质量诊断、总览/问题/演化三视角、第三维含义与对照验证",
+      "date": "2026-10-31",
+      "lifecycle": "current"
+    },
+    {
+      "id": "knowledge-workbench-plan",
+      "path": "frontend/workbench-plan.md",
+      "title": "统一认知工作台：定义与实施",
+      "group": "产品与交互",
+      "status": "统一产品方案 · 功能分阶段实现 · 3D尚未落地",
+      "summary": "三视角产品定义、现有能力与缺口、共享上下文及纵向交付",
+      "date": "2026-11-01",
+      "lifecycle": "current"
+    },
+    {
+      "id": "knowledge-visual-acceptance-r1",
+      "path": "frontend/visual-acceptance-r1.md",
+      "title": "视觉重构 R1：Graph-first 验收标准",
+      "group": "产品与交互",
+      "status": "验收基线 · 实现尚未通过",
+      "summary": "硬阻断、桌面构图预算、三视角任务、视觉评分、响应式、性能和证据包",
+      "date": "2026-11-01",
+      "lifecycle": "current"
+    },
+    {
+      "id": "knowledge-frontend-embedding",
+      "path": "frontend/embedding.md",
+      "title": "前端嵌入边界",
+      "group": "开发与接入",
+      "status": "当前边界与未来合同建议 · 尚无公共UI包",
+      "summary": "独立应用、公共client与未来宿主、路由、样式和Worker合同",
+      "date": "2026-10-30",
+      "lifecycle": "instructions"
     },
     {
       "id": "knowledge-onboarding",
@@ -60,7 +120,7 @@
       "title": "职责与架构",
       "group": "开发与接入",
       "status": "现行说明 · 实现与部署分别见状态页",
-      "date": "2026-10-29",
+      "date": "2026-11-01",
       "summary": "内容模型、知识操作、前端、应用层、内核、业务适配与设施",
       "lifecycle": "current"
     },
@@ -113,6 +173,26 @@
       "date": "2026-10-26",
       "summary": "全文、标题及旧锚点保全",
       "lifecycle": "current"
+    },
+    {
+      "id": "knowledge-dark-workbench-local-20261031",
+      "path": "evidence/dark-workbench-20261031.md",
+      "title": "深色联读研究台：本地实现与复验",
+      "group": "当前实现回执",
+      "status": "本地候选 · 合成工程复验 · 未提交或部署",
+      "summary": "第二张选稿、同图联读研究、候选审阅修正、视觉对照与390px阅读",
+      "date": "2026-10-31",
+      "lifecycle": "record"
+    },
+    {
+      "id": "knowledge-r1-graph-first-20261101",
+      "path": "evidence/r1-graph-first-20261101.md",
+      "title": "视觉重构 R1：Graph-first 本地实现与复验",
+      "group": "当前实现回执",
+      "status": "本地实现与复验 · 视觉门槛未通过 · 未部署",
+      "summary": "三视角构图、星点材质、真实关系与来源、响应式、T1–T8、稳定切换和性能边界",
+      "date": "2026-11-01",
+      "lifecycle": "record"
     },
     {
       "id": "knowledge-document-onboarding-20261028",
@@ -381,6 +461,38 @@
     "../research/assets/knowledge-proposal-mobile.png",
     "../research/assets/knowledge-proposal-reading.png",
     "../research/graphify-knowledge-explorer.html",
-    "../assets/knowledge-product-review/source-bridge-validation.json"
+    "../assets/knowledge-product-review/source-bridge-validation.json",
+    "../assets/knowledge-workbench/selected-reference.png",
+    "../assets/knowledge-workbench/final-desktop.png",
+    "../assets/knowledge-workbench/final-comparison.png",
+    "../assets/knowledge-workbench/final-notebook-comparison.png",
+    "../assets/knowledge-workbench/final-selection-comparison.png",
+    "../assets/knowledge-workbench/final-candidate-review.png",
+    "../assets/knowledge-workbench/final-needs-evidence.png",
+    "../assets/knowledge-workbench/final-graph-390-fit.png",
+    "../assets/knowledge-workbench/final-reader-390.png",
+    "../assets/knowledge-workbench/final-source-390.png",
+    "../assets/knowledge-workbench/final-1024.png",
+    "../assets/knowledge-workbench/validation.json",
+    "../assets/knowledge-workbench/visual-review-r1.json",
+    "../assets/knowledge-workbench/r1/star-1440.jpg",
+    "../assets/knowledge-workbench/r1/question-1440.jpg",
+    "../assets/knowledge-workbench/r1/evolution-1440.jpg",
+    "../assets/knowledge-workbench/r1/star-comparison.jpg",
+    "../assets/knowledge-workbench/r1/question-comparison.jpg",
+    "../assets/knowledge-workbench/r1/evolution-comparison.jpg",
+    "../assets/knowledge-workbench/r1/star-1024.jpg",
+    "../assets/knowledge-workbench/r1/question-1024.jpg",
+    "../assets/knowledge-workbench/r1/evolution-1024.jpg",
+    "../assets/knowledge-workbench/r1/star-mobile.jpg",
+    "../assets/knowledge-workbench/r1/question-mobile.jpg",
+    "../assets/knowledge-workbench/r1/list-mobile.jpg",
+    "../assets/knowledge-workbench/r1/reader-mobile.jpg",
+    "../assets/knowledge-workbench/r1/stress-200x500.jpg",
+    "../assets/knowledge-workbench/r1/motion-sequence.jpg",
+    "../assets/knowledge-workbench/r1/reduced-motion-1440.jpg",
+    "../assets/knowledge-graph-space-20261031/02-fitted-overview.png",
+    "../assets/knowledge-graph-space-20261031/03-challenge-context.png",
+    "../assets/knowledge-graph-space-20261031/current-graph-metrics.json"
   ]
 }

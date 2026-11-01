@@ -1,12 +1,27 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { ArrowLeft, ArrowRight, BookOpen, ChevronDown, ChevronRight, CircleHelp, Clock3, Compass, FileText, History, Layers3, Link2, Maximize2, Search, Settings2, Sparkles, X } from 'lucide-react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ErrorInfo, type FormEvent, type ReactNode } from 'react';
+import { Component } from 'react';
+import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronDown, ChevronRight, CircleHelp, Clock3, Compass, FileText, History, Link2, Maximize2, Search, Settings2, Sparkles, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { createKnowledgeClient, KnowledgeClientError, type KnowledgeClient } from '@commerce/knowledge-client';
 import type { CandidateView, ChangeItem, Coverage, GraphResult, KnowledgeDocument, KnowledgeRef, Relation, ResearchResult, SourceRecord } from '@commerce/knowledge-contracts';
 import { GraphCanvas, type GraphCamera } from './graph/GraphCanvas';
 import { refKey, selectedRelations, toGraphView, type GraphMode } from './graph/view-model';
 import { WriteIntents } from './write-intents';
 import { SourceReads } from './source-reads';
+import knowledgeMark from './assets/knowledge-mark.png';
+import { matchingCoReadingReceipt, resolveCoReading, toggleCoReading } from './co-reading';
+import { reviewTargetFor } from './review-target';
 import { CitationList, SourceContentView, sourceKindName, sourceAssertionName, sourceAssuranceName, sourceReasonName, sourceLimitation } from './source-view';
+import { EvolutionPanel } from './evolution/EvolutionPanel';
+import type { Graph3DCamera } from './graph3d/KnowledgeGraph3D';
+
+const KnowledgeGraph3D = lazy(() => import('./graph3d/KnowledgeGraph3D'));
+type Perspective = 'constellation' | 'question' | 'evolution';
+class GraphFailureBoundary extends Component<{ children: ReactNode; onFailure: (reason: string) => void }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(error: Error, _info: ErrorInfo) { this.props.onFailure(error.message); }
+  render() { return this.state.failed ? null : this.props.children; }
+}
 
 type Page = 'explore' | 'read' | 'sources' | 'changes' | 'research';
 type Config = { projectId: string; spaceId: string; token: string; purpose: string };
@@ -34,7 +49,7 @@ const DEFAULT_CONFIG: Config = {
 const unknownCost = { modelCalls: { state: 'unknown' as const, reason: '此界面未测量' }, tokens: { state: 'unknown' as const, reason: '此界面未测量' }, money: { state: 'unknown' as const, reason: '此界面未测量' } };
 const outcomeName: Record<string, string> = { candidate: '形成候选认识', no_change: '有依据地保持不变', needs_evidence: '仍需补证' };
 const stanceName: Record<Relation['stance'], string> = { supports: '支持', challenges: '挑战', context: '联读背景', navigation: '导航关联' };
-const statusName: Record<string, string> = { queued: '排队中', running: '研究中', waiting_for_source: '等待来源', waiting_for_review: '等待审阅', cancel_requested: '请求取消', succeeded: '已完成', failed: '失败', cancelled: '已取消', outcome_unknown: '结果待核对' };
+const statusName: Record<string, string> = { queued: '排队中', running: '研究中', waiting_for_source: '等待来源', waiting_for_review: '等待审阅', cancel_requested: '请求取消', succeeded: '已完成', failed: '失败', cancelled: '已取消', outcome_unknown: '结果待核对', pending: '等待独立审阅', finalized: '审阅已处理' };
 const availabilityName: Record<string, string> = { content_readable: '内容可读', metadata_only: '仅元数据可见', unknown: '状态未知', owner_unconnected:'所有者未连接', unsupported:'来源格式不支持', forbidden:'禁止访问' };
 
 function friendlyError(error: unknown): string {
@@ -44,6 +59,7 @@ function friendlyError(error: unknown): string {
   if (error instanceof KnowledgeClientError) return `${error.message}（${error.code}${error.commitStatus === 'unknown' ? '；提交结果未知，请先核对操作' : ''}）`;
   return error instanceof Error ? error.message : String(error);
 }
+function researchReason(value: string): string { return /^Synthetic engineering candidate; independent semantic review required\.?$/.test(value) ? '合成工程候选，须经独立语义审阅。' : value; }
 function date(value: string | null | undefined): string { return value ? new Date(value).toLocaleString('zh-CN') : '未记录'; }
 function trimRef(ref: KnowledgeRef): string { return `${ref.objectId.slice(0, 8)} · ${ref.versionId.slice(0, 8)}`; }
 function StateNote({ state, children }: { state?: EmptyState; children?: ReactNode }) { return <div className="state-note">{children ?? (state ? EMPTY[state] : '暂无内容。')}</div>; }
@@ -80,8 +96,15 @@ export function App() {
   const [graphLoading, setGraphLoading] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
-  const [camera, setCamera] = useState<GraphCamera | null>(null);
+  const [coReading, setCoReading] = useState<KnowledgeRef[]>([]);
+  const [perspective, setPerspective] = useState<Perspective>('question');
+  const [exploreView, setExploreView] = useState<'2d' | '3d' | 'list'>('3d');
+  const [graph3dError, setGraph3dError] = useState('');
+  const [researchOpen, setResearchOpen] = useState(false);
+  const [cameras2d, setCameras2d] = useState<Record<'constellation' | 'question', GraphCamera | null>>({ constellation: null, question: null });
+  const [cameras3d, setCameras3d] = useState<Record<'constellation' | 'question', Graph3DCamera | null>>({ constellation: null, question: null });
   const [resetSignal, setResetSignal] = useState(0);
+  const [zoomRequest, setZoomRequest] = useState<{ sequence: number; direction: 'in' | 'out' }>({ sequence: 0, direction: 'in' });
   const [readerRef, setReaderRef] = useState<KnowledgeRef | null>(null);
   const [reader, setReader] = useState<KnowledgeDocument | null>(null);
   const [readerReceiptId, setReaderReceiptId] = useState<string | null>(null);
@@ -132,7 +155,10 @@ export function App() {
   const readingWindowScroll = useRef(0);
   const restoreReadingPosition = useRef(false);
   const readerScroll = useRef<HTMLDivElement>(null);
+  const inspectorScroll = useRef<HTMLElement>(null);
   const readerRequestSeq = useRef(0);
+  const graphRequestSeq = useRef(0);
+  const connectionSeq = useRef(0);
   const queryAbort = useRef<AbortController | null>(null);
   const scopeEpoch = useRef(0);
   const [, setIntentVersion] = useState(0);
@@ -143,18 +169,35 @@ export function App() {
 
   const client = useMemo(() => config ? createKnowledgeClient({ baseUrl: window.location.origin, scope: { projectId: config.projectId, spaceId: config.spaceId }, headers: () => ({ Authorization: `Bearer ${config.token}` }) }) : null, [config]);
   const graph = useMemo(() => graphResult ? toGraphView(graphResult, graphRoot, graphMode) : null, [graphResult, graphRoot, graphMode]);
-  const selectedDocument = graph?.nodes.find(node => node.id === selectedNodeId)?.document ?? documents.find(doc => refKey(doc.ref) === selectedNodeId) ?? null;
+  const selectedDocument = graph?.nodes.find(node => node.id === selectedNodeId)?.document ?? documents.find(doc => refKey(doc.ref) === selectedNodeId) ?? catalogDocuments.find(doc => refKey(doc.ref) === selectedNodeId) ?? null;
   const selectedExternal = graph?.nodes.find(node => node.id === selectedNodeId && node.document === null) ?? null;
   const selectedRelation = graph?.edges.find(edge => edge.id === selectedEdgeId)?.relation ?? null;
+  const coReadingDocuments = resolveCoReading(coReading, [...catalogDocuments, ...documents, ...(graph?.nodes.flatMap(node => node.document ? [node.document] : []) ?? [])]);
+  const currentCandidate = researchResult?.candidateId && candidateView?.candidateId === researchResult.candidateId ? candidateView : null;
+  const reviewTarget = reviewTargetFor(researchResult, candidateView);
+  const reviewEligible = !!reviewTarget && operation?.state === 'waiting_for_review';
+  const reviewNotice = researchResult?.cognitiveOutcome === 'candidate' && !reviewTarget
+    ? '候选正文尚未读取或与当前结果不匹配，暂不能请求审阅。'
+    : researchResult && operation?.state !== 'waiting_for_review' ? '当前研究活动尚未进入可请求审阅状态。' : '';
+  const browseDocuments = [...new Map([...(readReceiptId ? documents : catalogDocuments), ...(graph?.nodes.flatMap(node => node.document ? [node.document] : []) ?? [])].map(document => [refKey(document.ref), document])).values()];
+  const selectionFull = coReading.length === 2 && (!selectedDocument || !coReading.some(ref => refKey(ref) === refKey(selectedDocument.ref)));
+  const relatedChallenges = graph?.edges.filter(edge => edge.relation.stance === 'challenges' && (coReading.some(ref => [edge.from, edge.to].includes(refKey(ref))) || (selectedNodeId && [edge.from, edge.to].includes(selectedNodeId)))) ?? [];
   const queryIncludesReader = !!reader && documents.some(item => refKey(item.ref) === refKey(reader.ref));
   const receiptForReader = readerReceiptId ?? (queryIncludesReader ? readReceiptId : null);
+  const graphPerspective = perspective === 'evolution' ? 'question' : perspective;
+  const evolutionDocument = selectedDocument ?? (selectedRelation ? graph?.nodes.find(node => node.id === refKey(selectedRelation.to))?.document ?? graph?.nodes.find(node => node.id === refKey(selectedRelation.from))?.document : null) ?? graph?.nodes.find(node => node.id === graph.rootId)?.document ?? browseDocuments[0] ?? null;
+  const selectedEvolutionRef = evolutionDocument?.ref ?? null;
+  const trailNodes = graph ? [graph.nodes.find(node => node.id === selectedNodeId || node.id === graph.rootId), ...graph.edges.filter(edge => edge.to === (selectedNodeId ?? graph.rootId) && ['supports', 'challenges'].includes(edge.relation.stance)).sort((a, b) => (a.relation.stance === 'supports' ? 0 : 1) - (b.relation.stance === 'supports' ? 0 : 1)).map(edge => graph.nodes.find(node => node.id === edge.from))].filter((node): node is NonNullable<typeof node> => !!node && !!node.document).filter((node, index, nodes) => nodes.findIndex(other => other.id === node.id) === index).slice(0, 8) : [];
+
+  function graph3dUnavailable(reason: string) { setGraph3dError(reason || '此设备无法显示 3D 图。'); setExploreView('2d'); }
 
   const loadGraph = useCallback(async (activeClient: KnowledgeClient, root: { ref: KnowledgeRef } | { readReceiptId: string }, mode: GraphMode, purpose: string, signal?: AbortSignal) => {
     const epoch = scopeEpoch.current;
+    const sequence = ++graphRequestSeq.current;
     setGraphLoading(true); setGraphError('');
     try {
       const response = await activeClient.graph({ root, purpose, relationKinds: ['supports', 'challenges', 'context', 'navigation'], maxDepth: mode === 'focused' ? 2 : 3, maxNodes: mode === 'focused' ? 70 : 110, maxBytes: 800_000 }, { signal });
-      if (epoch !== scopeEpoch.current || signal?.aborted) return;
+      if (epoch !== scopeEpoch.current || sequence !== graphRequestSeq.current || signal?.aborted) return;
       setGraphResult(response.data);
       setActiveGraphReceiptId('readReceiptId' in root ? root.readReceiptId : null);
       setReceipt(null);
@@ -163,15 +206,29 @@ export function App() {
       setGraphMode(mode);
       setSelectedNodeId(toGraphView(response.data, rootRef, mode).rootId);
       setSelectedEdgeId(null);
-      setCamera(null);
+      setCameras2d({ constellation: null, question: null }); setCameras3d({ constellation: null, question: null });
       setCoverage(response.coverage);
-    } catch (error) { if (epoch === scopeEpoch.current && !signal?.aborted) setGraphError(friendlyError(error)); }
-    finally { if (epoch === scopeEpoch.current && !signal?.aborted) setGraphLoading(false); }
+    } catch (error) { if (epoch === scopeEpoch.current && sequence === graphRequestSeq.current && !signal?.aborted) setGraphError(friendlyError(error)); }
+    finally { if (epoch === scopeEpoch.current && sequence === graphRequestSeq.current && !signal?.aborted) setGraphLoading(false); }
   }, []);
+
+  async function importLocalConnection(file: File | undefined) {
+    if (!file) return;
+    if (file.size > 16_384) { setConnectionError('连接文件过大，请检查文件。'); return; }
+    try {
+      const value: unknown = JSON.parse(await file.text());
+      if (!value || typeof value !== 'object') throw new Error('连接文件格式无效');
+      const record = value as Record<string, unknown>;
+      if (typeof record.projectId !== 'string' || typeof record.spaceId !== 'string' || typeof record.purpose !== 'string' || typeof record.token !== 'string') throw new Error('连接文件缺少项目、空间、用途或令牌');
+      setDraftConfig({ projectId: record.projectId, spaceId: record.spaceId, purpose: record.purpose, token: record.token });
+      setConnectionError('');
+    } catch (error) { setConnectionError(error instanceof Error ? error.message : '无法读取连接文件'); }
+  }
 
   async function connect(event: FormEvent) {
     event.preventDefault();
     if (!draftConfig.projectId.trim() || !draftConfig.spaceId.trim() || !draftConfig.token.trim()) { setConnectionError('请填写项目、空间和本地访问令牌。'); return; }
+    const connectionRequest = ++connectionSeq.current;
     setConnection('loading'); setConnectionError('');
     try {
       const next: Config = { ...draftConfig, projectId: draftConfig.projectId.trim(), spaceId: draftConfig.spaceId.trim(), purpose: draftConfig.purpose.trim() };
@@ -180,13 +237,15 @@ export function App() {
       next.purpose ||= available.data.purposes[0] ?? '';
       if (!next.purpose || !available.data.purposes.includes(next.purpose)) throw new Error(`当前服务不支持此用途。可用用途：${available.data.purposes.join('、') || '无'}`);
       const catalog = await testClient.catalog({ purpose: next.purpose, limit: 60 });
+      if (connectionRequest !== connectionSeq.current) return;
       queryAbort.current?.abort();
       scopeEpoch.current += 1;
+      graphRequestSeq.current += 1;
       setConfig(next); setConfigOpen(false); setConnection('ready');
       setDraftConfig(next);
       setCapabilities(available.data);
       setSyntheticFixture(available.warnings.includes('synthetic_engineering_fixture'));
-      setGraphResult(null); setGraphRoot(null); setSelectedNodeId(null); setSelectedEdgeId(null); setCamera(null); setActiveGraphReceiptId(null);
+      setGraphResult(null); setGraphRoot(null); setSelectedNodeId(null); setSelectedEdgeId(null); setCoReading([]); setResearchOpen(false); setPerspective('question'); setExploreView('3d'); setGraph3dError(''); setCameras2d({ constellation: null, question: null }); setCameras3d({ constellation: null, question: null }); setActiveGraphReceiptId(null);
       setGraphLoading(false); setGraphError(''); setQueryLoading(false); setReaderLoading(false); setChangesLoading(false);
       readerRequestSeq.current += 1;
       setReader(null); setReaderRef(null); setReaderReceiptId(null); setSource(null); setSourceRef(null); setSourceReturnRef(null); setSourceLocator(null);
@@ -196,7 +255,7 @@ export function App() {
       setReadReceiptId(null); setReceipt(null); setPage('explore');
       if (catalog.data.items[0]) void loadGraph(testClient, { readReceiptId: catalog.data.readReceiptId }, 'global', next.purpose);
       else { setGraphResult(null); setGraphRoot(null); }
-    } catch (error) { setConnection('error'); setConnectionError(friendlyError(error)); }
+    } catch (error) { if (connectionRequest === connectionSeq.current) { setConnection('error'); setConnectionError(friendlyError(error)); } }
   }
 
   async function submitQuery(event: FormEvent) {
@@ -215,6 +274,7 @@ export function App() {
         await loadGraph(client, { readReceiptId: response.data.readReceiptId }, 'focused', config!.purpose, controller.signal);
       } else { setGraphResult(null); setGraphRoot(null); setSelectedNodeId(null); setActiveGraphReceiptId(null); }
       if (epoch !== scopeEpoch.current || controller.signal.aborted) return;
+      setPerspective('question');
       setPage('explore');
     } catch (error) { if (epoch === scopeEpoch.current && !controller.signal.aborted) setQueryError(friendlyError(error)); }
     finally { if (epoch === scopeEpoch.current && !controller.signal.aborted) setQueryLoading(false); }
@@ -288,12 +348,14 @@ export function App() {
     event.preventDefault();
     if (!client || !researchQuestion.trim() || capabilities?.mode !== 'ready' || !capabilities.permittedActions.includes('research')) return;
     const epoch = scopeEpoch.current;
-    const researchReceiptId = reader ? receiptForReader : selectedDocument && documents.some(item => refKey(item.ref) === refKey(selectedDocument.ref)) ? readReceiptId : null;
+    const researchReceiptId = coReading.length === 2
+      ? matchingCoReadingReceipt(receipt, config!.purpose, coReading)
+      : reader ? receiptForReader : selectedDocument && documents.some(item => refKey(item.ref) === refKey(selectedDocument.ref)) ? readReceiptId : null;
     const input = {
       question: researchQuestion.trim(), purpose: config!.purpose,
-      sourceRefs: [], knowledgeRefs: reader ? [reader.ref] : selectedDocument ? [selectedDocument.ref] : [],
+      sourceRefs: [], knowledgeRefs: coReading.length === 2 ? coReading : reader ? [reader.ref] : selectedDocument ? [selectedDocument.ref] : [],
       ...(researchReceiptId ? { readReceiptId: researchReceiptId } : {}),
-      baseHeads: reader ? [{ objectId: reader.ref.objectId, versionId: reader.status.currentRef?.versionId ?? null }] : [],
+      baseHeads: coReading.length === 2 ? [] : reader ? [{ objectId: reader.ref.objectId, versionId: reader.status.currentRef?.versionId ?? null }] : [],
       budget: { maxModelCalls: 0, maxReadBytes: 100_000, deadline: new Date(Date.now() + 30 * 60_000).toISOString(), maxMoney: null },
       allowExternalAcquisition: false as const,
     };
@@ -347,9 +409,10 @@ export function App() {
   }
 
   async function requestReview() {
-    if (!client || !researchResult || capabilities?.mode !== 'ready' || !capabilities.permittedActions.includes('requestReview')) return;
+    const target = reviewTargetFor(researchResult, candidateView);
+    if (!client || !target || operation?.state !== 'waiting_for_review' || capabilities?.mode !== 'ready' || !capabilities.permittedActions.includes('requestReview')) return;
     const epoch = scopeEpoch.current;
-    const input = { target: { kind: 'research_result' as const, researchId: researchResult.researchId, resultDigest: researchResult.resultDigest }, purpose: config!.purpose };
+    const input = { target, purpose: config!.purpose };
     if (writeIntents.start({ scope: writeScope, purpose: config!.purpose, action: 'review:request', label: '独立审阅请求', input,
       send: (frozen, key) => client.requestReview(frozen, { idempotencyKey: key }),
       complete: result => { if (epoch !== scopeEpoch.current) return; if (result instanceof Error) setReviewError(friendlyError(result)); else setReviewTicket((result as Awaited<ReturnType<KnowledgeClient['requestReview']>>).data); },
@@ -431,36 +494,49 @@ export function App() {
   }, [page]);
 
   useEffect(() => () => sourceReads.current.cancel(), [config]);
+  useEffect(() => { inspectorScroll.current?.scrollTo({ top: 0 }); }, [selectedNodeId, selectedEdgeId, perspective]);
 
-  function selectNode(id: string) { setSelectedNodeId(id); setSelectedEdgeId(null); }
+  function selectNode(id: string) { setSelectedNodeId(id); setSelectedEdgeId(null); if (perspective === 'constellation') setPerspective('question'); }
   function selectEdge(id: string) { setSelectedEdgeId(id); setSelectedNodeId(null); }
   function navigate(next: Page) { captureReadingPosition(); if (next === 'sources') setSourceReturnRef(null); if (next === 'changes') void loadChanges(); else setPage(next); }
   function backToGraph() { setPage('explore'); }
+  function switchPerspective(next: Perspective) { setPerspective(next); setPage('explore'); }
+  function compareCoReading() {
+    if (coReading.length !== 2) return;
+    setResearchQuestion(current => current.trim() || question.trim() || `比较“${coReadingDocuments[0]?.document?.title ?? '第一条认识'}”与“${coReadingDocuments[1]?.document?.title ?? '第二条认识'}”的成立条件、支持与挑战`);
+    setResearchOpen(true);
+    inspectorScroll.current?.scrollTo({ top: 0 });
+  }
 
   return <div className={syntheticFixture ? 'app-shell has-synthetic' : 'app-shell'}>
     <header className="topbar">
-      <button className="brand" onClick={backToGraph} aria-label="返回知识探索"><span className="brand-mark">知</span><span>知库</span></button>
+      <button className="brand" onClick={backToGraph} aria-label="返回知识探索"><span className="brand-mark"><img src={knowledgeMark} alt="" width="30" height="30" /></span><span>联读研究台</span></button>
       <button className="space-switcher" onClick={() => setConfigOpen(true)}><span>{config?.spaceId ?? '选择知识空间'}</span><ChevronDown size={16} /></button>
+      {syntheticFixture && <span className="synthetic-badge" role="status" title="合成工程样例：页面内容与研究结果仅用于验证，不代表真实业务知识">合成样例</span>}
       <span className="topbar-spacer" />
-      <span className="topbar-context">{config ? `${config.projectId} · ${config.purpose}` : '连接本地知识服务'}</span>
+      {config && page === 'explore' && <form className="header-search" onSubmit={submitQuery}><Search size={18} /><input value={question} onChange={event => setQuestion(event.target.value)} placeholder="在此知识空间中查询…" aria-label="知识查询" /><button type="submit" disabled={queryLoading || !question.trim()}>{queryLoading ? '查询中' : '查询'}</button></form>}
       <button className="icon-button" onClick={() => setConfigOpen(true)} aria-label="连接设置"><Settings2 size={19} /></button>
     </header>
-    {syntheticFixture && <div className="synthetic-ribbon" role="status">合成工程样例 · 页面内容与研究结果仅用于验证，不代表真实业务知识</div>}
-    <div className="body-shell">
+    <div className={page === 'explore' ? 'body-shell view-explore' : 'body-shell'}>
       <nav className="sidebar" aria-label="主导航">
         <div className="nav-primary">
-          <button className={page === 'explore' ? 'nav-link active' : 'nav-link'} onClick={() => navigate('explore')}><Compass size={20} /><span>知识探索</span></button>
-          <button className={page === 'research' ? 'nav-link active' : 'nav-link'} onClick={() => navigate('research')}><CircleHelp size={20} /><span>问题研究</span></button>
-          <button className={page === 'sources' ? 'nav-link active' : 'nav-link'} onClick={() => navigate('sources')}><FileText size={20} /><span>来源资料</span></button>
-          <button className={page === 'changes' ? 'nav-link active' : 'nav-link'} onClick={() => navigate('changes')}><History size={20} /><span>变化记录</span></button>
+          <button className={page === 'explore' ? 'nav-link active' : 'nav-link'} onClick={() => { setPerspective('constellation'); navigate('explore'); }} title="研究图谱"><Compass size={21} /><span>研究</span></button>
+          <button className={page === 'research' ? 'nav-link active' : 'nav-link'} onClick={() => navigate('research')} title="问题研究"><CircleHelp size={21} /><span>问题</span></button>
+          <button className={page === 'sources' ? 'nav-link active' : 'nav-link'} onClick={() => navigate('sources')} title="来源资料"><FileText size={21} /><span>来源</span></button>
+          <button className={page === 'changes' ? 'nav-link active' : 'nav-link'} onClick={() => navigate('changes')} title="变化记录"><History size={21} /><span>变化</span></button>
         </div>
-        <div className="sidebar-meta">
-          <p>当前空间：{config?.spaceId ?? '未连接'}</p>
-          <button onClick={() => navigate('explore')}><Layers3 size={17} />认识 <span>{documents.length}</span></button>
-          <button onClick={() => navigate('explore')}><Link2 size={17} />关系 <span>{graphResult?.edges.length ?? '—'}</span></button>
-          <button onClick={() => navigate('research')}><CircleHelp size={17} />研究活动</button>
-        </div>
+        <button className="rail-settings" onClick={() => setConfigOpen(true)} title="连接设置" aria-label="连接设置"><Settings2 size={20} /><span>设置</span></button>
       </nav>
+      {config && page === 'explore' && <aside className="research-trail" aria-label="研究脉络">
+        <h2>研究脉络</h2>
+        <section><h3>当前问题</h3><p>{question.trim() || '从已有认识出发'}</p></section>
+        <section><h3>{perspective === 'constellation' ? '当前有界范围' : '相关认识'} <span>{graph?.nodes.filter(node => node.document).length ?? documents.length}</span></h3>
+          <div className="trail-list">{(trailNodes.length ? trailNodes : graph?.nodes.filter(node => node.document).slice(0, 8) ?? documents.slice(0, 8).map(document => ({ id: refKey(document.ref), title: document.title, ref: document.ref, document }))).map(node => <button key={node.id} className={node.id === selectedNodeId ? 'trail-item current' : coReading.some(ref => refKey(ref) === node.id) ? 'trail-item chosen' : 'trail-item'} onClick={() => selectNode(node.id)}><span className="trail-dot" />{node.title}</button>)}</div>
+          {!graph && !documents.length && <p className="minor-note">当前范围尚无可显示认识。</p>}
+        </section>
+        <section><h3>联读选择 <span>{coReading.length}/2</span></h3>{coReadingDocuments.length ? coReadingDocuments.map(({ ref, document }) => <button className="trail-item chosen" key={refKey(ref)} onClick={() => setCoReading(current => toggleCoReading(current, ref))}><span className="trail-dot" />{document?.title ?? '准确版本未在当前范围加载'} <X size={13} /></button>) : <p className="minor-note">在星图或右侧笔记选择两条认识。</p>}</section>
+        {coverage && <p className="trail-coverage">{coverage.completeness === 'complete' ? '当前返回范围完整' : '有界投影 · 可能还有其他认识'}</p>}
+      </aside>}
       <main className="main-content">
         <div className="mobile-nav" aria-label="移动导航">
           <button className={page === 'explore' ? 'active' : ''} onClick={() => navigate('explore')}>探索</button>
@@ -480,30 +556,32 @@ export function App() {
         {!config && <div className="connect-placeholder"><Sparkles size={26} /><h1>从已有认识出发</h1><p>连接一个知识空间后，查询、星图和准确版本会从知识服务读取。</p><button className="primary-button" onClick={() => setConfigOpen(true)}>连接知识空间 <ArrowRight size={17} /></button></div>}
         {config && <>
           <section className={page === 'explore' ? 'explore-page' : 'explore-page hidden-page'} aria-hidden={page !== 'explore'}>
-            <div className="page-heading"><h1>从已有认识，发现新的问题</h1><p>探索知识的来源、关联、分歧与变化。</p></div>
-            <form className="search-box" onSubmit={submitQuery}><Search size={20} /><input value={question} onChange={event => setQuestion(event.target.value)} placeholder="提出问题，或寻找一条认识…" aria-label="知识查询" /><button type="submit" disabled={queryLoading || !question.trim()}>{queryLoading ? '查询中' : '探索'}</button></form>
+            <div className="page-heading workbench-heading"><div className="workbench-heading-copy"><h1>{perspective === 'constellation' ? '哪些认识把这些主题连起来？' : perspective === 'evolution' ? `这条认识如何演化？` : question.trim() || `这条认识为什么成立，又在哪里可能失效？`}</h1></div><div className="perspective-tabs" role="group" aria-label="认知视角"><button className={perspective === 'constellation' ? 'selected' : ''} onClick={() => switchPerspective('constellation')} aria-pressed={perspective === 'constellation'}>星群</button><button className={perspective === 'question' ? 'selected' : ''} onClick={() => switchPerspective('question')} aria-pressed={perspective === 'question'}>问题</button><button className={perspective === 'evolution' ? 'selected' : ''} onClick={() => switchPerspective('evolution')} aria-pressed={perspective === 'evolution'}>演化</button></div></div>
             {queryError && <div className="inline-error" role="alert">{queryError}</div>}
             <div className="explore-grid">
               <section className="graph-card" aria-label="知识图谱">
-                <div className="graph-toolbar"><div className="toolbar-label"><span className="pulse-dot" />{graphMode === 'focused' ? '聚焦依据' : '知识星图'}</div><div className="toolbar-actions"><button className={graphMode === 'global' ? 'seg selected' : 'seg'} onClick={() => { if (catalogReceiptId && client) void loadGraph(client, { readReceiptId: catalogReceiptId }, 'global', config.purpose); }}>全局</button><button className={graphMode === 'focused' ? 'seg selected' : 'seg'} onClick={() => { const ref = selectedDocument?.ref ?? documents[0]?.ref ?? catalogDocuments[0]?.ref; if (ref && client) void loadGraph(client, { ref }, 'focused', config.purpose); }}>聚焦</button><span className="toolbar-separator" /><button className="small-icon" onClick={() => setResetSignal(value => value + 1)} aria-label="适配画布"><Maximize2 size={17} /></button></div></div>
+                {perspective !== 'evolution' && <div className="graph-toolbar"><div className="view-switch" role="group" aria-label="图形方式"><button className={exploreView === '2d' ? 'seg selected' : 'seg'} onClick={() => setExploreView('2d')} aria-pressed={exploreView === '2d'}>2D</button><button className={exploreView === '3d' ? 'seg selected' : 'seg'} onClick={() => { setGraph3dError(''); setExploreView('3d'); }} aria-pressed={exploreView === '3d'}>3D</button><button className={exploreView === 'list' ? 'seg selected' : 'seg'} onClick={() => setExploreView('list')} aria-pressed={exploreView === 'list'}>列表</button></div><div className="toolbar-actions">{exploreView !== 'list' && <><button className="seg" onClick={() => { if (catalogReceiptId && client) void loadGraph(client, { readReceiptId: catalogReceiptId }, 'global', config.purpose); }}>当前范围</button><button className="seg" onClick={() => { const ref = selectedDocument?.ref ?? documents[0]?.ref ?? catalogDocuments[0]?.ref; if (ref && client) void loadGraph(client, { ref }, 'focused', config.purpose); }}>展开所选</button><span className="toolbar-separator" /><button className="small-icon" onClick={() => setZoomRequest(value => ({ sequence: value.sequence + 1, direction: 'in' }))} aria-label="放大图谱" title="放大图谱"><ZoomIn size={17} /></button><button className="small-icon" onClick={() => setZoomRequest(value => ({ sequence: value.sequence + 1, direction: 'out' }))} aria-label="缩小图谱" title="缩小图谱"><ZoomOut size={17} /></button><button className="small-icon" onClick={() => setResetSignal(value => value + 1)} aria-label="适配画布"><Maximize2 size={17} /></button></>}</div></div>}
+                {graph3dError && <div className="graph-status error" role="status">3D 不可用：{graph3dError}。已返回 2D，可切换列表阅读。</div>}
                 {graphLoading && <div className="graph-status">正在获取知识关系…</div>}
                 {graphError && <div className="graph-status error" role="alert">{graphError}</div>}
-                {graph ? <GraphCanvas graph={graph} selectedNodeId={selectedNodeId} selectedEdgeId={selectedEdgeId} onNode={selectNode} onEdge={selectEdge} onCamera={setCamera} rememberedCamera={camera} resetSignal={resetSignal} visible={page === 'explore'} /> : <StateNote state={emptyState}>{graphLoading ? '正在读取图谱…' : emptyState ? EMPTY[emptyState] : '选择一条认识以展开关联。'}</StateNote>}
-                <div className="graph-caption"><span>圆点是准确版本或外部资料；线表示关系。颜色仅辅助导航。</span><span>{graph ? `${graph.nodes.length} 个节点 · ${graph.edges.length} 条关系` : ''}</span></div>
-                {graph && <div className="graph-accessible"><details><summary>用列表浏览图谱节点与关系</summary><div className="graph-list"><h3>节点</h3>{graph.nodes.map(node => <button key={node.id} onClick={() => selectNode(node.id)}>{node.title}<small>{node.document ? '认识' : `外部节点 · ${availabilityName[node.availability]}`} · {trimRef(node.ref)}</small></button>)}<h3>关系</h3>{graph.edges.map(edge => <button key={edge.id} onClick={() => selectEdge(edge.id)}>{stanceName[edge.relation.stance]} · {graph.nodes.find(node => node.id === edge.from)?.title} → {graph.nodes.find(node => node.id === edge.to)?.title}<small>{edge.relation.rationale ?? '关系理由未提供'}</small></button>)}</div></details></div>}
+                {perspective === 'evolution' ? <EvolutionPanel client={client!} purpose={config.purpose} selected={selectedEvolutionRef} title={evolutionDocument?.title ?? null} candidate={currentCandidate} research={researchResult} onRead={openReader} onBack={() => switchPerspective('question')} /> : exploreView !== 'list' ? <>{graph ? exploreView === '3d' ? <div className="graph-surface graph-surface-3d"><GraphFailureBoundary key={`${config.spaceId}:${config.purpose}:${graphResult?.edges.length ?? 0}`} onFailure={graph3dUnavailable}><Suspense fallback={<div className="graph-status">正在加载 3D 星图…</div>}><KnowledgeGraph3D graph={graph} presentation={graphPerspective} selectedNodeId={selectedNodeId} selectedEdgeId={selectedEdgeId} coReadingIds={coReading.map(refKey)} onNode={selectNode} onEdge={selectEdge} onCamera={value => setCameras3d(current => ({ ...current, [graphPerspective]: value }))} rememberedCamera={cameras3d[graphPerspective]} resetSignal={resetSignal} zoomRequest={zoomRequest} visible={page === 'explore'} onUnavailable={graph3dUnavailable} /></Suspense></GraphFailureBoundary></div> : <GraphCanvas graph={graph} selectedNodeId={selectedNodeId} selectedEdgeId={selectedEdgeId} coReadingIds={coReading.map(refKey)} onNode={selectNode} onEdge={selectEdge} onCamera={value => setCameras2d(current => ({ ...current, [graphPerspective]: value }))} rememberedCamera={cameras2d[graphPerspective]} resetSignal={resetSignal} zoomRequest={zoomRequest} visible={page === 'explore'} /> : <StateNote state={emptyState}>{graphLoading ? '正在读取图谱…' : emptyState ? EMPTY[emptyState] : '选择一条认识以展开关联。'}</StateNote>}<div className="graph-caption"><span>颜色是当前有界投影的视觉分组，不表示真伪；关系方向、条件和未知状态以笔记与正文为准。</span><span>{graph ? `有界投影：${graph.nodes.length} 节点 · ${graph.edges.length} 关系。` : ''}</span></div></> : <div className="graph-list-pane"><div className="section-heading"><h2>当前范围的认识（{browseDocuments.length}）</h2></div>{browseDocuments.length ? <div className="browse-list">{browseDocuments.map(document => { const chosen = coReading.some(ref => refKey(ref) === refKey(document.ref)); return <article key={refKey(document.ref)}><h3>{document.title}</h3><p>{document.body.slice(0, 140)}{document.body.length > 140 ? '…' : ''}</p><div className="button-row"><button className="text-button" onClick={() => { if (graph?.nodes.some(node => node.id === refKey(document.ref))) selectNode(refKey(document.ref)); else if (client) void loadGraph(client, { ref: document.ref }, 'focused', config.purpose); setExploreView('2d'); }}>图中定位</button><button className="text-button" onClick={() => void openReader(document.ref)}>阅读正文</button><button className="text-button" disabled={!chosen && coReading.length === 2} onClick={() => setCoReading(current => toggleCoReading(current, document.ref))}>{chosen ? '移出联读' : '加入联读'}</button></div></article>; })}</div> : <StateNote state={emptyState} />}{graph && <><details className="browse-relations"><summary>查看当前图谱的 {graph.nodes.filter(node => !node.document).length} 个外部节点</summary><div className="graph-list">{graph.nodes.filter(node => !node.document).map(node => <button key={node.id} onClick={() => { selectNode(node.id); setExploreView('2d'); }}>{node.title}<small>{availabilityName[node.availability]} · {trimRef(node.ref)}</small></button>)}</div></details><details className="browse-relations"><summary>查看当前图谱的 {graph.edges.length} 条关系</summary><div className="graph-list">{graph.edges.map(edge => <button key={edge.id} onClick={() => { selectEdge(edge.id); setExploreView('2d'); }}>{stanceName[edge.relation.stance]} · {graph.nodes.find(node => node.id === edge.from)?.title} → {graph.nodes.find(node => node.id === edge.to)?.title}<small>{edge.relation.rationale ?? '关系理由未提供'}</small></button>)}</div></details></>}<CoverageNote coverage={coverage} /></div>}
               </section>
-              <aside className="inspector-card" aria-label="当前选择">
-                <div className="inspector-kicker">当前认识 <span>···</span></div>
-                {selectedRelation ? <RelationInspector relation={selectedRelation} graph={graph} onRead={openReader} onSource={openSource} /> : selectedDocument ? <DocumentInspector document={selectedDocument} graph={graph} onRead={() => void openReader(selectedDocument.ref)} onSelectRelation={selectEdge} /> : selectedExternal ? <div className="inspector-body"><span className="eyebrow">{selectedExternal.ref.domain} · {availabilityName[selectedExternal.availability]}</span><h2>{selectedExternal.title}</h2><p className="inspector-summary">这是外部来源或分析节点，内容状态由服务提供；图谱不把它当作已经验证的认识。</p><RefButton refValue={selectedExternal.ref} onRead={openReader} onSource={openSource} /></div> : <StateNote>点选一条认识或关系，查看它的准确版本和依据。</StateNote>}
+              <aside className="inspector-card" aria-label="研究笔记" ref={inspectorScroll}>
+                <div className="inspector-kicker">研究笔记 <span>···</span></div>
+                <div className="notebook-section notebook-selection"><h3>联读选择 · {coReading.length}/2</h3>{coReadingDocuments.length ? coReadingDocuments.map(({ ref, document }, index) => <div className="notebook-choice" key={refKey(ref)} title={`${ref.objectId}@${ref.versionId}`}><strong>{index + 1}. {document?.title ?? '准确版本未在当前范围加载'}</strong><small>{document?.status.current ? '当前版' : document ? '历史版' : '准确版本'}</small></div>) : <p>选择两条认识后，可以围绕同一星图研究。</p>}<p className="minor-note">本地选择尚非服务读集；结果以准确读集为准。</p></div>
+                {researchOpen && <section className="notebook-research" aria-label="联读研究准备"><div className="section-heading"><h2>比较两条认识</h2><button className="text-button" onClick={() => setResearchOpen(false)} aria-label="收起研究准备"><X size={16} /></button></div><p className="minor-note">{operation ? '活动已提交；待结果返回后核对服务准确读集。' : `拟提交 ${coReading.length} 条准确版本；提交前尚未形成服务读集。`}预算为 0 次模型调用、无付费额度。</p><form onSubmit={startResearch}><label>想核对的问题<textarea value={researchQuestion} onChange={event => setResearchQuestion(event.target.value)} required /></label><button className="primary-button" disabled={coReading.length !== 2 || writeBlocked || researchBusy || capabilities?.mode !== 'ready' || !capabilities.permittedActions.includes('research')}>提交联读研究 <ArrowRight size={16} /></button></form>{capabilities?.mode !== 'ready' || !capabilities.permittedActions.includes('research') ? <p className="minor-note">当前服务未开放研究提交。</p> : null}{researchError && <p className="inline-error" role="status">{researchError}</p>}{operation && <div className="notebook-outcome"><strong>研究活动 · {statusName[operation.state] ?? operation.state}</strong><p>{operation.reason ?? '活动状态来自服务；请刷新读取结果。'}</p><div className="button-row"><button className="secondary-button" onClick={() => void refreshResearch()} disabled={researchBusy}>刷新状态</button>{!['succeeded', 'failed', 'cancelled'].includes(operation.state) && <button className="text-button" onClick={() => void cancelResearch()} disabled={writeBlocked || researchBusy}>请求取消</button>}</div></div>}{researchResult && <div className="notebook-outcome"><h3>{outcomeName[researchResult.cognitiveOutcome]}</h3><p>服务准确读集 {researchResult.exactReadset.length} 项 · 审阅 {statusName[researchResult.reviewState] ?? researchResult.reviewState}</p><p>{researchReason(researchResult.reason)}</p>{reviewNotice && <p className="minor-note">{reviewNotice}</p>}{researchResult.gaps.length > 0 && <InfoList title="仍需补证" items={researchResult.gaps} />}{researchResult.cognitiveOutcome === 'candidate' && (currentCandidate ? <div className="notebook-candidate"><strong>候选正文 · 尚非正式认识</strong>{currentCandidate.changes.map(change => <article key={refKey(change.ref)}><h3>{change.title}</h3><p>{change.body}</p><InfoList title="成立条件" items={change.conditions} /><InfoList title="反例" items={change.counterexamples} /></article>)}</div> : <p className="minor-note">{candidateError || '候选正文尚未读取。'}{researchResult.candidateId && <button className="text-button" onClick={() => void loadCandidate(researchResult.candidateId!)}>读取候选正文</button>}</p>)}<div className="button-row"><button className="secondary-button" onClick={() => void requestReview()} disabled={!reviewEligible || writeBlocked || reviewBusy || !!reviewTicket || capabilities?.mode !== 'ready' || !capabilities.permittedActions.includes('requestReview')}>请求独立审阅</button>{reviewTicket && <button className="text-button" onClick={() => void refreshReview()} disabled={reviewBusy}>刷新审阅</button>}</div>{reviewTicket && <p>审阅请求：{statusName[reviewTicket.status] ?? reviewTicket.status}</p>}{reviewError && <p className="inline-error" role="status">{reviewError}</p>}</div>}<button className="text-button" onClick={() => setPage('research')}>查看完整研究 <ArrowRight size={14} /></button></section>}
+                {selectedDocument && <><button className="secondary-button notebook-add" disabled={selectionFull} onClick={() => setCoReading(current => toggleCoReading(current, selectedDocument.ref))}>{coReading.some(ref => refKey(ref) === refKey(selectedDocument.ref)) ? <Check size={16} /> : <Link2 size={16} />}{coReading.some(ref => refKey(ref) === refKey(selectedDocument.ref)) ? '移出联读选区' : '加入联读选区'}</button>{selectionFull && <p className="minor-note selection-limit">已选满两条；先移除一条再加入。</p>}</>}
+                {selectedRelation ? <RelationInspector relation={selectedRelation} graph={graph} onRead={openReader} onSource={openSource} /> : selectedDocument ? <DocumentInspector document={selectedDocument} graph={graph} onRead={() => void openReader(selectedDocument.ref)} onSource={openSource} onSelectRelation={selectEdge} /> : selectedExternal ? <div className="inspector-body"><span className="eyebrow">{selectedExternal.ref.domain} · {availabilityName[selectedExternal.availability]}</span><h2>{selectedExternal.title}</h2><p className="inspector-summary">这是外部来源或分析节点，内容状态由服务提供；图谱不把它当作已经验证的认识。</p><RefButton refValue={selectedExternal.ref} onRead={openReader} onSource={openSource} /></div> : <StateNote>点选一条认识或关系，查看它的准确版本和依据。</StateNote>}
+                {relatedChallenges.length > 0 && <div className="notebook-section"><h3>挑战关系</h3>{relatedChallenges.slice(0, 3).map(edge => <button className="notebook-relation" key={edge.id} onClick={() => selectEdge(edge.id)}>{edge.relation.rationale ?? '关系理由未记录'}<small>{edge.relation.evidenceStatus === 'observed' ? '已观察' : edge.relation.evidenceStatus === 'untested' ? '未检验' : '证据状态未知'}</small></button>)}</div>}
+                {!researchOpen && researchResult && <div className="notebook-section"><h3>最近研究结果</h3><p>{outcomeName[researchResult.cognitiveOutcome]} · 服务准确读集 {researchResult.exactReadset.length} 项</p><button className="text-button" onClick={() => setResearchOpen(true)}>展开研究结果 <ArrowRight size={14} /></button></div>}
                 <div className="inspector-footer"><Clock3 size={17} />{activeGraphReceiptId ? <button onClick={() => void loadReceipt()}>查看这张图的读取记录</button> : <span>此图按所选认识展开</span>}</div>
+                {receipt && <div className="notebook-section"><h3>本次准确读取</h3><p>{date(receipt.createdAt)} · 用途 {receipt.purpose}</p><p>有序读集 {receipt.orderedItems.length} 项；实际读取来源 {receipt.actualReads.length} 项。</p><details><summary>查看准确读取标识</summary><p>{receipt.id}</p></details><CoverageNote coverage={receipt.coverage} /></div>}
               </aside>
             </div>
-            {documents.length > 0 && <section className="results-strip"><div className="section-heading"><h2>{readReceiptId ? '本次问题的认识' : '当前空间的认识'}</h2><span>{documents.length} 条</span></div><div className="result-list">{documents.map(document => <button key={refKey(document.ref)} onClick={() => { selectNode(refKey(document.ref)); void openReader(document.ref); }}><span className="result-dot" /><span><strong>{document.title}</strong><small>{document.body.slice(0, 94)}{document.body.length > 94 ? '…' : ''}</small></span><ChevronRight size={17} /></button>)}</div></section>}
-            {receipt && <section className="receipt-panel"><div className="section-heading"><h2>本次准确读取</h2><button onClick={() => setReceipt(null)} aria-label="关闭读取记录"><X size={17} /></button></div><p>读取记录 {receipt.id} · {date(receipt.createdAt)} · 用途 {receipt.purpose}</p><p>有序读集 {receipt.orderedItems.length} 项；实际读取来源 {receipt.actualReads.length} 项。继承依据与本次读取分开记录。</p><CoverageNote coverage={receipt.coverage} /></section>}
-            <CoverageNote coverage={coverage} />
+            {coReading.length > 0 && <section className="co-reading-bar" aria-label="联读选区"><div className="co-reading-heading"><strong>联读选区（{coReading.length}/2）</strong><span>本地准备 · 服务读集在提交后核对</span></div><div className="co-reading-items">{coReadingDocuments.map(({ ref, document }, index) => <div className="co-reading-chip" key={refKey(ref)} title={`${ref.projectId}/${ref.spaceId}/${ref.domain}/${ref.objectId}@${ref.versionId} · digest ${ref.contentDigest ?? '未记录'}`}><span>{index + 1}. {document?.title ?? '准确版本未在当前范围加载'}</span><small>{document?.status.current ? '当前版' : document ? '历史版' : '准确版本'}</small><button onClick={() => setCoReading(current => toggleCoReading(current, ref))} aria-label={`移除第${index + 1}条联读认识`}><X size={15} /></button></div>)}<button className="primary-button" onClick={compareCoReading} disabled={coReading.length !== 2}>比较选中的两条认识 <ArrowRight size={16} /></button></div></section>}
           </section>
           {page === 'read' && <section className="reader-page" ref={readerScroll} onScroll={event => { readingScroll.current = event.currentTarget.scrollTop; }}>
-            <button className="back-link" onClick={backToGraph}><ArrowLeft size={17} />返回原图谱位置</button>
+            <button className="back-link" onClick={backToGraph}><ArrowLeft size={17} />返回原视角与选择</button>
             {readerLoading && <StateNote>正在读取准确版本与历史…</StateNote>}
             {readerError && <div className="inline-error" role="alert">{readerError}</div>}
             {reader && <><div className="reader-heading"><div className="eyebrow">知识阅读 · {reader.profile.id}</div><h1>{reader.title}</h1><div className="reader-meta"><StatusPill tone={reader.status.current ? 'violet' : 'amber'}>{reader.status.current ? '当前版本' : '历史版本'}</StatusPill><StatusPill tone={reader.status.published ? 'blue' : 'neutral'}>{reader.status.published ? '已发表' : '未发表'}</StatusPill><span>版本 {trimRef(reader.ref)}</span></div></div><div className="reader-grid"><article className="reader-article"><h2>认识正文</h2>{reader.status.contentSupported ? <div className="prose">{reader.body.split(/\n\n+/).map((paragraph, index) => <p key={index}>{paragraph}</p>)}</div> : <StateNote state="content_version_unsupported" />}<CitationList citations={reader.citations} onOpen={openSource} /><InfoList title="成立条件" items={reader.conditions} /><InfoList title="反例与边界" items={reader.counterexamples} /><InfoList title="尚不确定" items={reader.unknowns} /><InfoList title="接下来可问" items={reader.nextQuestions} /></article><aside className="reader-aside"><section><h2>版本与用途</h2><dl><dt>当前指针</dt><dd>{reader.status.currentRef ? trimRef(reader.status.currentRef) : '无'}</dd><dt>审阅决定</dt><dd>{reader.status.reviewDecision ?? '未记录'}</dd><dt>有效性</dt><dd>{reader.status.validity.valid ? '当前检查有效' : `需复核：${reader.status.validity.issues.join('、') || '原因未给出'}`}</dd><dt>检查时间</dt><dd>{date(reader.status.validity.checkedAt)}</dd><dt>复核期限</dt><dd>{date(reader.status.validity.reviewDueAt)}</dd><dt>当前用途</dt><dd>{reader.status.purpose.requested} · {reader.status.purpose.admitted ? '允许' : '不允许'}</dd></dl>{reader.status.purpose.reasons.map(reason => <p className="minor-note" key={reason}>{reason}</p>)}</section><section><h2>来源与继承</h2><p className="minor-note">继承的依据和本次实际读取分别列出；来源组可能重叠。</p><h3>继承依据</h3>{reader.inheritedBasis.length ? reader.inheritedBasis.map(ref => <RefButton key={refKey(ref)} refValue={ref} onRead={openReader} onSource={openSource} />) : <p className="muted">没有列出继承依据</p>}<h3>本次实际读取</h3>{reader.actualReadCoverage.length ? reader.actualReadCoverage.map((item, index) => <div className="coverage-item" key={`${refKey(item.sourceRef)}-${index}`}><RefButton refValue={item.sourceRef} onRead={openReader} onSource={openSource} /><span>{item.coverage} · {item.byteCount} 字节 · {item.anchors.length} 个锚点</span>{item.exclusions.length > 0 && <small>未读：{item.exclusions.join('、')}</small>}</div>) : <p className="muted">没有本次实际读取记录</p>}<h3>来源组</h3>{reader.sourceGroups.length ? reader.sourceGroups.map((group, index) => <p className="source-group" key={`${group.id}-${index}`}>{group.id ?? '未知同源组'} · {group.status} · {group.authority === 'commerce-asset-version' ? '业务素材版本' : group.authority ?? '权威未记录'}</p>) : <p className="muted">未列出来源组</p>}</section><section><h2>历史与现版</h2>{historyError && <p className="inline-error">{historyError}</p>}{history?.versions.length ? history.versions.map(version => <div className="history-row" key={refKey(version.ref)}><button onClick={() => void openReader(version.ref)}>{trimRef(version.ref)}<span>{date(version.publishedAt)}</span></button>{reader.status.currentRef && refKey(version.ref) !== refKey(reader.status.currentRef) && <button className="text-button" onClick={() => void compareVersion(version.ref, reader.status.currentRef!)}>与现版比较</button>}</div>) : <p className="muted">暂无可读历史版本</p>}</section></aside></div>{comparison && <ComparisonPanel comparison={comparison} onClose={() => setComparison(null)} />}
@@ -547,25 +625,26 @@ export function App() {
             {!reader && !readerLoading && !readerError && <StateNote>从图谱选择一条认识开始阅读。</StateNote>}
           </section>}
           {page === 'sources' && <section className="simple-page">{sourceReturnRef && <button className="back-link" onClick={() => void openReader(sourceReturnRef, true)}><ArrowLeft size={17} />返回刚才的阅读位置</button>}<div className="page-heading"><h1>来源资料</h1><p>先看来源身份、可读状态与实际覆盖，再打开原文。</p></div>{sourceRef && <p className="minor-note">准确来源：{trimRef(sourceRef)}</p>}{sourceLocator && <details className="source-locator"><summary>查看原始引用定位</summary><p>{sourceLocator}</p></details>}{sourceAnchorStatus && <p className="source-anchor-status" role="status">{sourceAnchorStatus}</p>}{sourceError && <div className="inline-error" role="alert">{sourceError}</div>}{source ? <div className="source-layout"><article className="content-card"><div className="eyebrow">{sourceKindName(source.sourceKind)} · {sourceAssertionName(source.assertionKind)}</div><h2>{trimRef(source.ref)}</h2><dl><dt>内容可读</dt><dd>{source.readability.contentReadable ? '内容可读' : source.readability.reasons.includes('SOURCE_CONTENT_UNSUPPORTED') ? '格式不支持' : '仅元数据可见'}</dd><dt>锚点可达</dt><dd>{source.readability.anchorResolved ? '是' : '否'}</dd><dt>权限检查</dt><dd>{sourceAssuranceName(source.readability.assurance)}</dd></dl>{source.readability.reasons.map(reason => <p key={reason}>{sourceReasonName(reason)}</p>)}{sourceContent ? <SourceContentView source={sourceContent} /> : <StateNote state={source.readability.contentReadable ? 'not_loaded' : 'source_unreadable'} />}</article><aside className="content-card"><h2>来源身份</h2><SourceProvenanceView source={source} /><h2>来源链与覆盖</h2>{source.supersedes && <RefButton refValue={source.supersedes} onRead={openReader} onSource={openSource} />}{source.sourceGroups.map((group, index) => <p className="source-group" key={index}>{group.id ?? '未知同源组'} · {group.authority === 'commerce-asset-version' ? '业务素材版本' : group.authority ?? '权威未记录'}</p>)}{source.actualCoverage.map((item, index) => <div className="coverage-item" key={index}><span>{item.coverage} · {item.byteCount} 字节</span><small>{item.anchors.map(anchor => anchor.value).join('、') || '无锚点'}</small></div>)}{source.limitations.map((item, index) => <p className="minor-note" key={index}>{sourceLimitation(item)}</p>)}</aside></div> : <StateNote>在认识的“继承依据”或“实际读取”中选择来源。</StateNote>}</section>}
-          {page === 'changes' && <section className="simple-page"><div className="page-heading"><h1>变化记录</h1><p>分别查看认识版本变化、审阅和研究结果。</p></div>{changesLoading && <StateNote>正在读取变化…</StateNote>}{changesError && <div className="inline-error" role="alert">{changesError}</div>}{changes.length ? <div className="change-list">{changes.map(change => <article className="content-card" key={change.id}><div className="eyebrow">{change.kind} · {change.cognitiveOutcome ? outcomeName[change.cognitiveOutcome] : '未标记研究结果'}</div><h2>{change.reason}</h2><p>{change.before ? trimRef(change.before) : '无先前版本'} → {change.after ? trimRef(change.after) : '无后续版本'}</p>{change.after && <button className="text-button" onClick={() => void openReader(change.after!)}>阅读准确版本 <ArrowRight size={15} /></button>}</article>)}</div> : !changesLoading && <StateNote state="no_matches_in_scope" />}<CoverageNote coverage={coverage} /></section>}
+          {page === 'changes' && <section className="simple-page"><div className="page-heading"><h1>使用与反馈活动</h1><p>此列表按当前作用域返回活动记录；单条认识的正式版本请在「演化」中读取。活动不能拼成整网历史。</p></div>{changesLoading && <StateNote>正在读取变化…</StateNote>}{changesError && <div className="inline-error" role="alert">{changesError}</div>}{changes.length ? <div className="change-list">{changes.map(change => <article className="content-card" key={change.id}><div className="eyebrow">{change.kind} · {change.cognitiveOutcome ? outcomeName[change.cognitiveOutcome] : '未标记研究结果'}</div><h2>{change.reason}</h2><p>{change.before ? trimRef(change.before) : '无先前版本'} → {change.after ? trimRef(change.after) : '无后续版本'}</p>{change.after && <button className="text-button" onClick={() => void openReader(change.after!)}>阅读准确版本 <ArrowRight size={15} /></button>}</article>)}</div> : !changesLoading && <StateNote state="no_matches_in_scope" />}<CoverageNote coverage={coverage} /></section>}
           {page === 'research' && <section className="simple-page research-page">
-            <div className="page-heading"><h1>围绕问题继续研究</h1><p>旧认识、研究产出与条件挑战并列核对；活动结果不自动成为正式认识。</p></div>
+            <div className="page-heading"><h1>围绕问题继续研究</h1><p>旧认识、研究产出与条件挑战并列核对；活动结果不自动成为正式认识。</p>{coReading.length === 2 && <div className="research-selection">本次拟提交的准确版本：{coReadingDocuments.map(({ ref, document }) => `${document?.title ?? '未加载标题'}（${ref.versionId}）`).join('、')}。提交前尚无服务器读集。</div>}</div>
             <form className="research-form content-card" onSubmit={startResearch}>
               <label>想进一步弄清的问题<textarea value={researchQuestion} onChange={event => setResearchQuestion(event.target.value)} placeholder="写下一个需要核对的具体问题" required /></label>
               <p className="minor-note">本地预算设为 0 次模型调用、无付费额度。{capabilities?.mode !== 'ready' || !capabilities.permittedActions.includes('research') ? '当前服务未开放研究提交，仍可浏览现有知识。' : '研究提交后可在下方跟踪活动与结果。'}</p>
-              <button className="primary-button" disabled={writeBlocked || researchBusy || capabilities?.mode !== 'ready' || !capabilities.permittedActions.includes('research')}>开始研究 <ArrowRight size={17} /></button>
+              <button className="primary-button" disabled={writeBlocked || researchBusy || capabilities?.mode !== 'ready' || !capabilities.permittedActions.includes('research')}>{coReading.length === 2 ? '比较选中的两条认识' : '开始研究'} <ArrowRight size={17} /></button>
             </form>
             {researchError && <div className="inline-error" role="status">{researchError}</div>}
             {operation && <section className="content-card operation-card"><div className="section-heading"><h2>研究活动</h2><StatusPill tone={operation.state === 'succeeded' ? 'blue' : 'amber'}>{statusName[operation.state] ?? operation.state}</StatusPill></div><p>活动 {operation.researchId ?? operation.id} · 提交状态 {operation.commitStatus}</p>{operation.reason && <p>{operation.reason}</p>}<div className="button-row"><button className="secondary-button" onClick={() => void refreshResearch()} disabled={researchBusy}>刷新状态</button>{!['succeeded', 'failed', 'cancelled'].includes(operation.state) && <button className="text-button" onClick={() => void cancelResearch()} disabled={writeBlocked || researchBusy}>请求取消</button>}</div></section>}
-            <ResearchTriptych documents={documents} selectedDocument={selectedDocument} graph={graph} result={researchResult} candidate={candidateView} candidateError={candidateError} operation={operation} onRead={openReader} onSource={openSource} onReloadCandidate={id => void loadCandidate(id)} />
+            <ResearchTriptych documents={browseDocuments} selectedDocument={selectedDocument} coReadingDocuments={coReadingDocuments} graph={graph} result={researchResult} candidate={currentCandidate} candidateError={candidateError} operation={operation} onRead={openReader} onSource={openSource} onReloadCandidate={id => void loadCandidate(id)} />
             {researchResult && <section className="content-card review-panel">
-              <div className="section-heading"><h2>独立审阅</h2><StatusPill tone="amber">{reviewTicket?.status ?? researchResult.reviewState}</StatusPill></div>
-              <p className="minor-note">审阅请求只提交当前研究结果的准确摘要。此界面不替审阅者作决定；发表状态由服务返回。</p>
+              <div className="section-heading"><h2>独立审阅</h2><StatusPill tone="amber">{statusName[reviewTicket?.status ?? researchResult.reviewState] ?? reviewTicket?.status ?? researchResult.reviewState}</StatusPill></div>
+              <p className="minor-note">{researchResult.cognitiveOutcome === 'candidate' ? '候选审阅使用已读取的准确候选标识与内容摘要。' : '审阅请求使用当前研究结果的准确摘要。'}此界面不替审阅者作决定；发表状态由服务返回。</p>
+              {reviewNotice && <p className="minor-note">{reviewNotice}</p>}
               <div className="button-row">
-                <button className="secondary-button" onClick={() => void requestReview()} disabled={writeBlocked || reviewBusy || !!reviewTicket || capabilities?.mode !== 'ready' || !capabilities.permittedActions.includes('requestReview')}>请求独立审阅</button>
+                <button className="secondary-button" onClick={() => void requestReview()} disabled={!reviewEligible || writeBlocked || reviewBusy || !!reviewTicket || capabilities?.mode !== 'ready' || !capabilities.permittedActions.includes('requestReview')}>请求独立审阅</button>
                 {reviewTicket && <button className="secondary-button" onClick={() => void refreshReview()} disabled={reviewBusy}>刷新审阅状态</button>}
               </div>
-              {reviewTicket && <p className="minor-note">审阅请求 {reviewTicket.id} · {reviewTicket.status}</p>}
+              {reviewTicket && <p className="minor-note">审阅请求 {reviewTicket.id} · {statusName[reviewTicket.status] ?? reviewTicket.status}</p>}
               {!capabilities?.permittedActions.includes('requestReview') && <p className="minor-note">当前身份不能发起审阅；需要有相应授权的审阅者独立处理。</p>}
               {reviewError && <div className="inline-error" role="status">{reviewError}</div>}
             </section>}
@@ -573,7 +652,7 @@ export function App() {
         </>}
       </main>
     </div>
-    {configOpen && <div className="modal-backdrop"><form className="config-modal" onSubmit={connect}><div className="section-heading"><div><div className="eyebrow">本地知识服务</div><h2>连接知识空间</h2></div>{config && <button type="button" onClick={() => setConfigOpen(false)} aria-label="关闭"><X size={19} /></button>}</div><p>输入服务已授权的项目、空间和本地令牌。令牌仅保留在当前页面内存中。</p><label>项目 ID<input value={draftConfig.projectId} onChange={event => setDraftConfig(value => ({ ...value, projectId: event.target.value }))} placeholder="项目 ID" required /></label><label>空间 ID<input value={draftConfig.spaceId} onChange={event => setDraftConfig(value => ({ ...value, spaceId: event.target.value }))} placeholder="空间 ID" required /></label><label>用途（可留空）<input value={draftConfig.purpose} onChange={event => setDraftConfig(value => ({ ...value, purpose: event.target.value }))} placeholder="使用服务的第一个可用用途" /></label><label>本地访问令牌<input type="password" autoComplete="off" value={draftConfig.token} onChange={event => setDraftConfig(value => ({ ...value, token: event.target.value }))} placeholder="不会写入 URL 或本地存储" required /></label>{connectionError && <div className="inline-error" role="alert">{connectionError}</div>}<button className="primary-button" disabled={connection === 'loading'}>{connection === 'loading' ? '正在连接…' : '连接并读取'}</button></form></div>}
+    {configOpen && <div className="modal-backdrop"><form className="config-modal" onSubmit={connect}><div className="section-heading"><div><div className="eyebrow">本地知识服务</div><h2>连接知识空间</h2></div>{config && <button type="button" onClick={() => setConfigOpen(false)} aria-label="关闭"><X size={19} /></button>}</div><p>输入服务已授权的项目、空间和本地令牌。令牌仅保留在当前页面内存中。</p><label>从本机连接文件导入<input type="file" accept="application/json,.json" onChange={event => void importLocalConnection(event.target.files?.[0])} /></label><label>项目 ID<input value={draftConfig.projectId} onChange={event => setDraftConfig(value => ({ ...value, projectId: event.target.value }))} placeholder="项目 ID" required /></label><label>空间 ID<input value={draftConfig.spaceId} onChange={event => setDraftConfig(value => ({ ...value, spaceId: event.target.value }))} placeholder="空间 ID" required /></label><label>用途（可留空）<input value={draftConfig.purpose} onChange={event => setDraftConfig(value => ({ ...value, purpose: event.target.value }))} placeholder="使用服务的第一个可用用途" /></label><label>本地访问令牌<input type="password" autoComplete="off" value={draftConfig.token} onChange={event => setDraftConfig(value => ({ ...value, token: event.target.value }))} placeholder="不会写入 URL 或本地存储" required /></label>{connectionError && <div className="inline-error" role="alert">{connectionError}</div>}<button className="primary-button" disabled={connection === 'loading'}>{connection === 'loading' ? '正在连接…' : '连接并读取'}</button></form></div>}
   </div>;
 }
 
@@ -614,8 +693,8 @@ function ComparisonPanel({ comparison, onClose }: { comparison: Comparison; onCl
     </article>) : <StateNote>这两个准确版本没有结构化差异。</StateNote>}
   </section>;
 }
-function ResearchTriptych({ documents, selectedDocument, graph, result, candidate, candidateError, operation, onRead, onSource, onReloadCandidate }: {
-  documents: KnowledgeDocument[]; selectedDocument: KnowledgeDocument | null; graph: ReturnType<typeof toGraphView> | null;
+function ResearchTriptych({ documents, selectedDocument, coReadingDocuments, graph, result, candidate, candidateError, operation, onRead, onSource, onReloadCandidate }: {
+  documents: KnowledgeDocument[]; selectedDocument: KnowledgeDocument | null; coReadingDocuments: { ref: KnowledgeRef; document: KnowledgeDocument | null }[]; graph: ReturnType<typeof toGraphView> | null;
   result: ResearchResult | null; candidate: CandidateView | null; candidateError: string; operation: Operation | null;
   onRead: (ref: KnowledgeRef) => void; onSource: (ref: KnowledgeRef) => void; onReloadCandidate: (id: string) => void;
 }) {
@@ -628,14 +707,14 @@ function ResearchTriptych({ documents, selectedDocument, graph, result, candidat
       {result ? <>
         <p className="minor-note">准确读集 {oldRefs.length} 项 · 继承依据 {result.inheritedBasis.length} 项 · 实际读取来源 {result.actualReadCoverage.length} 项。这三者含义不同。</p>
         {oldDocuments.length ? oldDocuments.map(({ ref, document }) => <div className="research-basis" key={refKey(ref)}><strong>{document?.title ?? '准确版本（正文未在当前列表加载）'}</strong>{document && <p>{document.body.slice(0, 130)}{document.body.length > 130 ? '…' : ''}</p>}<RefButton refValue={ref} onRead={onRead} onSource={onSource} /></div>) : <StateNote>研究结果没有列出旧认识读集。</StateNote>}
-      </> : selectedDocument ? <><p className="minor-note">以下仅为当前选择，尚未证明研究活动已读取。</p><div className="research-basis"><strong>{selectedDocument.title}</strong><p>{selectedDocument.body.slice(0, 150)}{selectedDocument.body.length > 150 ? '…' : ''}</p><RefButton refValue={selectedDocument.ref} onRead={onRead} onSource={onSource} /></div></> : <StateNote>选择图谱认识或通过问题查询后，可在这里核对旧认识。研究开始前没有已确认读集。</StateNote>}
+      </> : coReadingDocuments.length ? <><p className="minor-note">以下 {coReadingDocuments.length} 条为本地拟选；{operation ? '活动结果的准确读集尚未返回。' : '提交前尚未形成服务读集。'}</p>{coReadingDocuments.map(({ ref, document }) => <div className="research-basis" key={refKey(ref)}><strong>{document?.title ?? '准确版本正文未在当前范围加载'}</strong>{document && <p>{document.body.slice(0, 150)}{document.body.length > 150 ? '…' : ''}</p>}<RefButton refValue={ref} onRead={onRead} onSource={onSource} /></div>)}</> : selectedDocument ? <><p className="minor-note">以下仅为当前选择，尚未证明研究活动已读取。</p><div className="research-basis"><strong>{selectedDocument.title}</strong><p>{selectedDocument.body.slice(0, 150)}{selectedDocument.body.length > 150 ? '…' : ''}</p><RefButton refValue={selectedDocument.ref} onRead={onRead} onSource={onSource} /></div></> : <StateNote>选择图谱认识或通过问题查询后，可在这里核对旧认识。研究开始前没有已确认读集。</StateNote>}
     </section>
     <section className="content-card research-column research-middle">
       <div className="eyebrow">02 · 研究产出</div><h2>候选综合或研究结论</h2>
       {!result ? <StateNote>{operation ? `活动当前${statusName[operation.state] ?? operation.state}；还没有可核对的研究结论。` : '尚未提交研究，也没有候选正文。'}</StateNote> : <>
         <StatusPill tone={result.cognitiveOutcome === 'candidate' ? 'violet' : result.cognitiveOutcome === 'needs_evidence' ? 'amber' : 'blue'}>{outcomeName[result.cognitiveOutcome]}</StatusPill>
-        <p className="research-reason">{result.reason}</p>
-        {result.cognitiveOutcome === 'candidate' && (candidate ? <div className="candidate-body"><div className="candidate-meta">候选 {candidate.candidateId.slice(0, 8)} · {candidate.state} · 提出者 {candidate.proposer}<br />内容摘要 {candidate.contentHash.slice(0, 16)}…</div><p>{candidate.rationale}</p>{candidate.changes.map(change => <article key={refKey(change.ref)}><h3>{change.title}</h3><div className="prose">{change.body}</div><InfoList title="条件" items={change.conditions} /><InfoList title="反例" items={change.counterexamples} /><p className="minor-note">候选对应的准确标识：{trimRef(change.ref)}。发表前不能按正式认识阅读。</p></article>)}</div> : <div className="candidate-unloaded"><StateNote>{candidateError || '候选正文尚未从服务读取；不能凭结果摘要推断具体修订。'}</StateNote>{result.candidateId && <button className="secondary-button" onClick={() => onReloadCandidate(result.candidateId!)}>读取候选正文</button>}</div>)}
+        <p className="research-reason">{researchReason(result.reason)}</p>
+        {result.cognitiveOutcome === 'candidate' && (candidate ? <div className="candidate-body"><div className="candidate-meta">候选 {candidate.candidateId.slice(0, 8)} · {candidate.state} · 提出者 {candidate.proposer}<br />内容摘要 {candidate.contentHash.slice(0, 16)}…</div><p>{researchReason(candidate.rationale)}</p>{candidate.changes.map(change => <article key={refKey(change.ref)}><h3>{change.title}</h3><div className="prose">{change.body}</div><InfoList title="条件" items={change.conditions} /><InfoList title="反例" items={change.counterexamples} /><p className="minor-note">候选对应的准确标识：{trimRef(change.ref)}。发表前不能按正式认识阅读。</p></article>)}</div> : <div className="candidate-unloaded"><StateNote>{candidateError || '候选正文尚未从服务读取；不能凭结果摘要推断具体修订。'}</StateNote>{result.candidateId && <button className="secondary-button" onClick={() => onReloadCandidate(result.candidateId!)}>读取候选正文</button>}</div>)}
         <p className="minor-note">{result.publication ? `已发表：${date(result.publication.publishedAt)}` : '尚未发表；候选不等于现版认识。'} · 审阅状态 {result.reviewState}</p>
       </>}
     </section>
@@ -649,9 +728,11 @@ function ResearchTriptych({ documents, selectedDocument, graph, result, candidat
   </div>;
 }
 function RefButton({ refValue, onRead, onSource }: { refValue: KnowledgeRef; onRead: (ref: KnowledgeRef) => void; onSource: (ref: KnowledgeRef) => void }) { return <button className="ref-button" onClick={() => { if (refValue.domain === 'knowledge') void onRead(refValue); else void onSource(refValue); }}><span>{refValue.domain} · {trimRef(refValue)}</span><ArrowRight size={15} /></button>; }
-function DocumentInspector({ document, graph, onRead, onSelectRelation }: { document: KnowledgeDocument; graph: ReturnType<typeof toGraphView> | null; onRead: () => void; onSelectRelation: (id: string) => void }) {
-  const relations = graph ? selectedRelations(graph, refKey(document.ref)) : [];
-  return <><div className="inspector-body"><span className="eyebrow">准确认识 · {document.profile.id}</span><h2>{document.title}</h2><StatusPill tone={document.status.validity.valid ? 'amber' : 'neutral'}>{document.status.validity.valid ? '当前检查有效' : '有效性待复核'}</StatusPill><p className="inspector-summary">{document.body.slice(0, 150)}{document.body.length > 150 ? '…' : ''}</p>{document.conditions.length > 0 && <div className="condition-preview"><strong>成立条件</strong><span>{document.conditions.slice(0, 2).join('；')}</span></div>}<div className="inspector-divider" /><h3>为什么值得联读</h3>{relations.length ? relations.slice(0, 2).map(edge => <button className="relation-card" key={edge.id} onClick={() => onSelectRelation(edge.id)}><span className={`relation-dot stance-${edge.relation.stance}`} /><span><strong>{stanceName[edge.relation.stance]}</strong><small>{edge.relation.rationale ?? '理由未记录，打开关系查看准确范围'}</small></span><ChevronRight size={18} /></button>) : <p className="muted">当前范围未返回关联依据。</p>}<button className="read-button" onClick={onRead}><BookOpen size={19} />阅读这条认识 <ArrowRight size={17} /></button></div></>;
+function DocumentInspector({ document, graph, onRead, onSource, onSelectRelation }: { document: KnowledgeDocument; graph: ReturnType<typeof toGraphView> | null; onRead: () => void; onSource: (ref: KnowledgeRef, locator: string | null) => void; onSelectRelation: (id: string) => void }) {
+  const relations = graph ? selectedRelations(graph, refKey(document.ref)).sort((a, b) => ({ supports: 0, challenges: 1, context: 2, navigation: 3 })[a.relation.stance] - ({ supports: 0, challenges: 1, context: 2, navigation: 3 })[b.relation.stance] || a.id.localeCompare(b.id)) : [];
+  const paragraphs = document.body.split(/\n\n+/).map(item => item.trim()).filter(item => item && item !== document.title);
+  const summary = paragraphs.find(item => !/^(成立条件|反例与未知|反例与边界|尚不确定)[：:]/.test(item)) ?? document.body;
+  return <><div className="inspector-body"><span className="eyebrow">准确认识 · {document.profile.id}</span><h2>{document.title}</h2><StatusPill tone={document.status.current ? 'violet' : 'amber'}>{document.status.current ? '当前版' : '历史版'}</StatusPill><p className="inspector-summary">{summary.length > 240 ? `${summary.slice(0, 240)}…` : summary}</p><InfoList title="成立条件" items={document.conditions} /><InfoList title="反例与边界" items={document.counterexamples} /><InfoList title="尚不确定" items={document.unknowns} /><div className="inspector-divider" /><h3>相关关系与挑战</h3>{relations.length ? relations.slice(0, 4).map(edge => <button className="relation-card" key={edge.id} onClick={() => onSelectRelation(edge.id)}><span className={`relation-dot stance-${edge.relation.stance}`} /><span><strong>{stanceName[edge.relation.stance]}</strong><small>{edge.relation.rationale ?? '理由未记录，打开关系查看准确范围'}</small><small>{edge.relation.targetStatementAnchor ? '已提供命题定位' : '未定位到具体句'} · {edge.relation.evidenceStatus === 'unknown' ? '依据状态未知' : edge.relation.evidenceStatus === 'observed' ? '已观察' : '未检验'}</small></span><ChevronRight size={18} /></button>) : <p className="muted">当前范围未返回关联依据。</p>}<section className="notebook-sources"><h3>原始依据</h3><p className="minor-note">{document.citations ? `${document.citations.length} 条直接引用 · ${document.sourceGroups.length} 个来源组` : '当前投影未提供直接引用'}。引用数量不代表独立支持数量，也不表示本次已读原件。</p>{document.citations?.map((citation, index) => <article key={`${refKey(citation.ref)}-${index}`}><span className="eyebrow">{citation.ref.domain === 'knowledge' ? '知识引用' : citation.ref.domain === 'source' ? '来源主张' : citation.ref.domain === 'analysis' ? '分析资料' : '证据原件'}</span><p>{citation.supports}</p><button className="text-button" onClick={() => onSource(citation.ref, citation.locator)}>查看准确来源 →</button><details><summary>准确标识与定位</summary><code>{refKey(citation.ref)} · {citation.locator ?? '定位未提供'}</code></details></article>)}{document.citations?.length === 0 && <p className="muted">此版本未列出直接引用。</p>}</section><details className="technical-ref"><summary>准确版本标识</summary><code>{refKey(document.ref)}</code></details><button className="read-button" onClick={onRead}><BookOpen size={19} />阅读完整正文与来源 <ArrowRight size={17} /></button></div></>;
 }
 function RelationInspector({ relation, graph, onRead, onSource }: { relation: Relation; graph: ReturnType<typeof toGraphView> | null; onRead: (ref: KnowledgeRef) => void; onSource: (ref: KnowledgeRef) => void }) {
   const from = graph?.nodes.find(node => node.id === refKey(relation.from));

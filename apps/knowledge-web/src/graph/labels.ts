@@ -1,4 +1,10 @@
-export type LabelNode = { id: string; x: number; y: number; radius: number; text: string; priority: number; scale?: number };
+export const LABEL_FONT_PX = 13;
+export const ROOT_LABEL_FONT_PX = 15;
+export const LABEL_MAX_WIDTH_PX = 120;
+export const LABEL_BACKGROUND_PADDING_PX = 4;
+export const LABEL_MARGIN_PX = 12;
+
+export type LabelNode = { id: string; x: number; y: number; radius: number; text: string; priority: number; fontSize?: number; scale?: number };
 export type LabelSide = 'right' | 'left' | 'top' | 'bottom';
 export type LabelBox = { x: number; y: number; width: number; height: number };
 export type LabelPlacement = { side: LabelSide; box: LabelBox };
@@ -9,11 +15,12 @@ function overlaps(a: LabelBox, b: LabelBox, gap = 3): boolean {
 
 function boxFor(node: LabelNode, side: LabelSide): LabelBox {
   const scale = node.scale ?? 1;
-  const font = (node.priority >= 100 ? 15 : 11) * scale;
+  const font = (node.fontSize ?? LABEL_FONT_PX) * scale;
   const glyphs = [...node.text].reduce((sum, char) => sum + (/^[\x00-\x7F]$/.test(char) ? .58 : 1), 0);
-  const width = Math.min(110 * scale, Math.max(16 * scale, Math.ceil(glyphs * font)));
-  const height = Math.ceil(glyphs * font / width) * (font + 4 * scale) + 4 * scale;
-  const gap = node.radius + 11 * scale;
+  const textWidth = Math.min(LABEL_MAX_WIDTH_PX * scale, Math.max(16 * scale, Math.ceil(glyphs * font)));
+  const width = textWidth + LABEL_BACKGROUND_PADDING_PX * 2 * scale;
+  const height = Math.max(1, Math.ceil(glyphs * font / textWidth)) * (font + 4 * scale) + LABEL_BACKGROUND_PADDING_PX * 2 * scale;
+  const gap = node.radius + LABEL_MARGIN_PX * scale;
   if (side === 'left') return { x: node.x - gap - width, y: node.y - height / 2, width, height };
   if (side === 'top') return { x: node.x - width / 2, y: node.y - gap - height, width, height };
   if (side === 'bottom') return { x: node.x - width / 2, y: node.y + gap, width, height };

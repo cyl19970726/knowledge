@@ -12,16 +12,20 @@
   "dependencies": {
     "@commerce/knowledge-client": "*",
     "@commerce/knowledge-contracts": "*",
+    "@react-three/drei": "10.7.9",
+    "@react-three/fiber": "9.8.2",
     "cytoscape": "3.34.3",
     "elkjs": "^0.11.0",
     "lucide-react": "^0.468.0",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "three": "0.187.0"
   },
   "devDependencies": {
     "@types/cytoscape": "3.21.9",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/three": "^0.187.0",
     "@vitejs/plugin-react": "^6.1.2",
     "tsx": "^4.0.0",
     "typescript": "~5.9.3",

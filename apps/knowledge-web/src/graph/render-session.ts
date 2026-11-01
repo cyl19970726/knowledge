@@ -1,6 +1,6 @@
 import type { Core } from 'cytoscape';
 import { nodeSize, type GraphViewModel } from './view-model';
-import type { LabelNode } from './labels';
+import { LABEL_FONT_PX, ROOT_LABEL_FONT_PX, type LabelNode } from './labels';
 
 /** Readiness belongs to this graph instance, independently of React's last committed state. */
 export class GraphRenderSession {
@@ -28,15 +28,16 @@ export class GraphRenderSession {
 }
 
 /** Missing or non-finite geometry suppresses only a label, never a node or relation. */
-export function renderedLabelCandidates(cy: Core, graph: GraphViewModel, selectedNodeId: string | null): LabelNode[] {
+export function renderedLabelCandidates(cy: Core, graph: GraphViewModel, selectedNodeId: string | null, coReadingIds: readonly string[] = []): LabelNode[] {
   return graph.nodes.flatMap((node, index) => {
     const element = cy.getElementById(node.id);
     if (element.empty()) return [];
     const position = element.renderedPosition();
     if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.y)) return [];
     return [{ id: node.id, x: position.x, y: position.y, radius: nodeSize(node) * cy.zoom() / 2,
-      text: node.isRoot || node.degree >= 2 || index % 4 === 0 || selectedNodeId === node.id ? node.shortLabel : '',
-      priority: selectedNodeId === node.id ? 200 : node.isRoot ? 150 : node.degree >= 2 ? 80 + node.degree : 20,
+      text: node.isRoot || node.degree >= 2 || index % 4 === 0 || selectedNodeId === node.id || coReadingIds.includes(node.id) ? node.shortLabel : '',
+      priority: selectedNodeId === node.id ? 200 : coReadingIds.includes(node.id) ? 180 : node.isRoot ? 150 : node.degree >= 2 ? 80 + node.degree : 20,
+      fontSize: node.isRoot ? ROOT_LABEL_FONT_PX : LABEL_FONT_PX,
       scale: cy.zoom() }];
   });
 }
