@@ -1,0 +1,99 @@
+{
+  "schemaVersion": "visual-review-r1@1",
+  "status": "not_run",
+  "gitHead": null,
+  "reviewedAt": null,
+  "build": {
+    "mode": "production-preview",
+    "url": null,
+    "apiScope": null,
+    "synthetic": null,
+    "browserZoom": null
+  },
+  "viewports": {
+    "desktop": {
+      "cssWidth": 1440,
+      "cssHeight": 1024
+    },
+    "mobile": {
+      "cssWidth": 391,
+      "cssHeight": 844
+    }
+  },
+  "data": {
+    "nodes": null,
+    "knowledgeDocuments": null,
+    "externalNodes": null,
+    "edges": null,
+    "groups": null,
+    "crossGroupEdges": null,
+    "judgmentBridges": null
+  },
+  "hardBlockers": {
+    "semanticIntegrity": "not_run",
+    "desktopComposition": "not_run",
+    "labelCollision": "not_run",
+    "mobileOverflow": "not_run",
+    "stableRuntime": "not_run",
+    "keyboard": "not_run",
+    "reducedMotion": "not_run"
+  },
+  "visual": {
+    "graphStartY": null,
+    "graphWidth": null,
+    "graphHeight": null,
+    "rightNoteWidth": null,
+    "persistentLabelCount": {
+      "constellation": null,
+      "question": null
+    },
+    "pageScroll": {
+      "desktop": null,
+      "mobile": null
+    }
+  },
+  "tasks": {
+    "T1_find_focus": "not_run",
+    "T2_explain_basis": "not_run",
+    "T3_source_return": "not_run",
+    "T4_cross_group": "not_run",
+    "T5_view_switch": "not_run",
+    "T6_co_reading": "not_run",
+    "T7_mobile": "not_run",
+    "T8_assistive_technology": "not_run"
+  },
+  "scores": {
+    "composition": null,
+    "focusNarrative": null,
+    "relationHierarchy": null,
+    "starMaterial": null,
+    "typographyCards": null,
+    "motionFeedback": null,
+    "responsive": null,
+    "accessibility": null,
+    "performanceStability": null,
+    "referenceConsistency": null,
+    "weightedTotal": null
+  },
+  "performance": {
+    "graphReadyMs": null,
+    "medianFrameMs": null,
+    "p95FrameMs": null,
+    "selectionFeedbackMs": null,
+    "viewSwitchCycles": null,
+    "contextLosses": null,
+    "stressGraph": {
+      "nodes": 200,
+      "edges": 500,
+      "status": "not_run"
+    }
+  },
+  "console": {
+    "errors": null,
+    "warnings": null
+  },
+  "evidence": [],
+  "userAcceptance": null,
+  "limitations": [],
+  "conclusion": "not_run"
+}

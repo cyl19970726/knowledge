@@ -2,7 +2,7 @@
   "title": "通用认知知识库 · 产品、能力与实现",
   "brand": "知识库",
   "home_id": "knowledge-overview",
-  "updated": "2026-10-31",
+  "updated": "2026-11-01",
   "documents": [
     {
       "id": "knowledge-overview",
@@ -71,6 +71,16 @@
       "group": "产品与交互",
       "status": "统一产品方案 · 功能分阶段实现 · 3D尚未落地",
       "summary": "三视角产品定义、现有能力与缺口、共享上下文及纵向交付",
+      "date": "2026-11-01",
+      "lifecycle": "current"
+    },
+    {
+      "id": "knowledge-visual-acceptance-r1",
+      "path": "frontend/visual-acceptance-r1.md",
+      "title": "视觉重构 R1：Graph-first 验收标准",
+      "group": "产品与交互",
+      "status": "验收基线 · 实现尚未通过",
+      "summary": "硬阻断、桌面构图预算、三视角任务、视觉评分、响应式、性能和证据包",
       "date": "2026-11-01",
       "lifecycle": "current"
     },

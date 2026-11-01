@@ -119,3 +119,7 @@ flowchart TB
 总览在391×844下隐藏重复的支持/挑战来路胶囊，把所选认识压缩为可访问的“当前认识”短标记，并保留五个群落名、节点数及支持/挑战桥梁；问题视角仍显示两条支持、一条挑战和来源。页面 `scrollWidth=clientWidth=391`，没有页面级横向溢出。第二轮对照见 `design-qa-shots/round2-constellation-comparison.jpg`、`round2-question-comparison.jpg` 及两份 `round2-mobile-*391x844.jpg`。
 
 这轮把缺失关系从“未绘制”推进到“全部真实关系可见并有跨群统计”，但仍没有服务端受权社区摘要、独立来源分布或命题锚点；演化也只有单对象历史。视觉 QA 继续保持 blocked，待真实主题任务和语义投影补齐后再判断能否通过。
+
+### 下一轮验收入口
+
+视觉重构 R1 尚未开始实现或取得视觉通过。硬阻断、桌面构图预算、三视角专项条件、T1–T8任务、视觉评分、响应式、性能和证据格式统一见[视觉重构 R1：Graph-first 验收标准](visual-acceptance-r1.md)。

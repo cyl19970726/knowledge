@@ -106,3 +106,7 @@ API样例为33节点/96关系，参考图为示意网络，实际布局与文本
 最终以 `KNOWLEDGE_WEB_API_TARGET=http://127.0.0.1:4331` 启动4334稳定构建，再连接同一隔离服务：星群、问题均为WebGL2 ready，星群读取7条跨群/4条判断桥梁，演化读取2版，391×844下 `scrollWidth=clientWidth=391`；完整流程控制台没有error级记录。
 
 真实接口仍缺少可独立核对的群落摘要、来源覆盖和命题锚点；当前五个群落名来自返回节点，桥梁来自 legacy stance 投影，很多关系的依据仍是未知。演化仍只能读取单对象已发表版本。视觉状态继续保持blocked；这轮改善的是投影解释与交互，不是真人理解、真实知识语义或业务效果验收。
+
+## 2026-11-01 下一轮视觉重构 R1 验收基线
+
+下一轮不以继续微调现有画面为目标，而是执行Graph-first视觉重构。已建立[视觉重构R1验收标准](docs/knowledge/frontend/visual-acceptance-r1.md)及[结构化空模板](docs/assets/knowledge-workbench/visual-review-r1-template.json)。状态为`not_run`；硬阻断未关闭、T1–T8未完成、加权分数未达到85/100且没有用户明确视觉接受前，不得改为`passed_local`或`passed`。
