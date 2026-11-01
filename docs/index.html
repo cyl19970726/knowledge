@@ -3127,7 +3127,7 @@ python3 -m unittest tests.test_build_docs -v
 </article>
 <article id="knowledge-r1-graph-first-20261101" class="doc" aria-label="视觉重构 R1：Graph-first 本地实现与复验"><div class="chapter-meta"><span>本地实现与复验 · 视觉门槛未通过 · 未部署</span><span>2026-11-01</span></div><h1 id="knowledge-r1-graph-first-20261101--视觉重构-r1graph-first-本地实现与复验">视觉重构 R1：Graph-first 本地实现与复验</h1>
 <p>2026-11-01 · <strong>结论：blocked。</strong> 本轮完成了 Graph-first 构图、真实关系与来源投影、三视角、克制动效、移动端任务和稳定构建复验；桌面构图、标签碰撞、横向溢出、稳定切换、键盘与 T1–T8 已通过。独立视觉复核仍低于 R1 的 85 分门槛，系统级减少动态无法在本环境切换，且当前 IAB 约为 30 Hz，不能在未限速设备上重验 <code>&lt;=20 ms</code> 帧间隔。没有用户视觉接受，因此不得记为 <code>passed_local</code> 或 <code>passed</code>。</p>
-<p>本轮继续使用独立工作树 <code>local/worktrees/unified-cognitive-workbench</code> 和隔离合成知识服务。没有连接业务数据库、调用真实模型研究、发表知识、推送或部署。结构化记录见<a href="assets/knowledge-workbench/visual-review-r1.json">visual-review-r1.json</a>。</p>
+<p>本轮继续使用独立工作树 <code>local/worktrees/unified-cognitive-workbench</code> 和隔离合成知识服务。实现证据提交为 <code>f0be9c890e93e267c3baeeee88f8aae23b3fa649</code>。没有连接业务数据库、调用真实模型研究、发表知识、推送或部署。结构化记录见<a href="assets/knowledge-workbench/visual-review-r1.json">visual-review-r1.json</a>。</p>
 <h2 id="knowledge-r1-graph-first-20261101--实际数据与构图">实际数据与构图</h2>
 <p>稳定构建连接 <code>knowledge-workbench-synthetic / 认知示例</code>：47节点、43条认识、4个外部来源、138条关系、6个按当前连接形成的群落。7条跨群关系中有3条支持、1条挑战和3条导航；4条支持/挑战关系以增强桥梁显示。所有关系和来源均来自当前返回，没有为凑齐参考图而补造节点、来源或时间。</p>
 <p>1440×1024 CSS px 实测：</p>

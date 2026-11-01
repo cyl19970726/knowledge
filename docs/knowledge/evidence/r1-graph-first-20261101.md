@@ -2,7 +2,7 @@
 
 2026-11-01 · **结论：blocked。** 本轮完成了 Graph-first 构图、真实关系与来源投影、三视角、克制动效、移动端任务和稳定构建复验；桌面构图、标签碰撞、横向溢出、稳定切换、键盘与 T1–T8 已通过。独立视觉复核仍低于 R1 的 85 分门槛，系统级减少动态无法在本环境切换，且当前 IAB 约为 30 Hz，不能在未限速设备上重验 `<=20 ms` 帧间隔。没有用户视觉接受，因此不得记为 `passed_local` 或 `passed`。
 
-本轮继续使用独立工作树 `local/worktrees/unified-cognitive-workbench` 和隔离合成知识服务。没有连接业务数据库、调用真实模型研究、发表知识、推送或部署。结构化记录见[visual-review-r1.json](../../assets/knowledge-workbench/visual-review-r1.json)。
+本轮继续使用独立工作树 `local/worktrees/unified-cognitive-workbench` 和隔离合成知识服务。实现证据提交为 `f0be9c890e93e267c3baeeee88f8aae23b3fa649`。没有连接业务数据库、调用真实模型研究、发表知识、推送或部署。结构化记录见[visual-review-r1.json](../../assets/knowledge-workbench/visual-review-r1.json)。
 
 ## 实际数据与构图
 
