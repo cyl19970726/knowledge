@@ -38,13 +38,14 @@ export function CandidateReview({candidate,client,actions,onCandidate,recoveryKe
   const [reason,setReason]=useState('');
   const view=controller.view(),busy=view.phase==='sending'||view.phase==='checking';
   const terminalMessage=candidateTerminalMessage(candidate.state);
+  const stateLabel:Record<CandidateView['state'],string>={waiting_for_review:'等待独立审阅',cancelled:'已取消',published:'曾发表',rejected:'已拒绝',outcome_unknown:'状态待核对'};
   const requestAllowed=actions.request&&candidate.canRequestReview===true&&!view.ticketId&&!view.pending&&!view.finalized;
   const decideAllowed=controller.canDecide(decision)&&reason.trim().length>0&&!busy;
   const decisionLabel=decision==='rejected'?'拒绝':decision==='exploration_only'?'仅探索用途批准并发表':'批准并发表';
   const submit=(event:FormEvent)=>{event.preventDefault();void controller.decide(decision,reason);};
   return <section className="content-card candidate-review-panel" aria-label="候选独立审阅">
-    <div className="section-heading"><h2>候选独立审阅</h2><span>{candidate.state}</span></div>
-    <p className="minor-note">目标候选 {candidate.candidateId} · 内容摘要 {candidate.contentHash} · 用途 {candidate.purpose}</p>
+    <div className="section-heading"><h2>候选独立审阅</h2><span>{stateLabel[candidate.state]}</span></div>
+    <details className="candidate-exact"><summary>准确审阅目标</summary><p>候选 ID {candidate.candidateId} · 内容摘要 {candidate.contentHash} · 用途 {candidate.purpose} · 原始状态 {candidate.state}</p></details>
     {terminalMessage ? <>
       <p className="minor-note" role="status">{terminalMessage}</p>
       <button className="text-button" type="button" disabled={busy} onClick={()=>void controller.refresh()}>只读刷新候选与票据</button>

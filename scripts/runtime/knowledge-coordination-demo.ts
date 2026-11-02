@@ -17,7 +17,8 @@ import {assertKnowledgeWriterAuthority} from '../../packages/knowledge/src/write
 import type {CapabilityContext,DecisionProvider,SourcePlanner,WikiCompiler} from '@commerce/knowledge-application';
 import type {KnowledgeRef,MaintenanceTask} from '@commerce/knowledge-contracts';
 
-const MAX_LIFETIME_MS=5*60_000;
+const MAX_LIFETIME_MS=Number(process.env.KNOWLEDGE_QA_LIFETIME_MS??5*60_000);
+if(!Number.isInteger(MAX_LIFETIME_MS)||MAX_LIFETIME_MS<1000||MAX_LIFETIME_MS>10*60_000)throw new Error('QA lifetime must be bounded by ten minutes');
 const READY_FILE='/tmp/wiki-coordination-demo.json';
 const zero={modelCalls:{state:'known' as const,value:0},tokens:{state:'known' as const,value:0},
   money:{state:'known' as const,amount:0,currency:'USD',source:'synthetic_no_model'}};
@@ -77,7 +78,21 @@ async function main(){
           reason:'本地合成提案；提及并非身份消歧或事实确认',gaps:['缺少真实来源与真实观察']},
           raw:{synthetic:true,method:'fixed-span'},cost:zero,modelReturned:'synthetic-no-model',requestId:'synthetic-plan'};}};
     const compiler:WikiCompiler={id:'synthetic-coordination-compiler',model:'synthetic-no-model',methodVersion:'coord-demo/1',execution:'local_deterministic',
-      async compile(input){const source=input.evidence.find(item=>item.kind==='source_content');
+      async compile(input){
+        if(input.answerSeed){
+          const profile=input.profiles.find(item=>item.id==='synthesis');assert.ok(profile);
+          const support=[...new Set(input.answerSeed.claims.flatMap(claim=>claim.evidenceIds))];
+          assert.ok(support.length&&support.every(id=>input.evidence.some(item=>item.id===id)));
+          return {proposal:{outcome:'proposed',drafts:[{targetEvidenceId:null,profile,
+            identityKey:`synthetic-answer-${input.operationId}`,title:`问答研究：${input.question}`.slice(0,500),
+            summary:`合成待审研究：${input.answerSeed.claims.map(claim=>claim.text).join('\n').slice(0,8000)}`,
+            conditions:['只用于本地合成交互验证'],counterexamples:['原答案不是独立来源，结论仍需核对'],
+            unknowns:['真实模型和经营效果未验证'],nextQuestions:['独立审阅是否接受本次引用与条件？'],
+            supportEvidenceIds:support,rationale:'从所选答案结论发起；准确材料已经重新读取'}],
+            reason:'合成问答研究候选，等待独立审阅',gaps:['没有调用真实模型']},cost:zero,
+            modelReturned:'synthetic-no-model',requestId:'synthetic-answer-research'};
+        }
+        const source=input.evidence.find(item=>item.kind==='source_content');
         assert.ok(source,'Only the current source is allowed to support this draft');
         assert.ok(source.body.includes(topic));
         const profile=input.profiles.find(item=>item.id==='concept');assert.ok(profile);

@@ -111,7 +111,7 @@ export const AskProviderAnswerSchema = z.strictObject({outcome:z.enum(['answered
 });
 export type AskProviderAnswer = z.infer<typeof AskProviderAnswerSchema>;
 export const AskReadUsageSchema = z.strictObject({wikiPayloadBytes:Int(10_000_000),sourceContentBytes:Int(10_000_000),preparedInputBytes:Int(11_000_000),maxReadBytes:Int(10_000_000)});
-export const AskResultSchema = z.strictObject({id:IdSchema,question:Text(2000),purpose:Purpose,state:z.enum(['reserved','running','answered','needs_evidence','refused','failed','outcome_unknown']),claims:List(AskClaimSchema,50),evidence:List(AskEvidenceReceiptSchema,100),excluded:List(z.strictObject({ref:KnowledgeRefSchema,reason:Text(1000)}),100),coverage:CoverageSchema,readsetFingerprint:Sha256Schema,cost:CostSchema,readUsage:AskReadUsageSchema.optional(),provider:z.strictObject({id:Text(100),modelRequested:Text(200),modelReturned:Text(200).nullable(),requestId:Text(200).nullable()}).nullable(),reason:Text(5000),gaps:List(Text(1000),100),createdAt:TimestampSchema,completedAt:TimestampSchema.nullable()}).superRefine((result,ctx)=>{
+export const AskResultSchema = z.strictObject({id:IdSchema,answerFingerprint:Sha256Schema.optional(),question:Text(2000),purpose:Purpose,state:z.enum(['reserved','running','answered','needs_evidence','refused','failed','outcome_unknown']),claims:List(AskClaimSchema,50),evidence:List(AskEvidenceReceiptSchema,100),excluded:List(z.strictObject({ref:KnowledgeRefSchema,reason:Text(1000)}),100),coverage:CoverageSchema,readsetFingerprint:Sha256Schema,cost:CostSchema,readUsage:AskReadUsageSchema.optional(),provider:z.strictObject({id:Text(100),modelRequested:Text(200),modelReturned:Text(200).nullable(),requestId:Text(200).nullable()}).nullable(),reason:Text(5000),gaps:List(Text(1000),100),createdAt:TimestampSchema,completedAt:TimestampSchema.nullable()}).superRefine((result,ctx)=>{
   if(result.state==='answered'&&result.claims.length===0)ctx.addIssue({code:'custom',path:['claims'],message:'answered requires at least one cited claim'});
   if(result.state!=='answered'&&result.claims.length>0)ctx.addIssue({code:'custom',path:['claims'],message:'non-answered state cannot contain claims'});
   const evidenceIds=new Set<string>();
@@ -221,12 +221,23 @@ export type EntityMentionBatch = z.infer<typeof EntityMentionBatchSchema>;
 
 export const SourceEventLookupSchema = z.discriminatedUnion('state',[z.strictObject({state:z.literal('known'),event:SourceEventRecordSchema}),z.strictObject({state:z.literal('unknown'),event:z.null()})]);
 
-export const WikiCompileRequestSchema = z.strictObject({question:Text(2000),purpose:Purpose,sourceEventIds:List(IdSchema,20),selectedRefs:List(KnowledgeRefSchema,5).optional(),
-  queries:z.array(Text(500)).min(1).max(5),judgmentIds:List(IdSchema,3).optional(),limit:z.int().min(1).max(20),maxPages:z.int().min(1).max(5),budget:BudgetSchema}).superRefine((value,ctx)=>{
- const refs=value.selectedRefs??[];
- if(!value.sourceEventIds.length&&!refs.length)ctx.addIssue({code:'custom',message:'Compilation needs exact source events or selected Wiki versions'});
+const AnswerClaimSelectionSchema=z.array(z.int().min(0).max(49)).min(1).max(50).refine(values=>new Set(values).size===values.length,{message:'Claim indexes must be distinct'});
+export const AnswerSeedSchema=z.strictObject({answerId:IdSchema,expectedAnswerFingerprint:Sha256Schema,claimIndexes:AnswerClaimSelectionSchema});
+export type AnswerSeed=z.infer<typeof AnswerSeedSchema>;
+export const AnswerOriginSchema=z.strictObject({answerId:IdSchema,answerFingerprint:Sha256Schema,claimIndexes:AnswerClaimSelectionSchema,question:Text(2000)});
+export type AnswerOrigin=z.infer<typeof AnswerOriginSchema>;
+export const AnswerResearchRequestSchema=z.strictObject({purpose:Purpose,expectedAnswerFingerprint:Sha256Schema,claimIndexes:AnswerClaimSelectionSchema,question:Text(2000),limit:z.int().min(1).max(100).describe('Maximum Wiki pages; all Wiki and source evidence together remain bounded by 100'),maxPages:z.int().min(1).max(5),budget:BudgetSchema});
+export type AnswerResearchRequest=z.infer<typeof AnswerResearchRequestSchema>;
+
+export const WikiCompileRequestSchema = z.strictObject({question:Text(2000),purpose:Purpose,sourceEventIds:List(IdSchema,20),selectedRefs:List(KnowledgeRefSchema,100).optional(),sourceRefs:List(KnowledgeRefSchema,100).optional(),answerSeed:AnswerSeedSchema.optional(),
+  queries:z.array(Text(500)).min(1).max(5),judgmentIds:List(IdSchema,3).optional(),limit:z.int().min(1).max(100).describe('Maximum Wiki pages; all Wiki and source evidence together remain bounded by 100'),maxPages:z.int().min(1).max(5),budget:BudgetSchema}).superRefine((value,ctx)=>{
+ const refs=value.selectedRefs??[],sources=value.sourceRefs??[];
+ if(!value.sourceEventIds.length&&!refs.length&&!sources.length)ctx.addIssue({code:'custom',message:'Compilation needs exact sources or selected Wiki versions'});
  if(refs.some(ref=>ref.domain!=='knowledge'||ref.contentDigest===null))ctx.addIssue({code:'custom',path:['selectedRefs'],message:'Selected Wiki inputs need canonical digests'});
  if(new Set(refs.map(ref=>`${ref.objectId}/${ref.versionId}`)).size!==refs.length)ctx.addIssue({code:'custom',path:['selectedRefs'],message:'Selected Wiki versions must be distinct'});
+ if(sources.some(ref=>ref.domain==='knowledge'||ref.contentDigest===null))ctx.addIssue({code:'custom',path:['sourceRefs'],message:'Exact source references require canonical digests'});
+ if(new Set(sources.map(ref=>`${ref.domain}/${ref.objectId}/${ref.versionId}`)).size!==sources.length)ctx.addIssue({code:'custom',path:['sourceRefs'],message:'Exact source versions must be distinct'});
+ if(value.sourceEventIds.length+refs.length+sources.length>100)ctx.addIssue({code:'custom',message:'Explicit compilation inputs exceed the evidence bound'});
 });
 export type WikiCompileRequest = z.infer<typeof WikiCompileRequestSchema>;
 export const WikiDraftChangeSchema = z.strictObject({targetEvidenceId:Text(100).nullable(),profile:ProfileRefSchema,identityKey:Text(300),
@@ -237,7 +248,7 @@ export const WikiCompileProposalSchema = z.strictObject({outcome:z.enum(['propos
   if((value.outcome==='proposed')!==(value.drafts.length>0))ctx.addIssue({code:'custom',path:['drafts'],message:'Only a proposed outcome has nonempty drafts'});
 });
 export type WikiCompileProposal = z.infer<typeof WikiCompileProposalSchema>;
-export const WikiCompileResultSchema = z.strictObject({id:IdSchema,question:Text(2000),purpose:Purpose,
+export const WikiCompileResultSchema = z.strictObject({id:IdSchema,answerOrigin:AnswerOriginSchema.optional(),question:Text(2000),purpose:Purpose,
   state:z.enum(['reserved','running','draft_ready','waiting_for_review','no_change','needs_evidence','refused','failed','outcome_unknown','published','rejected']),
   publication:PublicationSchema.nullable().optional(),reviewReceiptId:IdSchema.nullable().optional(),reviewDecision:z.enum(['approved_for_purpose','exploration_only','rejected']).optional(),
   drafts:List(WikiDraftChangeSchema,5),candidate:CandidateReceiptSchema.nullable(),

@@ -1,6 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {AskRequestSchema,AskResultSchema,AskProviderAnswerSchema,CostSchema,
-  type AskRequest,type AskResult,type AskEvidenceReceipt,type AskProviderAnswer} from '@commerce/knowledge-contracts';
+  type AskRequest,type AskResult,type AskLookupResult,type AskEvidenceReceipt,type AskProviderAnswer} from '@commerce/knowledge-contracts';
 import {KnowledgeError} from '@commerce/knowledge-core/types';
 import {digest} from '@commerce/knowledge-core/utils';
 import type {KnowledgeApplication,ReadContext,BoundedWikiPage} from './index.ts';
@@ -16,9 +16,13 @@ export interface AskOperationPort {
   get(context:ReadContext,id:string):Promise<AskResult|null>;
   lookup(context:ReadContext,key:string):Promise<AskResult|null>;
 }
+export interface AskAnswerReader {
+  get(context:ReadContext,id:string,mode?:'current'|'historical'):Promise<AskResult>;
+  lookup(context:ReadContext,key:string,mode?:'current'|'historical'):Promise<AskLookupResult>;
+}
 export type AskEvidence = AskEvidenceReceipt & {body:string};
 export type AskReader=Pick<KnowledgeApplication,'queryCandidates'|'readCandidate'|'validateFrozenWiki'|'sourceRecord'|'sourceContentBounded'|'assertReadEpoch'>&
-  Partial<Pick<KnowledgeApplication,'readWikiExactBounded'>>;
+  Partial<Pick<KnowledgeApplication,'readWikiExactBounded'|'validateHistoricalWiki'>>;
 /** Trusted execution adapter. Evidence is untrusted source content, never tool instructions. */
 export interface QueryAnswerer {
   id:string;
@@ -35,37 +39,64 @@ const pendingCost=():Cost=>({modelCalls:{state:'unknown',reason:'Provider invoca
 const metadata=({body:_,...item}:AskEvidence):AskEvidenceReceipt=>item;
 const unknownGroup=():NonNullable<AskEvidenceReceipt['sourceGroups']>[number]=>({id:null,status:'unknown',authority:null});
 
+/** Stable answer identity excludes mutable accounting and its own derived fingerprint. */
+export function askAnswerFingerprint(result:AskResult):string{
+  return digest({tag:'ask-answer-v1',id:result.id,question:result.question,purpose:result.purpose,
+    claims:result.claims,evidence:result.evidence,excluded:result.excluded,coverage:result.coverage,
+    readsetFingerprint:result.readsetFingerprint,reason:result.reason,gaps:result.gaps,provider:result.provider});
+}
+function answerCopy(value:AskResult):AskResult{
+  const result=AskResultSchema.parse(value);
+  const {answerFingerprint:_,...copy}=structuredClone(result);
+  return result.state==='answered'?{...copy,answerFingerprint:askAnswerFingerprint(result)}:copy;
+}
+type AskReadVerifier=Pick<AskReader,'validateFrozenWiki'|'sourceRecord'>&
+  Partial<Pick<AskReader,'validateHistoricalWiki'>>;
+function assertAskContext(context:ReadContext){
+  if(context.scope.projectId!==context.principal.projectId||!context.principal.spaceIds.includes(context.scope.spaceId)||
+    !context.principal.purposes.includes(context.purpose))
+    throw new KnowledgeError('SCOPE_FORBIDDEN','Ask scope or purpose is unavailable',403);
+}
+async function validateAskReadset(reader:AskReadVerifier,context:ReadContext,result:AskResult,mode:'current'|'historical'='current'){
+  for(const item of result.evidence){
+    if(item.kind==='wiki_page'){
+      if(!item.storageDigest)throw new KnowledgeError('ASK_READSET_INVALIDATED','This answer predates bounded readset verification; no automatic recomputation is allowed',409);
+      if(mode==='historical'){
+        if(!reader.validateHistoricalWiki)throw new KnowledgeError('HISTORICAL_WIKI_READ_UNSUPPORTED','Historical Wiki verification is unavailable',503);
+        await reader.validateHistoricalWiki(context,item.ref,item.storageDigest);
+      }else await reader.validateFrozenWiki(context,item.ref,item.storageDigest);
+    }else{
+      const source=await reader.sourceRecord(context,item.ref);
+      if(!source.readability.contentReadable||!source.readability.metadataVisible)
+        throw new KnowledgeError('ASK_READSET_INVALIDATED','An answer source is no longer readable',409);
+    }
+  }
+}
+
+/** Internal trusted reader; HTTP Ask routes continue to use the default current mode. */
+export function createAskAnswerReader(options:{reader:AskReadVerifier;operations:AskOperationPort}):AskAnswerReader{
+  async function get(context:ReadContext,id:string,mode:'current'|'historical'='current'):Promise<AskResult>{
+    assertAskContext(context);
+    const result=await options.operations.get(context,id);
+    if(!result)throw new KnowledgeError('NOT_FOUND','Answer operation is unavailable',404);
+    await validateAskReadset(options.reader,context,result,mode);
+    return answerCopy(result);
+  }
+  async function lookup(context:ReadContext,key:string,mode:'current'|'historical'='current'){
+    assertAskContext(context);
+    if(!key.trim()||key.length>200)throw new KnowledgeError('IDEMPOTENCY_KEY_REQUIRED','Bounded request key required',400);
+    const answer=await options.operations.lookup(context,key);
+    if(answer)await validateAskReadset(options.reader,context,answer,mode);
+    return {state:answer?'committed' as const:'unknown' as const,answer:answer?answerCopy(answer):null};
+  }
+  return {get,lookup};
+}
+
 /** A temporary answer has a durable readset, but no knowledge publication capability. */
 export function createAskWikiService(options:{reader:AskReader;operations:AskOperationPort;provider:QueryAnswerer;now?:()=>Date}){
   const clock=()=>options.now?.()??new Date();
-  function assertContext(context:ReadContext){
-    if(context.scope.projectId!==context.principal.projectId||!context.principal.spaceIds.includes(context.scope.spaceId)||
-      !context.principal.purposes.includes(context.purpose))throw new KnowledgeError('SCOPE_FORBIDDEN','Ask scope or purpose is unavailable',403);
-  }
-  async function validateReadset(context:ReadContext,result:AskResult){
-    for(const item of result.evidence){
-      if(item.kind==='wiki_page'){
-        if(!item.storageDigest)throw new KnowledgeError('ASK_READSET_INVALIDATED','This answer predates bounded readset verification; no automatic recomputation is allowed',409);
-        await options.reader.validateFrozenWiki(context,item.ref,item.storageDigest);
-      }else{
-        const source=await options.reader.sourceRecord(context,item.ref);
-        if(!source.readability.contentReadable)throw new KnowledgeError('ASK_READSET_INVALIDATED','An answer source is no longer readable',409);
-      }
-    }
-  }
-  async function get(context:ReadContext,id:string):Promise<AskResult>{
-    assertContext(context);
-    const result=await options.operations.get(context,id);
-    if(!result)throw new KnowledgeError('NOT_FOUND','Answer operation is unavailable',404);
-    await validateReadset(context,result);return result;
-  }
-  async function lookup(context:ReadContext,key:string){
-    assertContext(context);
-    if(!key.trim()||key.length>200)throw new KnowledgeError('IDEMPOTENCY_KEY_REQUIRED','Bounded request key required',400);
-    const answer=await options.operations.lookup(context,key);
-    if(answer)await validateReadset(context,answer);
-    return {state:answer?'committed' as const:'unknown' as const,answer};
-  }
+  const {get,lookup}=createAskAnswerReader(options);
+  const validateReadset=(context:ReadContext,result:AskResult)=>validateAskReadset(options.reader,context,result);
   async function committed<T>(work:Promise<T>,id:string):Promise<T>{
     try{return await work;}catch(error){
       const failure=error instanceof Error?error:new KnowledgeError('ASK_OPERATION_UNAVAILABLE','Ask operation requires reconciliation',503);
@@ -91,7 +122,7 @@ export function createAskWikiService(options:{reader:AskReader;operations:AskOpe
         completeness:'unknown',omittedReasons:['Retrieval has not started'],snapshot:{publicationEpoch:null,consistency:'single_scope_snapshot'}},
       readsetFingerprint:digest([]),cost:noCalls(),readUsage:{wikiPayloadBytes:0,sourceContentBytes:0,preparedInputBytes:0,maxReadBytes:request.budget.maxReadBytes},provider:null,reason:'Reserved; no model invocation yet',gaps:[],createdAt:now,completedAt:null};
     const reserved=await options.operations.reserve(context,key,digest({scope:context.scope,principalId:context.principal.id,request}),request,initial);
-    if(!reserved.created){await committed(validateReadset(context,reserved.result),reserved.result.id);return reserved.result;}
+    if(!reserved.created){await committed(validateReadset(context,reserved.result),reserved.result.id);return answerCopy(reserved.result);}
     if(!await committed(options.operations.start(context,reserved.result.id),reserved.result.id))return committed(get(context,reserved.result.id),reserved.result.id);
     let result:AskResult={...reserved.result,state:'running'},invoked=false,acknowledged=false;
     const evidence:AskEvidence[]=[],excluded:AskResult['excluded']=[],gaps:string[]=[];
@@ -230,7 +261,8 @@ export function createAskWikiService(options:{reader:AskReader;operations:AskOpe
         invoked=true;
         let execution:Awaited<ReturnType<QueryAnswerer['answer']>>;
         try{execution=await Promise.race([options.provider.answer({operationId:result.id,question:request.question,purpose:request.purpose,
-          evidence,budget:request.budget,signal:controller.signal,gaps:[...result.gaps],coverage:result.coverage}),timeout]);}finally{if(timer)clearTimeout(timer);}
+          evidence:structuredClone(evidence),budget:structuredClone(request.budget),signal:controller.signal,
+          gaps:[...result.gaps],coverage:structuredClone(result.coverage)}),timeout]);}finally{if(timer)clearTimeout(timer);}
         acknowledged=true;
         result={...result,cost:CostSchema.parse(execution.cost),provider:{...result.provider!,modelReturned:execution.modelReturned,requestId:execution.requestId}};
         const answer=AskProviderAnswerSchema.parse(execution.answer),ids=new Set(evidence.map(item=>item.id));
@@ -251,7 +283,7 @@ export function createAskWikiService(options:{reader:AskReader;operations:AskOpe
     result=AskResultSchema.parse({...result,completedAt:clock().toISOString()});
     await committed(options.operations.finish(context,result.id,result),result.id);
     // Replay and fresh answers both recheck current rights; durable audit is not permission to disclose stale evidence.
-    await committed(validateReadset(context,result),result.id);return result;
+    await committed(validateReadset(context,result),result.id);return answerCopy(result);
   }
   return {ask,get,lookup};
 }

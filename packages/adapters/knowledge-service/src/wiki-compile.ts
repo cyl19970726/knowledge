@@ -59,6 +59,12 @@ function assertResult(context:ReadContext,result:WikiCompileResult,id:string,req
   if(prior?.stageIntent&&(canonical(result.stageIntent)!==canonical(prior.stageIntent)||
     canonical(result.drafts)!==canonical(prior.drafts)))
     throw new KnowledgeError('WIKI_COMPILE_STAGE_INTENT_CHANGED','Acknowledged draft or stage intent changed',409);
+  const seed=request.answerSeed,origin=result.answerOrigin;
+  if(origin&&(!seed||origin.answerId!==seed.answerId||origin.answerFingerprint!==seed.expectedAnswerFingerprint||
+      canonical(origin.claimIndexes)!==canonical(seed.claimIndexes)))
+    throw new KnowledgeError('WIKI_COMPILE_ANSWER_ORIGIN_MISMATCH','Answer origin differs from the frozen compilation request',409);
+  if(prior?.answerOrigin&&canonical(origin)!==canonical(prior.answerOrigin))
+    throw new KnowledgeError('WIKI_COMPILE_ANSWER_ORIGIN_CHANGED','Acknowledged answer origin is immutable',409);
   const assertRef=(ref:{projectId:string;spaceId:string}):void=>{
     if(ref.projectId!==context.scope.projectId||ref.spaceId!==context.scope.spaceId)
       throw new KnowledgeError('WIKI_COMPILE_SCOPE_MISMATCH','Wiki compilation contains a reference outside its scope',403);
@@ -124,6 +130,8 @@ export function createPgWikiCompilations(pool:Pool,grant:KnowledgeWriterGrant):O
         throw new KnowledgeError('WIKI_COMPILE_RESERVATION_INVALID','Initial compilation must be reserved',422);
       if(initial.stageIntent||initial.drafts.length||initial.candidate)
         throw new KnowledgeError('WIKI_COMPILE_RESERVATION_INVALID','A reserved compilation cannot contain staged work',422);
+      if(Boolean(request.answerSeed)!==Boolean(initial.answerOrigin))
+        throw new KnowledgeError('WIKI_COMPILE_ANSWER_ORIGIN_MISMATCH','Answer-seeded compilation must freeze its origin at reservation',409);
       assertResult(context,initial,initial.id,request);
       return transaction(context,initial.id,async client=>{
         const inserted=await client.query<CompilationRow>(`INSERT INTO ccl_knowledge_compilations

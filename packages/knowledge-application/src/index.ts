@@ -399,3 +399,5 @@ export * from './decision-codecs.ts';
 export * from './source-plan.ts';
 export * from './coordination.ts';
 export * from './coordination-port.ts';
+
+export * from './answer-research.ts';

@@ -174,6 +174,26 @@ test('candidate ID lookup is visible without a research result and shows a separ
   assert.equal(candidateBelongsToResearch(null,candidate()),false);
 });
 
+test('linked candidate shows the verified preview and folded exact IDs without a manual lookup form',()=>{
+  const html=renderToStaticMarkup(createElement(CandidateLookupPanel,{value:id,onChange:()=>{},onSubmit:()=>{},
+    loading:false,error:'',candidate:candidate(),result:null,onRead:()=>{},hideLookup:true}));
+  assert.match(html,/候选正文 · 修改前后/);
+  assert.match(html,/等待独立审阅 · 尚非正式认识/);
+  assert.match(html,/<details class="candidate-exact"><summary>准确候选记录<\/summary>/);
+  assert.match(html,new RegExp(id));
+  assert.doesNotMatch(html,/待审候选 ID|输入候选 UUID|只读读取候选|候选读取失败/);
+});
+
+test('review card keeps exact target in details and shows a Chinese state without changing controls',()=>{
+  const html=renderToStaticMarkup(createElement(CandidateReview,{candidate:candidate(),client:{} as CandidateReviewClient,
+    actions:{request:true,decide:false},onCandidate:()=>{}}));
+  assert.match(html,/候选独立审阅/);
+  assert.match(html,/等待独立审阅/);
+  assert.match(html,/<details class="candidate-exact"><summary>准确审阅目标<\/summary>/);
+  assert.match(html,/请求候选独立审阅/);
+  assert.match(html,new RegExp(id));
+});
+
 test('the same research candidate stays in the triptych; another ID gets its own preview',()=>{
   const research={candidateId:id,cognitiveOutcome:'candidate'} as ResearchResult;
   const props={value:'',onChange:()=>{},onSubmit:()=>{},loading:false,error:'',candidate:candidate(),onRead:()=>{}};

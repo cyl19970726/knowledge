@@ -15,7 +15,7 @@ import {digest} from '@commerce/knowledge-core/utils';
 import type {KnowledgeWriterGrant} from '@commerce/knowledge-core/writer-authority';
 import {listWikiPageProfiles,wikiPageProfileFingerprint} from '@commerce/knowledge-core/wiki-page';
 import {createKnowledgeApplication,createSourceApplication,createSyntheticResearchService,createUseFeedbackApplication,createReviewApplication,createFeedbackSourceApplication,
-  createAskWikiService,createSourceIntakeApplication,createWikiCompileApplication,createMaintenanceApplication,createRelationJudgmentApplication,createSourcePlanApplication,createCoordinationProcessor,type SourcePlanner,type CoordinationPolicy,type DecisionProvider,type WikiCompiler,type QueryAnswerer,
+  createAskWikiService,createAskAnswerReader,createAnswerResearchApplication,createSourceIntakeApplication,createWikiCompileApplication,createMaintenanceApplication,createRelationJudgmentApplication,createSourcePlanApplication,createCoordinationProcessor,type SourcePlanner,type CoordinationPolicy,type DecisionProvider,type WikiCompiler,type QueryAnswerer,
   type KnowledgeApplication,type Principal,type ReadContext,type CapabilityContext,type CapabilityPrincipal,type SyntheticResearchProvider,type SourceOwnerPort} from '@commerce/knowledge-application';
 import {createPgKnowledgeReceiptPort,migrateKnowledgeReadReceipts,createPgKnowledgeOperations,migrateKnowledgeOperations,
   createPgSourceRegistry,migrateManagedSources,createHttpSourceOwner,routeSourceOwners,createPgUseFeedbackPort,migrateKnowledgeUses} from '@commerce/knowledge-service-adapter';
@@ -23,7 +23,7 @@ import {createPgReviewPort,migrateKnowledgeReviews,lookupCapabilityOperation,get
   createPgFeedbackResearchPort,createPgKnowledgeAnswers,migrateKnowledgeAnswers,createPgSourceIntake,migrateSourceIntake,createPgWikiCompilations,migrateWikiCompilations,createPgWikiCompileStage,migrateMaintenanceTasks,createPgMaintenanceTasks,migrateWikiLint,createPgWikiLint,migrateRelationJudgments,createPgRelationJudgments,migrateSourcePlans,createPgSourcePlans,migrateCoordinationRuns,createPgCoordinationRuns,migrateSemanticSweeps,createPgSemanticSweep} from '@commerce/knowledge-service-adapter';
 import {CONTRACT_VERSION,CatalogRequestSchema,CompareRequestSchema,GraphRequestSchema,HistoryRequestSchema,KnowledgeRefSchema,QueryRequestSchema,ReadReceiptSchema,
   SourceUpsertSchema,ResearchRequestSchema,CancelRequestSchema,OperationLookupSchema,UseInputSchema,FeedbackInputSchema,ChangesRequestSchema,
-  ReviewRequestSchema,ReviewDecisionSchema,FeedbackSourceRequestSchema,AskRequestSchema,SourceEventRequestSchema,EntityMentionExtractionSchema,WikiCompileRequestSchema,MaintenanceCollectRequestSchema,LintRequestSchema,RelationJudgmentRequestSchema,SearchProjectionBuildRequestSchema,SourcePlanRequestSchema,SemanticSweepApiRequestSchema} from '@commerce/knowledge-contracts';
+  ReviewRequestSchema,ReviewDecisionSchema,FeedbackSourceRequestSchema,AskRequestSchema,SourceEventRequestSchema,EntityMentionExtractionSchema,WikiCompileRequestSchema,MaintenanceCollectRequestSchema,LintRequestSchema,RelationJudgmentRequestSchema,SearchProjectionBuildRequestSchema,SourcePlanRequestSchema,SemanticSweepApiRequestSchema,AnswerResearchRequestSchema} from '@commerce/knowledge-contracts';
 
 export interface KnowledgeApiConfig {pool:Pool;token:string;principal:Principal;port?:number;host?:string;
   writerGrant?:KnowledgeWriterGrant;enableSyntheticResearch?:boolean;researchProvider?:SyntheticResearchProvider;capabilities?:CapabilityPrincipal;
@@ -45,7 +45,7 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
   if(config.enableSyntheticResearch&&!config.writerGrant)throw new Error('Synthetic research requires a trusted writer grant');
   // Reviews inspect operation lineage even when synthetic execution itself is disabled.
   if(config.writerGrant)await migrateKnowledgeOperations(config.pool);
-  if(config.answerer){if(!config.writerGrant)throw new Error('AskWiki requires a trusted operation writer grant');await migrateKnowledgeAnswers(config.pool);}
+  if(config.answerer||config.compiler){if(!config.writerGrant)throw new Error('AskWiki requires a trusted operation writer grant');await migrateKnowledgeAnswers(config.pool);}
   if(config.enableSourceIngest){if(!config.writerGrant)throw new Error('Source intake requires a trusted writer grant');await migrateSourceIntake(config.pool);}
   if(config.compiler){if(!config.writerGrant||!config.enableSourceIngest)throw new Error('Wiki compiler requires an active writer configuration and explicit source intake');await migrateWikiCompilations(config.pool);}
   if(config.sourceReaderIds&&(config.sourceReaderIds.length>100||config.sourceReaderIds.some(id=>!id.trim()||id.length>200)))throw new Error('Source reader IDs require bounded authenticated identities');
@@ -62,11 +62,14 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
   const feedbackSources=config.writerGrant&&config.feedbackSourceRightsPolicyRef?
     createFeedbackSourceApplication(createPgFeedbackSourcePort(config.pool,{writerGrant:config.writerGrant,rightsPolicyRef:config.feedbackSourceRightsPolicyRef})):null;
   const service=createKnowledgeApplication({store,receipts,sources:routeSourceOwners(sourceRegistry,config.sourceOwner)});
+  const answerOperations=config.writerGrant&&(config.answerer||config.compiler)?createPgKnowledgeAnswers(config.pool,config.writerGrant):null;
+  const answerReader=answerOperations?createAskAnswerReader({reader:service,operations:answerOperations}):null;
   const sourceIntake=config.enableSourceIngest&&config.writerGrant?createSourceIntakeApplication({reader:service,port:createPgSourceIntake(config.pool,config.writerGrant)}):null;
   const judgment=config.decisionProvider&&config.writerGrant?createRelationJudgmentApplication({reader:service,operations:createPgRelationJudgments(config.pool,config.writerGrant),provider:config.decisionProvider,authorizeExternalDispatch:config.authorizeDecisionDispatch}):null;
   const sourcePlan=config.sourcePlanner&&config.writerGrant&&sourceIntake?createSourcePlanApplication({reader:service,intake:sourceIntake,operations:createPgSourcePlans(config.pool,config.writerGrant),provider:config.sourcePlanner,authorizeExternalDispatch:config.authorizeSourcePlannerDispatch}):null;
   const wikiCompile=config.compiler&&config.writerGrant&&sourceIntake?createWikiCompileApplication({reader:service,intake:sourceIntake,operations:createPgWikiCompilations(config.pool,config.writerGrant),provider:config.compiler,
-    sources:sourceRegistry,stage:createPgWikiCompileStage(config.pool,config.writerGrant,sourceRegistry),judgments:judgment??undefined,authorizeExternalDispatch:config.authorizeCompilerDispatch}):null;
+    sources:sourceRegistry,stage:createPgWikiCompileStage(config.pool,config.writerGrant,sourceRegistry),judgments:judgment??undefined,answers:answerReader??undefined,authorizeExternalDispatch:config.authorizeCompilerDispatch}):null;
+  const answerResearch=wikiCompile&&answerReader?createAnswerResearchApplication({answers:answerReader,compiler:wikiCompile}):null;
   const coordination=config.coordinationPolicy&&wikiCompile&&config.writerGrant?createCoordinationProcessor({reader:service,intake:sourceIntake??undefined,planner:sourcePlan??undefined,compiler:wikiCompile,judgments:judgment??undefined,operations:createPgCoordinationRuns(config.pool,config.writerGrant),tasks:createPgMaintenanceTasks(config.pool,config.writerGrant),
     policy:{...config.coordinationPolicy,providerFingerprint:digest({planner:config.sourcePlanner&&{id:config.sourcePlanner.id,version:config.sourcePlanner.version,model:config.sourcePlanner.model},compiler:config.compiler&&{id:config.compiler.id,version:config.compiler.methodVersion,model:config.compiler.model},judgment:config.decisionProvider&&{id:config.decisionProvider.id,version:config.decisionProvider.version,model:config.decisionProvider.model}})},
     execution:[config.sourcePlanner?.execution,config.compiler?.execution,config.decisionProvider?.execution].includes('external')?'external':'local_deterministic'}):null;
@@ -74,7 +77,7 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
   const maintenance=config.enableMaintenance&&config.writerGrant?createMaintenanceApplication({tasks:createPgMaintenanceTasks(config.pool,config.writerGrant),lint:createPgWikiLint(config.pool,config.writerGrant),processor:coordination??undefined,semanticSweep:coordination?createPgSemanticSweep(config.pool,config.writerGrant):undefined,
     searchProjection:{status:context=>projection!.status(context.scope.projectId,context.scope.spaceId),runBatch:(context,input)=>projection!.runBatch(context.scope.projectId,context.scope.spaceId,input)}}):null;
   const askWiki=config.answerer&&config.writerGrant?createAskWikiService({reader:service,
-    operations:createPgKnowledgeAnswers(config.pool,config.writerGrant),provider:config.answerer}):null;
+    operations:answerOperations!,provider:config.answerer}):null;
   const operations=config.enableSyntheticResearch&&config.writerGrant?createPgKnowledgeOperations(config.pool,config.writerGrant):null;
   const research=operations?createSyntheticResearchService({store,receipts,operations,sources:sourceRegistry,
     feedback:createPgFeedbackResearchPort(config.pool),provider:config.researchProvider}):null;
@@ -123,6 +126,7 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
     ...sourceIntake&&config.capabilities?.actions.includes('ingest:read')?['sourceEvent']:[],
     ...wikiCompile&&config.capabilities?.actions.includes('compile:write')&&config.capabilities.actions.includes('compile:read')?['compileWiki']:[],
     ...wikiCompile&&config.capabilities?.actions.includes('compile:read')?['compilation']:[],
+    ...answerResearch&&config.capabilities?.actions.includes('compile:write')&&config.capabilities.actions.includes('compile:read')?['researchAnswer']:[],
     ...sourceIntake&&config.capabilities?.actions.includes('ingest:mentions')&&config.capabilities.actions.includes('ingest:read')?['recordEntityMentions']:[]],
     purposes:config.principal.purposes,profiles,mode:config.writerGrant?'ready':'read_only',contractVersion:CONTRACT_VERSION,policyVersion:service.policyVersion,
     ...(req.query.recovery==='1'?{recoveryScope:digest({principalId:context.principal.id,clientInstallationId:context.principal.clientInstallationId,projectId:context.scope.projectId,spaceId:context.scope.spaceId})}:{}),
@@ -195,6 +199,10 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
   app.get(`${base}/answers/lookup`,route(async(context,req)=>{
     if(!askWiki)throw new KnowledgeError('ASK_DISABLED','AskWiki is not configured',503);
     return {data:await askWiki.lookup(context,String(req.query.key??''))};
+  }));
+  app.post(`${base}/answers/:answerId/research`,route(async(context,req)=>{
+    if(!answerResearch)throw new KnowledgeError('ANSWER_RESEARCH_DISABLED','Answer research compiler is not configured',503);
+    return {data:await answerResearch.research(capability(context),ReadReceiptSchema.shape.id.parse(req.params.answerId),AnswerResearchRequestSchema.parse(req.body),String(req.header('Idempotency-Key')??''))};
   }));
   app.get(`${base}/answers/:answerId`,route(async(context,req)=>{
     if(!askWiki)throw new KnowledgeError('ASK_DISABLED','AskWiki is not configured',503);
