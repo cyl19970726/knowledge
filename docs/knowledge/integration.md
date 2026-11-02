@@ -176,13 +176,21 @@ console.log(source.data.ref, result.data.items, receipt.data.orderedItems);
 
 ### 接入编纂提供方
 
-程序宿主可为 `createKnowledgeApi` 注入 `compiler: WikiCompiler`，同时明确启用 source intake、active writer 和相应 action。编纂写入需要 compile:write、compile:read、ingest:read 以及来源 adapter 授权；SDK 提供 `compileWiki`、`compilation`、`compilationLookup`。DTO 以共享 WikiCompile schema 为准；写请求保留原幂等 key，读取及核对始终使用原 purpose。
+程序宿主可为 `createKnowledgeApi` 注入 `compiler: WikiCompiler`，同时明确启用 source intake、active writer 和相应 action。编纂写入需要 `compile:write` 与 `compile:read`；只有请求携带 `sourceEventIds` 时才额外要求 `ingest:read` 及来源 adapter 授权，纯 Wiki 与回答派生路径不因此索取事件读取权。SDK 提供 `compileWiki`、`compilation`、`compilationLookup`。DTO 以共享 WikiCompile schema 为准；写请求保留原幂等 key，读取及核对始终使用原 purpose。
 
 编纂提供方只产生带 evidence ID 的 new/update/no_change/needs_evidence/refused 提案，不能自行提交变化或发表。外部模式须声明可执行的金额上限，宿主再通过 `authorizeCompilerDispatch` 明确核准资料外发；未提供就拒绝调用。本地合成提供方的工程验证不构成真实模型质量或价格证明。通用 `WikiCompiler` 负责生成；逐对关系判断由独立 `DecisionProvider` 应用负责。显式启用的协调器可以把本轮已确认双端判断作为建议送给编纂器。
 
 读取结果区分草稿与正式待审候选：draft_ready 可能缺来源发表保证或 stage 适配器；waiting_for_review 才带 `candidate` receipt，但还不代表审阅已通过、已发表或可用于生产。新的编纂来源使用独立 wiki_compile 审阅识别；候选必须匹配实际 compilation/stageIntent/changeset，旧 synthetic 规则保持独立。不能用构造 changeset 或伪装 synthetic 标识绕过来源准入。
 
 恢复不会再次调用提供方。未知返回后先用原 key lookup；若已存在 stage receipt，服务核验共享 request hash 与实际 changeset，再补齐账本关联。此处是恢复本地记录，不是重新 stage 或发表；没有已存候选时保持原未知/草稿状态。模型提供方本身的请求身份、原始响应及账单对账仍需真实 adapter 配套实现。
+
+### 从回答派生新的研究问题
+
+先从当前有权读取的 `answered` 结果取 `answerFingerprint`，让用户选择 claim 索引并填写新问题、Wiki 页数 `limit`、分页范围和预算。调用 SDK `researchAnswer(answerId, {purpose,expectedAnswerFingerprint,claimIndexes,question,limit,maxPages,budget}, {idempotencyKey})`，对应 `POST /answers/:id/research`。服务需同时声明 `researchAnswer` 写能力与 `compilation` 读能力；请求必须具备 `compile:write`、`compile:read`，不要求调用者创建 API key。旧服务响应没有指纹时禁用此入口。
+
+应用从原回答冻结的**完整实际读集**派生 `selectedRefs` 和 `sourceRefs`，只将所选 claims 作为研究提示；直接准确读取来源，不创建虚假的 `sourceEventIds`。准确引用总数最多 100，`limit` 只约束 Wiki 页数，来源另计。编纂器独立重验当前性、用途、来源权限与预算后才可分发；旧答案的断言不能替代新一轮依据。返回的 `answerOrigin` 记录原问题、原回答指纹和所选索引，编纂 `question` 是新问题。相同键同输入回到原编纂，改输入冲突；丢响应先用 `compilationLookup` 或原 ID 只读核对，不用新键再调提供方。
+
+原回答因 Wiki 换版而不再能从普通 Ask 入口读取时，已发表或拒绝的原编纂仍可按原键、原用途查看历史 origin；历史 Wiki 必须保持完整且经当时用途审阅，来源当前撤权仍拒绝。新键不能借历史资格跳过当前依据检查。实现入口见 `packages/knowledge-application/src/answer-research.ts`、`packages/knowledge-application/src/ask.ts`、`packages/knowledge-application/src/wiki-compile.ts`、`apps/knowledge-api/src/index.ts` 与 `packages/knowledge-client/src/index.ts`。
 
 ### 接入维护任务、周期 Lint 与判断端口
 
@@ -194,7 +202,7 @@ Lint 只提供七种结构或审阅提示。`findingCount` 是持久累计数，
 
 协调器需显式配置 `compiler`、`enableSourceIngest`、`enableMaintenance`、`coordinationPolicy` 与可信 writer grant；来源事件路径另需 `sourcePlanner`。可注入独立 Worker 的 `maintenance.processor`，CLI 默认仍只运行元数据维护。当前协调器受理单一准确来源事件的 `source_research`，也可受理无新来源事件、带准确当前 Wiki `subjectRef` 的 `relation_check`。前者先规划来源，再以 v2 发现有界旧页；后者从准确 Wiki 的标题、身份键和别名发现有界候选。两者最多三次有类型判断，最后将本轮真实读过的双端作为编纂提示。策略将最多五分钟的总期限及金额、模型调用和读取额度分配到固定子步骤，确认回执后累加，不能把未知费用当零。`GET /coordination-runs/:runId`、`GET /coordination-runs/by-task/:taskId` 与 SDK 用于查进度；`POST /maintenance/process-one` 推进一个任务，不把同一写 header 当成下一页。每步原键、请求和预算持久固定，未知时只 lookup，不重新分发提供方。普通任务 reason 不包含私有模型内容；协调详情及计划每次读取都重新核来源资格。实现见 `packages/knowledge-application/src/coordination.ts` 与 `apps/knowledge-api/src/index.ts`。
 
-独立审阅的批准或拒绝在同一事务结束编纂、协调运行和维护任务；两种决定均使任务完成，但 `compilationOutcome` 区分结果。运行中的租约不被抢走，过期 ACK 依据真实发表或拒绝记录核对，旧执行端只收到规范状态元数据。当前 Wiki 的周期语义任务发现与纯 Wiki `relation_check` 已在开发工作树接线；失效旧 Wiki 的 `recompile` 仍保持 queued。统一实体消歧、答案回流、跨键缓存、无变化提案独立审阅、外部发表保证和完整收件箱仍未完成。
+独立审阅的批准或拒绝在同一事务结束编纂、协调运行和维护任务；两种决定均使任务完成，但 `compilationOutcome` 区分结果。运行中的租约不被抢走，过期 ACK 依据真实发表或拒绝记录核对，旧执行端只收到规范状态元数据。当前 Wiki 的周期语义任务发现与纯 Wiki `relation_check` 已在开发工作树接线；失效旧 Wiki 的 `recompile` 仍保持 queued。统一实体消歧、自动挑选答案入维护任务、跨键缓存、无变化提案独立审阅、外部发表保证和完整收件箱仍未完成。
 
 ### 接入周期语义扫描与纯 Wiki 关系任务（开发工作树候选）
 

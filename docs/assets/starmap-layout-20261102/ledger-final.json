@@ -1,0 +1,85 @@
+{
+  "recordedAt": "2026-11-02T09:18:02.524Z",
+  "scope": "Final synthetic preview after browser reload and original-key recovery",
+  "answers": [
+    {
+      "id": "9f376142-1501-46e3-9288-84f2fefa3135",
+      "state": "answered",
+      "evidence_count": 6,
+      "cost": {
+        "money": {
+          "state": "known",
+          "amount": 0,
+          "source": "synthetic_local_no_paid_calls",
+          "currency": "USD"
+        },
+        "tokens": {
+          "state": "known",
+          "value": 0
+        },
+        "modelCalls": {
+          "state": "known",
+          "value": 0
+        }
+      }
+    }
+  ],
+  "compilations": [
+    {
+      "id": "de6c0953-faa4-43d8-8bfe-096020597cfc",
+      "state": "waiting_for_review",
+      "question": "核对霁蓝罗盘26458b41的来源条件",
+      "answer_origin": null,
+      "target_evidence_id": null,
+      "cost": {
+        "money": {
+          "state": "known",
+          "amount": 0,
+          "source": "synthetic_no_model",
+          "currency": "USD"
+        },
+        "tokens": {
+          "state": "known",
+          "value": 0
+        },
+        "modelCalls": {
+          "state": "known",
+          "value": 0
+        }
+      }
+    },
+    {
+      "id": "bbeb9566-986a-4f5d-af34-d21491c09498",
+      "state": "waiting_for_review",
+      "question": "如何在故事开始前清楚展示商品外观特征？",
+      "answer_origin": {
+        "answerId": "9f376142-1501-46e3-9288-84f2fefa3135",
+        "question": "如何兼顾叙事吸引与商品辨认？",
+        "claimIndexes": [
+          0,
+          1
+        ],
+        "answerFingerprint": "5707aac1deecaabe7f6ee74b09fb34a00b0440d2c71ba7e53e4a2fde696d1fab"
+      },
+      "target_evidence_id": "wiki:69c84c28-cc15-493c-8ee4-b76c3a5fea95:c67e7c3e-2b08-4b1f-86f4-b78592eb4f8a",
+      "cost": {
+        "money": {
+          "state": "known",
+          "amount": 0,
+          "source": "synthetic_no_model",
+          "currency": "USD"
+        },
+        "tokens": {
+          "state": "known",
+          "value": 0
+        },
+        "modelCalls": {
+          "state": "known",
+          "value": 0
+        }
+      }
+    }
+  ],
+  "currentWiki": 32,
+  "note": "Database counts do not independently prove HTTP method counts"
+}

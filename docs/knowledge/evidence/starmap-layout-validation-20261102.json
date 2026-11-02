@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-11-02T09:08:19.647467+00:00",
+  "state": "engineering-verified-design-qa-passed",
+  "goal": "active",
+  "baseImplementationCommit": "5f5cfdeb13b053bd28686735d6f256bf91010e26",
+  "scope": [
+    "shared resizable workbench standard",
+    "answer and actual-read graph",
+    "verified candidate summary and review recovery"
+  ],
+  "selectedVisual": "../../assets/knowledge-starmap-designs-20261102/selected-resizable.png",
+  "checks": {
+    "fullBuild": {
+      "passed": true,
+      "log": "/tmp/wiki-starmap-layout-build-refined.log"
+    },
+    "core": {
+      "passed": 478,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/wiki-starmap-layout-core-refined.log",
+      "scope": "before final presentation-only and frozen-title adjustments"
+    },
+    "finalWebBuild": {
+      "passed": true,
+      "log": "/tmp/wiki-starmap-layout-web-final.log"
+    },
+    "finalWebTests": {
+      "passed": 119,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/wiki-starmap-layout-web-tests-final.log"
+    },
+    "designQa": {
+      "passed": true,
+      "report": "design-qa.md"
+    },
+    "independentReview": "candidate identity/scope and subsequent-refresh issue closed",
+    "docs": {
+      "buildPassed": true,
+      "checkPassed": true,
+      "testsPassed": 20,
+      "logs": [
+        "/tmp/wiki-starmap-docs-build.log",
+        "/tmp/wiki-starmap-docs-check.log",
+        "/tmp/wiki-starmap-docs-tests.log"
+      ]
+    }
+  },
+  "browser": {
+    "surface": "IAB",
+    "desktopCss": [
+      1487,
+      1059
+    ],
+    "desktopCapture": [
+      1487,
+      1058
+    ],
+    "nativeClip": [
+      1115,
+      793.5
+    ],
+    "dpr": 0.75,
+    "mobileCss": [
+      389,
+      844
+    ],
+    "evidence": "../../assets/starmap-layout-20261102/interaction-final.json",
+    "initialInteractionEvidence": "../../assets/starmap-layout-20261102/interaction-initial.json",
+    "ledger": "../../assets/starmap-layout-20261102/ledger-final.json",
+    "httpMethodCounts": "not directly observable; database row counts are not proof of zero POST",
+    "consoleErrors": []
+  },
+  "models": {
+    "knowledgeApplicationCalls": 0,
+    "knowledgeApplicationPaidCalls": 0,
+    "designImageGenerationCalls": 4,
+    "designImageCost": "unknown"
+  },
+  "environment": {
+    "businessEnvLoaded": false,
+    "businessDatabaseUsed": false,
+    "node": "24.21.0",
+    "postgres": "17.11-alpine"
+  },
+  "preview": {
+    "url": "http://127.0.0.1:50646",
+    "owner": "Codex active wiki-ingest-query-lint goal",
+    "nativeHandle": 39762,
+    "lifetimeMinutes": 120,
+    "databaseContainer": "7c1cbe06e5ef67c64f3304cf14187254cf4047e74638963bd9052c5bb474f104",
+    "cleanup": "bounded Node fixture drops its schema; wrapper stops only the container with matching wiki-starmap-layout owner label",
+    "priorDemoHandlesClosed": [
+      38790,
+      59991,
+      55774
+    ]
+  },
+  "limits": [
+    "synthetic engineering and visual checks, not real-model semantics or business effects",
+    "full Wiki/source/candidate details retain their existing reading pages",
+    "system reduced-motion, full accessibility and real phone touch not accepted",
+    "broader Ingest/Query/Lint goal remains active"
+  ],
+  "sourceSha256": {
+    "apps/knowledge-web/src/App.tsx": "41088813c1a5ab64081d4fa51da7e7f57755d46e367a43abc160c035745b43ca",
+    "apps/knowledge-web/src/ask-panel.tsx": "91b65425c2266ac212113244fc818ae4ef3fc4c02c8d6fe3f1f999ec45e3636b",
+    "apps/knowledge-web/src/answer-research-panel.tsx": "3d201e45ce9b402d13cf9d026ccb8b532ca93889d7469e00cac171fd55c06404",
+    "apps/knowledge-web/src/resizable-workbench.tsx": "9cc6f7cf324cc065b8d68cc373427cc043c95f71a56e00454dd435cfc2d8242a",
+    "apps/knowledge-web/src/ask-graph.ts": "32b273402dc0fddad7207bf99102c31e6dbc97bdccef5288d6a6303f15d3c529",
+    "apps/knowledge-web/src/candidate-scope.ts": "156946cc714e1a1dff5bc4f8ecd1a6f5df051c8bb453854de6ffdb654edc1b5e",
+    "apps/knowledge-web/src/candidate-review-state.ts": "c342d8dd3c62b161a1cb94dd73ee6937ef051dce88bf61e0a4a20896dd095ef6",
+    "apps/knowledge-web/src/styles.css": "e3b26e8fd279b390c908c44d8b8cd9cc60243e4ffec8008c0957912c46ed7f46",
+    "scripts/runtime/knowledge-synthetic-fixture.ts": "21146faac211bffeace17bb7f6dfc981232b6b36b5672e58de57faff97ccbeb1",
+    "scripts/runtime/knowledge-synthetic-answerer.ts": "55adce3c3842d2f57df764d82393c669abc420d73aeb93e389c46c7608ee273f",
+    "scripts/runtime/knowledge-coordination-demo.ts": "63e3d57709856c03460232a1d884f1be2ab74a242f05bce9b6e180eaef9b11d5"
+  },
+  "implementationCommit": "9307f3c6c189ddbbaaf22aec18d072b32b378820"
+}
