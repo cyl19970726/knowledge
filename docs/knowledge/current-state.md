@@ -10,8 +10,18 @@
 
 PR8 集成后的核心全量 416 项、0 失败、0 跳过，包含协调端到端重新运行；最终构建退出码 0，公开文档接入、两套文档构建与检查、20 项文档测试已通过。业务类型与包边界检查退出码 0；业务全量 1004 项中 998 通过、0 失败、6 项按原配置跳过。具体日志见上述回执。新版浏览器已验准确选区问答、来源往返与维护任务返回，1159/390 无横向溢出，并修正桌面问答裁切；真实语义、手机触点与系统减少动态仍待验；旧 383 项与空间 88 截图不得借作新基线验收。`Evolution.css` 改由浏览器入口加载只修正 Node TSX 测试导入，不表示视觉设计变更。
 
-仍待实现周期旧 Wiki 的语义发现与重编纂（`recompile` 任务仍排队）、高价值问答回流、统一实体消歧及模型提及采纳、`no_change` 独立审阅、未 stage 草稿的重试、外部业务 owner 的发表保证、真实模型 transport 与人工金标验证。业务原有七项目标不变。下文各日期段落保留当时阶段的事实与测试记录；旧段落中的“尚无协调”按其对应版本解释。
+当前页头语义扫描与纯 Wiki 关系任务已在新的开发工作树接线；仍待实现失效旧 Wiki 的 `recompile` 修复（任务仍排队）、高价值问答回流、统一实体消歧及模型提及采纳、`no_change` 独立审阅、未 stage 草稿的重试、外部业务 owner 的发表保证、真实模型 transport 与人工金标验证。业务原有七项目标不变。下文各日期段落保留当时阶段的事实与测试记录；旧段落中的“尚无协调”按其对应版本解释。
 
+
+### 2026-11-02 · 当前页头语义发现与纯 Wiki 判断链（开发工作树候选）
+
+首版优先帮助用户**围绕问题查知识、联读并核对依据**。新 `SemanticSweep` 以空间/用途/UTC 日期周期及 UUID 分片扫描当前已发表 Wiki 页头元数据，一页一事务保存游标、epoch、累计任务数，并为有该用途审阅资格的页头创建 `relation_check` 任务。`maxTasksPerShard` 限制每片任务数；余页未扫时 `limitReached` 不冒充 `complete`。`taskIds` 仅是最近一页、至多 100 个的预览，`taskCount` 是累计数，完整任务须分页查看。`incremental_current_heads` 不是时点快照，周期内变更可留下未覆盖项。API 可按原范围 GET pass、POST 推进一页；Worker 只有显式 `maintenance.semanticSweep` 和支持 `relation_check` 的处理器才按日推进，默认 CLI 不启用。
+
+无新来源事件的 `relation_check` 从准确当前 Wiki 读取标题、身份键和别名，用 v2 词项召回并有界读取其他 Wiki；词项缺少重合的概念关联可能遗漏。可选 `DecisionProvider` 最多判断三组已读双端；`WikiCompiler` 用同一组带 canonical digest 的 `selectedRefs`（可有 `sourceEventIds:[]`）形成待审候选。原键冻结；每步读量、模型调用及费用受共同父预算约束，总期限最多五分钟。任务、判断与编纂都不能绕过独立审阅、来源资格和正式发表。未装配真实模型 transport、外发授权与可执行预算时，不能声称真实语义分发已发生。
+
+本轮完整构建通过，核心 429 项、0 失败、0 跳过；真实 HTTP/PG 验证从周期任务到纯 Wiki 候选、独立审阅和下一轮 Ask，公开文档接入与文档测试也通过。业务来源桥接定向 14 项、类型和包边界通过，业务全量 998 项仍是上阶段证据。本轮模型与付费调用均为零。10k/100k 元数据扫描抽样找到并修复 LIMIT 前全量排序：增加已发表 Wiki 的 project/space/UUID 部分索引，扫描游标与排序使用 revision 侧相同键；优化前后在 1/16 分片首中尾的准确引用顺序一致。最终 100k 抽样页头 SQL P95 1.41ms，含入队单页 19.91ms；只运行每档 5 页，不是完整扫描或完整 Ask/Lint 容量承诺。完整条件、原失败和最终证据见[周期维护回执](evidence/wiki-periodic-maintenance-validation-20261102.json)。
+
+用户确认的问题驱动首版保持不变；无效旧页 `recompile`、答案回流、实体消歧、独立 `no_change` 审阅、未 stage 重试、外部发表保证和真实模型/人工金标仍未完。实现位置：扫描事务（`packages/adapters/knowledge-service/src/semantic-sweep.ts`）、纯 Wiki 发现（`packages/knowledge-application/src/wiki-discovery.ts`）、协调处理（`packages/knowledge-application/src/coordination.ts`）与 Worker 装配（`apps/knowledge-worker/src/index.ts`）。
 
 2026-10-30 前端选稿：用户选择整体深色的第二张「联读研究台」提案，取代浅色视觉基线。[体验](frontend/experience.md)、[设计系统](frontend/design-system.md)和[嵌入边界](frontend/embedding.md)说明这一版目标；本地实现在基于知识仓 `34ecfe9` 的独立工作树完成，2026-10-31 的[复验回执](evidence/dark-workbench-20261031.md)记录了同图联读、研究分支、准确来源与手机阅读。这个主线已包含[文档重建 PR4](https://github.com/cyl19970726/knowledge/pull/4)的合并，前端本轮修改仍未提交、合并或部署。工程与浏览器复验使用合成资料；真实内容、真人理解与第二宿主仍分别验证。
 

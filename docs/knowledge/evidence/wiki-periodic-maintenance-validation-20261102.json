@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-11-02T02:47:44.162316+00:00",
+  "baseHead": "cd6699b4f7e6526b90d300adaf30d3ea83d672f5",
+  "state": "local-engineering-verified-draft-pr-update-pending",
+  "scope": "periodic current Wiki metadata sweep -> bounded Wiki discovery -> judgments -> Wiki-only compilation -> independent review -> next Ask",
+  "environment": {
+    "node": "24.21.0",
+    "postgres": "17.11-alpine",
+    "disposableDatabase": "127.0.0.1:59356/ccl_test_wiki",
+    "businessEnvLoaded": false,
+    "businessDatabaseUsed": false,
+    "realModelCalls": 0,
+    "paidModelCalls": 0
+  },
+  "checks": {
+    "build": {
+      "status": "passed",
+      "log": "/tmp/wiki-periodic-index-build.log"
+    },
+    "core": {
+      "passed": 429,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/wiki-periodic-index-core.log"
+    },
+    "collector": {
+      "passed": 3,
+      "cases": [
+        "scoped shards/cap/replay/concurrent serialization",
+        "task and cursor rollback together",
+        "writer guards and scope admission"
+      ]
+    },
+    "periodicEndToEnd": {
+      "passed": 1,
+      "cases": [
+        "no source events or source planner",
+        "32 current heads scheduled over bounded pages",
+        "pure Wiki exact endpoints and advisory judgment in compiler",
+        "independent review closes compilation/run/task",
+        "next Ask reads published result",
+        "cancelled queued task is not processed",
+        "cycle replay and receipt reads do not dispatch providers"
+      ]
+    },
+    "worker": {
+      "passed": 1,
+      "cases": [
+        "explicit periodic processor required",
+        "two shards with two tasks per shard stop at cap",
+        "restart preserves durable progress and no duplicate processor calls",
+        "limited shards become idle without timestamp churn"
+      ]
+    },
+    "wikiOnlyCompile": {
+      "unit": 7,
+      "integration": 1,
+      "cases": [
+        "exact refs despite lexical miss",
+        "scope/purpose/stale/revocation and bounded bodies",
+        "physical and prepared input bytes each respect their bound",
+        "409 after body read reports unknown byte gap",
+        "returned wrong digest still retains confirmed read bytes",
+        "independent publish/reject and next Ask"
+      ]
+    },
+    "businessTypes": {
+      "passed": true,
+      "log": "/tmp/wiki-periodic-commerce-types.log"
+    },
+    "businessBoundaries": {
+      "passed": true,
+      "log": "/tmp/wiki-periodic-commerce-boundaries.log"
+    },
+    "docsTests": {
+      "passed": 20,
+      "failed": 0,
+      "log": "/tmp/wiki-periodic-docs-tests.log"
+    },
+    "businessTargeted": {
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/wiki-periodic-commerce-targeted.log"
+    },
+    "publicDocumentOnboarding": {
+      "passed": true,
+      "schemaDropped": true,
+      "log": "/tmp/wiki-periodic-onboarding.log"
+    },
+    "docsCheck": {
+      "passed": true,
+      "log": "/tmp/wiki-periodic-docs-final-check.log",
+      "firstFailure": "portable source links escaped docs root; fixed to inline repository paths without weakening checks"
+    },
+    "docsBuild": {
+      "passed": true,
+      "log": "/tmp/wiki-periodic-docs-final-build.log"
+    }
+  },
+  "coverage": {
+    "scanning": "incremental current heads; tasks and cursor in one transaction",
+    "taskIds": "latest batch preview, max100; taskCount cumulative",
+    "limits": "maxTasksPerShard fixed for same cycle; limited is not complete",
+    "discovery": "up to five title/identity/alias queries; exact anchor plus bounded candidates; lexical coverage does not establish semantic completeness"
+  },
+  "review": {
+    "method": "independent static review",
+    "remainingReproducibleHighMedium": 0,
+    "fixed": [
+      "Wiki-only compile capability no longer requires ingest:read; source-event requests still do",
+      "unknown and known failed-read byte accounting retained"
+    ]
+  },
+  "limits": [
+    "synthetic engineering only; no real models, human semantic gold or business-effect acceptance",
+    "invalid old Wiki repair/recompile remains queued",
+    "answer return, entity resolution, independent no-change review, unstaged retry and external source publication assurance remain incomplete",
+    "default CLI has no real model transport and does not enable semantic sweep",
+    "no new browser or system reduced-motion acceptance in this phase"
+  ],
+  "goal": "active",
+  "scale": {
+    "before": "wiki-semantic-sweep-scale-before-20261102.json",
+    "indexOnlyAttempts": "wiki-semantic-sweep-scale-index-20261102.json",
+    "sameMaterialOrderComparison": "wiki-semantic-sweep-scale-ordered-revision-20261102.json",
+    "productionPortFinal": "wiki-semantic-sweep-scale-final-20261102.json",
+    "problem": "100k early pages scanned and sorted all heads before LIMIT; adding only a head UUID index or scope index did not remove the scan",
+    "fix": "partial revision index by project, space and UUID; metadata cursor, shard and order use r.object_id::uuid on the exact head join",
+    "finalSample": {
+      "pagesPerSize": 5,
+      "headsPerPage": 10,
+      "sizes": [
+        10000,
+        100000
+      ],
+      "allSampleAttemptsSucceeded": true,
+      "fullCycleMeasured": false,
+      "tenThousand": {
+        "pageP95Ms": 24.65,
+        "metadataSqlP95Ms": 1.53
+      },
+      "hundredThousand": {
+        "pageP95Ms": 19.91,
+        "metadataSqlP95Ms": 1.41
+      }
+    },
+    "paired100k": {
+      "shardCounts": [
+        1,
+        16
+      ],
+      "orderedRefComparisons": 6,
+      "orderedRefsEqual": true,
+      "unshardedPageP95BeforeMs": 611.44,
+      "unshardedPageP95AfterMs": 15.5,
+      "indexBytes": 12484608,
+      "indexBuildMs": 493.35
+    },
+    "limits": [
+      "short synthetic copies, not independently reviewed semantics or real data",
+      "EXPLAIN measured after ANALYZE; no dedicated-machine capacity claim",
+      "shard filtering can examine more index entries than the returned page; 16-shard sample examined up to 1207 for 11 results",
+      "no new GIN or full Ask/Lint semantic workload benchmark"
+    ],
+    "schemaCleanup": "all benchmark schemas dropped"
+  },
+  "sourceSha256": {
+    "packages/knowledge-contracts/src/index.ts": "a1a2d3c4c47a6fdbe8d78aaf07065b3e586d9530e0438e63985c78cfde4adbbc",
+    "packages/knowledge-application/src/wiki-discovery.ts": "c2aa7c4f09ef29028a589051e3e84e76d300f6aec88ec9e7a94cf2a0ef9a0ae6",
+    "packages/knowledge-application/src/coordination.ts": "9203c879d19171675773b912fd2e7e9d1492f1e6b037516e6946a16d9389c293",
+    "packages/knowledge-application/src/wiki-compile.ts": "34b97fd7b8ee7c14a5982b36d4f5b3fc57daf9ed123ae42bddcbf4eed5e92a34",
+    "packages/adapters/knowledge-service/src/semantic-sweep.ts": "72045ad1ed8e9516e123c1bc6d98848110330b68211dca82684848990a1857cb",
+    "packages/knowledge/src/migrations.ts": "b1042d3464fa93a50e01cda9660d92696d83ad4e4f2868a7fab45db060a154e1",
+    "apps/knowledge-worker/src/index.ts": "110a73c82ee22c9397bb207653f74983593ce990ea183dcf279effdd76b566f3",
+    "apps/knowledge-api/src/index.ts": "fa7de33c331cc9da2698ff5e996715f3279aae932fadd1f0d8d2163df2db0438"
+  },
+  "cleanup": {
+    "testContainerStoppedAndRemoved": true,
+    "benchmarkSchemasDropped": true,
+    "modelTransportsStarted": false
+  }
+}

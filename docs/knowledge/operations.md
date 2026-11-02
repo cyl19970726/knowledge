@@ -47,9 +47,19 @@ Worker 的维护模式须显式开启，并提供确定的项目、空间、用�
 
 默认模式只做元数据收集与七类结构提示，不执行语义任务。宿主需要实际任务执行时才注入 `MaintenanceProcessor`，并另行验证提供方授权、费用上限、外发、响应与取消恢复。任务账本保存尝试、租约、取消请求、分发准备及响应 checkpoint；外部调用状态不明时按原任务和回执核对，不换键重发。逐对 `DecisionProvider` 的应用与受保护账本可独立接入；Jev/OpenAI codec 仅处理 wire data，不含网络 transport 或凭据。
 
-要运行来源研究协调，API 须同时显式配置 `sourcePlanner`、`compiler`、`enableMaintenance` 和 `coordinationPolicy`，并使执行端使用注入的维护 processor；CLI 默认不内置真实 planner 或模型连接。先按任务 ID 读取 `/coordination-runs/by-task/:taskId`，必要时用 `POST /maintenance/process-one` 推进一项；按运行 ID、各子操作原键及来源权限核对进度。每步预算和请求已冻结，共享总期限至多五分钟；未知结果只按原键 lookup，取消、租约丢失或 ACK 丢失不能用新键重新调用模型。独立审阅通过同一事务关闭编纂、协调运行和任务；批准与拒绝的任务状态均为 completed，应查看 `compilationOutcome` 区分。过期 ACK 以实际发表或拒绝记录为准。旧 Wiki 的 `recompile` 队列任务目前仍待语义发现与执行接线。
+要运行来源研究协调，API 须同时显式配置 `sourcePlanner`、`compiler`、`enableMaintenance` 和 `coordinationPolicy`，并使执行端使用注入的维护 processor；CLI 默认不内置真实 planner 或模型连接。先按任务 ID 读取 `/coordination-runs/by-task/:taskId`，必要时用 `POST /maintenance/process-one` 推进一项；按运行 ID、各子操作原键及来源权限核对进度。每步预算和请求已冻结，共享总期限至多五分钟；未知结果只按原键 lookup，取消、租约丢失或 ACK 丢失不能用新键重新调用模型。独立审阅通过同一事务关闭编纂、协调运行和任务；批准与拒绝的任务状态均为 completed，应查看 `compilationOutcome` 区分。过期 ACK 以实际发表或拒绝记录为准。失效旧 Wiki 的 `recompile` 队列任务仍待专门修复与执行接线；周期 `relation_check` 是另一路当前页头核查。
 
 检查一个 Lint 周期时，先看 `complete`、`scanned`、`startEpoch`、`observedEpoch` 和 `omittedReasons`，再看累计 `findingCount`。`findingIds` 仅是最近一页、最多 1000 个的预览；完整发现用 `maintenanceFindings` 分页核对。`incremental_current_heads` 不是时间点快照，周期内页头变化可能使旧 key 未覆盖；新周期才重扫。发现是待审提示，不自动改变知识或触发编纂。完整构建和独立审查以[当前状态](current-state.md)所指的对应回执为准。
+
+## 推进当前 Wiki 语义扫描（开发工作树候选）
+
+`SemanticSweep` 只读取当前已发表 Wiki 页头的元数据，不读正文、不执行判断。API 需显式装配编纂器、source intake、协调策略、维护能力与 active writer grant，并授予 `maintenance:read` / `maintenance:write`；`POST /maintenance/semantic-sweeps` 一次仅推进**一个分片的一页**，`GET /maintenance/semantic-sweeps/:passId?purpose=...` 按原范围读取。SDK 对应 `runSemanticSweep({purpose,cycleKey,shard,shardCount,limit,maxTasksPerShard,methodVersion,rubricVersion}, writeOpts)` 与 `semanticSweep(passId,purpose)`。`limit` 为 1–100，`maxTasksPerShard` 为 1–10000；跨页沿用相同周期、分片和方法版本，写入调用使用自己的 header，不能把原写入键当成下一页游标。
+
+检查 `scanned`、`lastObjectId`、`complete`、`limitReached`、`taskCount`、`startEpoch`、`observedEpoch` 和 `omittedReasons`。同一事务读取页头元数据，并提交 `relation_check` 任务、累计数与游标；`taskIds` 只预览最近一页最多 100 个，查全量任务须按维护任务入口分页。`maxTasksPerShard` 到达时若还有页头，`limitReached=true`、`complete=false`，剩余范围明确记录遗漏，不可称为扫描完成。`incremental_current_heads` 可能漏掉周期内新出现的较小键或换版，新周期才重新遍历。提交状态不明时先按原 pass 核对，不盲目新开周期。
+
+Worker 只有宿主显式提供 `maintenance.semanticSweep` 和支持 `relation_check` 的 processor 才按 UTC 日期组成周期键、逐片推进，并避免同一无进展状态忙转。CLI 的默认维护装配**不启用**语义扫描，也没有真实模型 transport；仅有任务不表示已经执行判断。任务处理仍须核对原键、用途、来源权限、外发授权和预算，纯 Wiki 路径见[接入手册](integration.md)。
+
+维护页头扫描的游标、分片和排序与 `ccl_knowledge_revisions_project_scope_uuid_idx` 的 project/space/UUID 顺序一致；准确 head join 继续排除旧版本。该索引由核心迁移创建。统计信息更新后的合成抽样计划使用索引，完整结果与失败对照见[周期维护回执](evidence/wiki-periodic-maintenance-validation-20261102.json)。分片仍可能过滤更多索引项，`LIMIT` 只界定返回页大小，不能解读为数据库只检查同样数量的行。
 
 ## 重建当前页检索投影（G5 本地候选）
 

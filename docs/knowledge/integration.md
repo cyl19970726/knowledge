@@ -192,9 +192,17 @@ Lint 只提供七种结构或审阅提示。`findingCount` 是持久累计数，
 
 宿主若要执行维护任务，须另行注入 `MaintenanceProcessor`；默认 Worker 只收集事件并运行元数据 Lint。逐对判断须显式注入 `decisionProvider` 和 active writer grant；调用 `judgeRelation` 需要 `judgments:write` 与 `judgments:read`，`judgment` / `judgmentLookup` 按原用途只读核对。外部提供方还须宿主授权资料外发及可执行的模型/金额预算。结果只是待审提案，不自动发表关系。Jev/OpenAI codec 只处理 wire data 的编码与解码，没有 SDK、网络、密钥或真实模型 transport。
 
-同时提供 `sourcePlanner`、`compiler`、`enableMaintenance` 和 `coordinationPolicy` 才启用协调器；可注入独立 Worker 的 `maintenance.processor`，CLI 默认仍只运行元数据维护。当前协调器只受理单一准确来源事件的 `source_research` 任务，先规划，再以 v2 发现有界旧页、最多三次有类型判断，最后编纂；advisory hints 只来自本轮真实读过的双端。策略将最多五分钟的总期限及金额、模型调用和读取额度分配到固定子步骤，确认回执后累加，不能把未知费用当零。`GET /coordination-runs/:runId`、`GET /coordination-runs/by-task/:taskId` 与 SDK 用于查进度；`POST /maintenance/process-one` 推进一个任务，不把同一写 header 当成下一页。每步原键、请求和预算持久固定，未知时只 lookup，不重新分发提供方。普通任务 reason 不包含私有模型内容；协调详情及计划每次读取都重新核来源资格。实现见 `packages/knowledge-application/src/coordination.ts` 与 `apps/knowledge-api/src/index.ts`。
+协调器需显式配置 `compiler`、`enableSourceIngest`、`enableMaintenance`、`coordinationPolicy` 与可信 writer grant；来源事件路径另需 `sourcePlanner`。可注入独立 Worker 的 `maintenance.processor`，CLI 默认仍只运行元数据维护。当前协调器受理单一准确来源事件的 `source_research`，也可受理无新来源事件、带准确当前 Wiki `subjectRef` 的 `relation_check`。前者先规划来源，再以 v2 发现有界旧页；后者从准确 Wiki 的标题、身份键和别名发现有界候选。两者最多三次有类型判断，最后将本轮真实读过的双端作为编纂提示。策略将最多五分钟的总期限及金额、模型调用和读取额度分配到固定子步骤，确认回执后累加，不能把未知费用当零。`GET /coordination-runs/:runId`、`GET /coordination-runs/by-task/:taskId` 与 SDK 用于查进度；`POST /maintenance/process-one` 推进一个任务，不把同一写 header 当成下一页。每步原键、请求和预算持久固定，未知时只 lookup，不重新分发提供方。普通任务 reason 不包含私有模型内容；协调详情及计划每次读取都重新核来源资格。实现见 `packages/knowledge-application/src/coordination.ts` 与 `apps/knowledge-api/src/index.ts`。
 
-独立审阅的批准或拒绝在同一事务结束编纂、协调运行和维护任务；两种决定均使任务完成，但 `compilationOutcome` 区分结果。运行中的租约不被抢走，过期 ACK 依据真实发表或拒绝记录核对，旧执行端只收到规范状态元数据。旧 Wiki 的周期语义发现及重编纂仍未接通，`recompile` 队列任务保持 queued；统一实体消歧、跨键缓存、无变化提案独立审阅和完整收件箱也未完成。
+独立审阅的批准或拒绝在同一事务结束编纂、协调运行和维护任务；两种决定均使任务完成，但 `compilationOutcome` 区分结果。运行中的租约不被抢走，过期 ACK 依据真实发表或拒绝记录核对，旧执行端只收到规范状态元数据。当前 Wiki 的周期语义任务发现与纯 Wiki `relation_check` 已在开发工作树接线；失效旧 Wiki 的 `recompile` 仍保持 queued。统一实体消歧、答案回流、跨键缓存、无变化提案独立审阅、外部发表保证和完整收件箱仍未完成。
+
+### 接入周期语义扫描与纯 Wiki 关系任务（开发工作树候选）
+
+宿主显式启用 `enableMaintenance`、协调策略、可信 writer grant 与维护 read/write action 后，API 的 `POST /maintenance/semantic-sweeps` 用公共 `SemanticSweepApiRequestSchema` 每次推进一个分片的一页，`GET /maintenance/semantic-sweeps/:passId` 按原 purpose 只读核对。SDK 提供 `runSemanticSweep` 和 `semanticSweep`；字段与 1–100 页限额、1–10000 任务上限以公共 schema 为准。身份、安装、项目、空间、用途与周期/分片/方法版本共同约束 pass；同周期修改 `maxTasksPerShard` 会冲突。`taskCount` 是累计创建数，`taskIds` 只预览最近一页最多 100 个，需按 `maintenanceTasks` 分页看全部任务。到上限时若仍有未扫页头，`limitReached` 为 true 而 `complete` 为 false。游标和任务同事务提交；`incremental_current_heads` 与 epoch/遗漏原因说明它不是时点快照。
+
+程序 Worker 须明确配置 `maintenance.semanticSweep:{cyclePrefix,shardCount,limit,maxTasksPerShard}`，并注入 `kinds` 含 `relation_check` 的 processor；按 UTC 日组成周期命名空间，逐片推进。现有 CLI 默认只装配元数据收集、结构 Lint 与可选搜索投影，不启用该语义扫描，也没有真实提供方。扫描只是元数据任务生产；只有任务处理器执行时，才准确读 `subjectRef` Wiki 正文，从标题/身份键/别名做 v2 词项召回，有界读其他 Wiki，经可选 `DecisionProvider` 至多三组判断，最后让 `WikiCompiler` 用实际选中的准确 `selectedRefs` 编纂。词项未重合的概念关系可能漏召；不足两份已读 Wiki 时留 `needs_evidence`，不能推断无关系。
+
+`WikiCompileRequestSchema` 允许 `sourceEventIds:[]`，条件是 `selectedRefs` 非空、各引用具有 canonical digest；同版本选区去重并受全局读页和字节预算约束。任务保留原键和固定子步骤请求；共同期限至多五分钟，父级模型调用、读量、费用上限约束各步骤。外部模型还须显式 transport、外发授权及可执行预算；缺少这些不会由周期扫描自动补齐。结果只形成待审候选，独立审阅和发表规则不变。当前仅有定向用例，完整回归和真实语义验收待补，见[当前状态](current-state.md)。
 
 ### 接入当前页检索投影维护（2026-11-02 本地候选）
 
