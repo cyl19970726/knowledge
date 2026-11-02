@@ -177,8 +177,8 @@ function CameraRig({ initial, remembered, home, presentation, resetSignal, zoomR
   return <OrbitControls ref={controls} enableDamping={false} enablePan enableZoom minDistance={3} maxDistance={75} maxPolarAngle={Math.PI * 0.88} onStart={() => { transition.current = null; }} onEnd={snapshot} />;
 }
 
-function NodeGlyph({ node, position, selected, prominent, coReadingIndex, dimmed, onNode, groupTone, accent, glowTexture, connectionCount }: {
-  node: GraphNodeView; position: Point3; selected: boolean; coReadingIndex: number; dimmed: boolean;
+function NodeGlyph({ node, position, selected, prominent, coReadingIndex, actualRead, dimmed, onNode, groupTone, accent, glowTexture, connectionCount }: {
+  node: GraphNodeView; position: Point3; selected: boolean; coReadingIndex: number; actualRead: boolean; dimmed: boolean;
   prominent: boolean; accent?: string; glowTexture: CanvasTexture; connectionCount: number;
   onNode: (id: string) => void; groupTone: Graph3DGroup['tone'];
 }) {
@@ -229,9 +229,10 @@ function NodeGlyph({ node, position, selected, prominent, coReadingIndex, dimmed
       <meshBasicMaterial color="#d9f3ff" transparent opacity={0.78} depthWrite={false} toneMapped={false} />
     </mesh>}
     {(selected || coReadingIndex >= 0 || sourceHub || hollow) && <mesh><torusGeometry args={[radius + 0.1, selected ? 0.018 : hollow ? 0.008 : sourceHub ? 0.01 : 0.013, 6, 40]} /><meshBasicMaterial color={tint} transparent opacity={hollow ? 0.54 : 0.68} blending={AdditiveBlending} depthWrite={false} toneMapped={false} /></mesh>}
+    {actualRead && <mesh><torusGeometry args={[radius + 0.17, 0.014, 6, 40]} /><meshBasicMaterial color="#87b5ff" transparent opacity={0.86} depthWrite={false} toneMapped={false} /></mesh>}
     {selected && <mesh><ringGeometry args={[radius + 0.22, radius + 0.31, 48]} /><meshBasicMaterial color={tint} transparent opacity={0.07} blending={AdditiveBlending} depthWrite={false} side={2} toneMapped={false} /></mesh>}
     <mesh onClick={pick} onPointerOver={hover(true)} onPointerOut={hover(false)}><sphereGeometry args={[Math.max(0.38, radius), 8, 6]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>
-    {hovered && <Billboard position={[0, radius + 0.62, 0.25]} className={source ? 'role-source source-hover' : 'role-overview hover-card'} title={node.title}><strong><b>{source ? 'S' : 'i'}</b>{source ? '来源资料' : '认识'}</strong><span>{source ? `${connectionCount} 个相邻认识` : node.shortLabel}</span></Billboard>}
+    {hovered && <Billboard position={[0, radius + 0.62, 0.25]} className={source ? 'role-source source-hover' : 'role-overview hover-card'} title={node.title}><strong><b>{source ? 'S' : 'i'}</b>{source ? '来源资料' : '认识'}</strong><span>{source ? `${connectionCount} 个相邻认识` : node.shortLabel}{actualRead ? ' · 本轮已读' : ''}</span></Billboard>}
   </group>;
 }
 
@@ -326,10 +327,10 @@ function Stardust({ glowTexture, presentation }: { glowTexture: CanvasTexture; p
   </group>;
 }
 
-function Scene({ graph, layout, presentation, selectedNodeId, selectedEdgeId, coReadingIds, onNode, onEdge, camera, remembered, resetSignal, zoomRequest, onCamera, host }: {
+function Scene({ graph, layout, presentation, selectedNodeId, selectedEdgeId, coReadingIds, actualReadIds, onNode, onEdge, camera, remembered, resetSignal, zoomRequest, onCamera, host }: {
   graph: KnowledgeGraph3DProps['graph']; layout: ReturnType<typeof constellationLayout>;
   presentation: KnowledgeGraph3DProps['presentation']; selectedNodeId: string | null; selectedEdgeId: string | null;
-  coReadingIds: readonly string[]; onNode: KnowledgeGraph3DProps['onNode']; onEdge: KnowledgeGraph3DProps['onEdge'];
+  coReadingIds: readonly string[]; actualReadIds: readonly string[]; onNode: KnowledgeGraph3DProps['onNode']; onEdge: KnowledgeGraph3DProps['onEdge'];
   camera: Graph3DCamera; remembered: boolean; resetSignal: number; zoomRequest: KnowledgeGraph3DProps['zoomRequest'];
   onCamera: KnowledgeGraph3DProps['onCamera']; host: React.RefObject<HTMLDivElement | null>;
 }) {
@@ -396,7 +397,7 @@ function Scene({ graph, layout, presentation, selectedNodeId, selectedEdgeId, co
       {presentation === 'constellation' && group.id !== selectedGroup?.id && <Billboard position={[-outline.radius * 0.75, outline.radius * 1.02 - 0.2, 0]} prominent className={`group group-${group.tone} group-index-${groupIndex}${pathGroupIds.has(group.id) ? ' group-path' : ''}`} delayMs={groupIndex * 45}>{group.name}<small>{group.members.length} 节点{bridgeSummary ? ` · ${bridgeSummary}` : ''}</small></Billboard>}
     </group>; })}
     {drawn.map(edge => <RelationLine key={edge.id} edge={edge} from={layout.positions[edge.from]} to={layout.positions[edge.to]} bridge={bridgeIds.has(edge.id)} background={edge.id !== selectedEdgeId && (presentation === 'constellation' ? edge.relation.stance === 'context' || edge.relation.stance === 'navigation' : !!reading && edge.from !== reading.focus && edge.to !== reading.focus)} highlighted={edge.id === selectedEdgeId || (reading ? edge.to === reading.focus && [...reading.supports, ...reading.challenges].includes(edge.from) : edge.from === selectedNodeId || edge.to === selectedNodeId)} accent={reading?.supports[1] === edge.from && edge.to === reading.focus && edge.relation.stance === 'supports' ? color.blue : undefined} onEdge={onEdge} />)}
-    {graph.nodes.map(node => layout.positions[node.id] && <NodeGlyph key={node.id} node={node} position={layout.positions[node.id]} selected={node.id === selectedNodeId} prominent={focused.has(node.id) && (presentation === 'constellation' ? node.isRoot || node.degree >= 5 : !!reading && [reading.focus, ...reading.supports, ...reading.challenges].includes(node.id))} coReadingIndex={coReadingIds.indexOf(node.id)} dimmed={presentation === 'question' && !focused.has(node.id)} groupTone={groupTones.get(node.id) ?? 'violet'} accent={reading?.supports[0] === node.id ? color.violet : reading?.supports[1] === node.id ? color.blue : reading?.challenges.includes(node.id) ? color.amber : pathAccents.get(node.id)} glowTexture={glowTexture} connectionCount={layout.connectionCounts[node.id] ?? 0} onNode={onNode} />)}
+    {graph.nodes.map(node => layout.positions[node.id] && <NodeGlyph key={node.id} node={node} position={layout.positions[node.id]} selected={node.id === selectedNodeId} prominent={focused.has(node.id) && (presentation === 'constellation' ? node.isRoot || node.degree >= 5 : !!reading && [reading.focus, ...reading.supports, ...reading.challenges].includes(node.id))} coReadingIndex={coReadingIds.indexOf(node.id)} actualRead={actualReadIds.includes(node.id)} dimmed={presentation === 'question' && !focused.has(node.id)} groupTone={groupTones.get(node.id) ?? 'violet'} accent={reading?.supports[0] === node.id ? color.violet : reading?.supports[1] === node.id ? color.blue : reading?.challenges.includes(node.id) ? color.amber : pathAccents.get(node.id)} glowTexture={glowTexture} connectionCount={layout.connectionCounts[node.id] ?? 0} onNode={onNode} />)}
     {labeled.map((node, labelIndex) => {
       const point = layout.positions[node.id];
       if (!point) return null;
@@ -418,7 +419,7 @@ function Scene({ graph, layout, presentation, selectedNodeId, selectedEdgeId, co
       const labelTint = role === 'challenge' ? color.amber : role === 'support' && supportIndex === 1 ? color.blue : role === 'source' ? color.grey : color.violet;
       return <group key={node.id}>
         {(pathRole || role !== 'overview') && <Line points={[point, labelPosition]} color={labelTint} lineWidth={0.45} transparent opacity={role === 'source' ? 0.16 : 0.26} dashed={role === 'challenge'} dashSize={0.08} gapSize={0.08} />}
-        <Billboard position={labelPosition} prominent={node.id === selectedNodeId || role !== 'overview'} className={`role-${role}${role === 'support' && supportIndex >= 0 ? ` support-${supportIndex}` : ''}${pathRole ? ' role-path' : ''}`} delayMs={presentation === 'question' ? 120 + labelIndex * 48 : pathRole ? 260 + labelIndex * 42 : 310} title={`${badge} ${role === 'support' ? '支持来路' : role === 'challenge' ? '挑战' : role === 'source' ? '来源资料' : '当前认识'}：${node.title}`}><strong><b>{badge}</b>{role === 'focus' ? '当前认识' : role === 'support' ? '支持' : role === 'challenge' ? '挑战' : role === 'source' ? '来源' : '当前认识'}</strong><span>{node.shortLabel}</span></Billboard>
+        <Billboard position={labelPosition} prominent={node.id === selectedNodeId || role !== 'overview'} className={`role-${role}${role === 'support' && supportIndex >= 0 ? ` support-${supportIndex}` : ''}${pathRole ? ' role-path' : ''}`} delayMs={presentation === 'question' ? 120 + labelIndex * 48 : pathRole ? 260 + labelIndex * 42 : 310} title={`${badge} ${role === 'support' ? '支持来路' : role === 'challenge' ? '挑战' : role === 'source' ? '来源资料' : '当前认识'}：${node.title}`}><strong><b>{badge}</b>{role === 'focus' ? '当前认识' : role === 'support' ? '支持' : role === 'challenge' ? '挑战' : role === 'source' ? '来源' : '当前认识'}</strong><span>{node.shortLabel}</span>{actualReadIds.includes(node.id) && <em className="graph3d-read-badge">本轮已读</em>}</Billboard>
       </group>;
     })}
     {selectedEdge && layout.positions[selectedEdge.from] && layout.positions[selectedEdge.to] && <Billboard position={[(layout.positions[selectedEdge.from][0] + layout.positions[selectedEdge.to][0]) / 2, (layout.positions[selectedEdge.from][1] + layout.positions[selectedEdge.to][1]) / 2 + 0.38, (layout.positions[selectedEdge.from][2] + layout.positions[selectedEdge.to][2]) / 2]} prominent>{relationName[selectedEdge.relation.stance]} · 依据{statusName[selectedEdge.relation.evidenceStatus]}</Billboard>}
@@ -432,7 +433,7 @@ class RenderBoundary extends Component<{ children: ReactNode; onError: (reason: 
   render() { return this.state.failed ? null : this.props.children; }
 }
 
-export function KnowledgeGraph3D({ graph, presentation, selectedNodeId, selectedEdgeId, coReadingIds, onNode, onEdge, onCamera, rememberedCamera, resetSignal, zoomRequest, visible, onUnavailable, onReady }: KnowledgeGraph3DProps) {
+export function KnowledgeGraph3D({ graph, presentation, selectedNodeId, selectedEdgeId, coReadingIds, actualReadIds = [], onNode, onEdge, onCamera, rememberedCamera, resetSignal, zoomRequest, visible, onUnavailable, onReady }: KnowledgeGraph3DProps) {
   const host = useRef<HTMLDivElement>(null);
   const [rendererState, setRendererState] = useState<'checking' | 'ready' | 'unavailable'>('checking');
   const failed = useRef(false), cleanup = useRef<(() => void) | null>(null);
@@ -471,7 +472,7 @@ export function KnowledgeGraph3D({ graph, presentation, selectedNodeId, selected
     data-layout-debug={JSON.stringify({ presentation, groups: base.groups.map(group => ({ id: group.id, name: group.name, members: group.members.length, center: group.center })), bridges: base.bridgeEdges, positions: layout.positions })}
     style={{ width: '100%', height: '100%', minHeight: 320, position: 'relative', overflow: 'hidden', background: '#070c16', visibility: visible ? 'visible' : 'hidden' }}>
     {rendererState !== 'unavailable' && <RenderBoundary onError={unavailable}><Canvas frameloop="demand" dpr={[1, 1.7]} gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }} camera={{ position: initialCamera.position, fov: 48, near: 0.1, far: 200 }} onCreated={onCreated}>
-      <Scene graph={graph} layout={layout} presentation={presentation} selectedNodeId={selectedNodeId} selectedEdgeId={selectedEdgeId} coReadingIds={coReadingIds} onNode={onNode} onEdge={onEdge} camera={initialCamera} remembered={validCamera(rememberedCamera)} resetSignal={resetSignal} zoomRequest={zoomRequest} onCamera={onCamera} host={host} />
+      <Scene graph={graph} layout={layout} presentation={presentation} selectedNodeId={selectedNodeId} selectedEdgeId={selectedEdgeId} coReadingIds={coReadingIds} actualReadIds={actualReadIds} onNode={onNode} onEdge={onEdge} camera={initialCamera} remembered={validCamera(rememberedCamera)} resetSignal={resetSignal} zoomRequest={zoomRequest} onCamera={onCamera} host={host} />
     </Canvas></RenderBoundary>}
     <details className="graph-scope-details">
       <summary title={scopeSummary}>{scopeSummary}</summary>

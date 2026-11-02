@@ -18,7 +18,10 @@ import type {CapabilityContext,DecisionProvider,SourcePlanner,WikiCompiler} from
 import type {KnowledgeRef,MaintenanceTask} from '@commerce/knowledge-contracts';
 
 const MAX_LIFETIME_MS=Number(process.env.KNOWLEDGE_QA_LIFETIME_MS??5*60_000);
-if(!Number.isInteger(MAX_LIFETIME_MS)||MAX_LIFETIME_MS<1000||MAX_LIFETIME_MS>10*60_000)throw new Error('QA lifetime must be bounded by ten minutes');
+if(!Number.isInteger(MAX_LIFETIME_MS)||MAX_LIFETIME_MS<1000||MAX_LIFETIME_MS>120*60_000)throw new Error('QA lifetime must be bounded by two hours');
+const scenario=process.env.KNOWLEDGE_QA_SCENARIO;
+if(scenario&&scenario!=='starmap-research')throw new Error('Unsupported synthetic QA scenario');
+const starmap=scenario==='starmap-research';
 const READY_FILE='/tmp/wiki-coordination-demo.json';
 const zero={modelCalls:{state:'known' as const,value:0},tokens:{state:'known' as const,value:0},
   money:{state:'known' as const,amount:0,currency:'USD',source:'synthetic_no_model'}};
@@ -63,7 +66,8 @@ async function main(){
     await admin.query(`CREATE SCHEMA "${schema}"`);schemaCreated=true;
     pool=new pg.Pool({connectionString,max:12,options:`-c search_path=${schema}`,
       connectionTimeoutMillis:5_000,statement_timeout:30_000,query_timeout:35_000});
-    const seed=await seedKnowledgeSyntheticFixture(pool,`synthetic-coordination-demo-${randomUUID()}`);
+    const seed=await seedKnowledgeSyntheticFixture(pool,`synthetic-coordination-demo-${randomUUID()}`,'synthetic-research',
+      starmap?{scenario:'starmap-research'}:{});
     const {projectId,spaceId}=seed,purpose='exploration_reading',scope={projectId,spaceId};
     const heads=Number((await pool.query<{count:number}>(`SELECT count(*)::int AS count FROM ccl_knowledge_heads WHERE project_id=$1`,[projectId])).rows[0]?.count);
     assert.equal(heads,32,'The browser fixture must contain exactly 32 current Wiki pages');
@@ -83,6 +87,26 @@ async function main(){
           const profile=input.profiles.find(item=>item.id==='synthesis');assert.ok(profile);
           const support=[...new Set(input.answerSeed.claims.flatMap(claim=>claim.evidenceIds))];
           assert.ok(support.length&&support.every(id=>input.evidence.some(item=>item.id===id)));
+          if(starmap){
+            const target=input.evidence.find(item=>item.kind==='wiki_page'&&item.wiki?.identity.key==='visibility');
+            if(target){
+              const readSupport=input.evidence.filter(item=>item.kind==='wiki_page'&&
+                (item.wiki?.identity.key==='identity'||item.wiki?.identity.key==='features'));
+              if(!readSupport.length)return {proposal:{outcome:'needs_evidence',drafts:[],
+                reason:'合成 C1 修订缺少本次准确读入的 A/B 依据，未生成候选',gaps:['需要实际读取 A 或 B 的准确版本']},
+                cost:zero,modelReturned:'synthetic-no-model',requestId:'synthetic-answer-research'};
+              return {proposal:{outcome:'proposed',drafts:[{targetEvidenceId:target.id,profile:target.wiki!.profile,
+                identityKey:target.wiki!.identity.key,title:'C2 先辨认，再叙事',
+                summary:'【合成待审修订】在 C1 信息职责与镜头手段的基础上，先让商品可辨认，再选择叙事结构与镜头手段；此处不声称已验证观众效果。',
+                conditions:[...new Set([...target.conditions,'关键外观特征需在故事开始前可辨认'])],
+                counterexamples:target.counterexamples,unknowns:[...new Set([...target.unknowns,'缺少真实观众辨认测试'])],
+                nextQuestions:['真实观众能否在故事展开前辨认商品？'],
+                supportEvidenceIds:readSupport.map(item=>item.id),
+                rationale:'仅以本轮准确读到的 A/B 为新增关键支持；C1 是修订目标，不把旧页自引为新增支持'}],
+                reason:'合成 C1 修订候选，等待独立审阅',gaps:['未调用真实模型，尚未验证真实观众效果']},
+                cost:zero,modelReturned:'synthetic-no-model',requestId:'synthetic-answer-research'};
+            }
+          }
           return {proposal:{outcome:'proposed',drafts:[{targetEvidenceId:null,profile,
             identityKey:`synthetic-answer-${input.operationId}`,title:`问答研究：${input.question}`.slice(0,500),
             summary:`合成待审研究：${input.answerSeed.claims.map(claim=>claim.text).join('\n').slice(0,8000)}`,
@@ -112,7 +136,7 @@ async function main(){
     const context:CapabilityContext={scope,purpose,principal,authorization};
     const token=`synthetic-local-${randomUUID()}-${randomUUID()}`;
     const api=await createKnowledgeApi({pool,token,port:0,host:'127.0.0.1',principal,writerGrant:seed.writerGrant,
-      syntheticFixture:true,answerer:createSyntheticQueryAnswerer(),enableMaintenance:true,enableSourceIngest:true,sourcePlanner:planner,compiler,decisionProvider:decision,
+      syntheticFixture:true,answerer:createSyntheticQueryAnswerer(starmap?{scenario:'starmap-research',refs:seed.scenarioRefs!}:{}),enableMaintenance:true,enableSourceIngest:true,sourcePlanner:planner,compiler,decisionProvider:decision,
       sourceReaderIds:[callerId,reviewerId],capabilities:authorization,
       coordinationPolicy:{version:'coord-demo/1',maxPairs:1,maxCandidates:1,queryLimit:1,
         budget:{maxModelCalls:0,maxReadBytes:10_000_000,maxMoney:{amount:0,currency:'USD'},timeoutMs:120_000}}});
@@ -167,11 +191,11 @@ async function main(){
     const unknown=await tasks.get(context,uncertain.id);assert.equal(unknown?.state,'outcome_unknown');
     assert.equal(unknown.outcome?.cost.money.state,'unknown');
 
-    // One deliberate due date produces a visible, scoped lint finding without changing publication.
+    // Keep C1 admissible in the optional scene; age a separate leaf for the same lint finding.
     const lintWriter=await pool.connect();try{await lintWriter.query('BEGIN');await assertKnowledgeWriterAuthority(lintWriter,projectId,seed.writerGrant);
       await lintWriter.query(`UPDATE ccl_knowledge_revisions SET payload=jsonb_set(payload,'{scope,reviewDueAt}',
         to_jsonb('2020-01-01T00:00:00.000Z'::text)) WHERE project_id=$1 AND object_id=$2 AND version_id=$3`,
-      [projectId,seed.root.objectId,seed.root.versionId]);await lintWriter.query('COMMIT');
+      [projectId,(starmap?seed.scenarioRefs!.lint:seed.root).objectId,(starmap?seed.scenarioRefs!.lint:seed.root).versionId]);await lintWriter.query('COMMIT');
     }catch(error){await lintWriter.query('ROLLBACK');throw error;}finally{lintWriter.release();}
     const cycleKey=`synthetic-demo-${randomUUID()}`;
     let lint=(await client.lintWiki({purpose,cycleKey,shard:0,shardCount:1,limit:100,methodVersion:'lint-demo/1'},
@@ -189,7 +213,8 @@ async function main(){
     if(stopRequested)return;
     temporaryReadyPath=`${READY_FILE}.${randomUUID()}`;
     await writeFile(temporaryReadyPath,JSON.stringify({baseUrl,projectId,spaceId,purpose,token,taskId:collected.id,
-      candidateId:compilation.candidate.candidateId,schema},null,2)+'\n',{mode:0o600,flag:'wx'});
+      candidateId:compilation.candidate.candidateId,schema,
+      ...(starmap?{scenario:'starmap-research',displayQuestion:'如何兼顾叙事吸引与商品辨认？'}:{})},null,2)+'\n',{mode:0o600,flag:'wx'});
     await rename(temporaryReadyPath,READY_FILE);temporaryReadyPath=undefined;readyWritten=true;
     process.stdout.write(`readyFile=${READY_FILE} port=${address.port}\n`);
     await stopped;

@@ -1,5 +1,6 @@
 import type {KnowledgeClient} from '@commerce/knowledge-client';
 import type {CandidateView,ReviewDecision,ReviewTicket} from '@commerce/knowledge-contracts';
+import {verifiedCandidateView} from './candidate-scope';
 
 export type CandidateReviewClient=Pick<KnowledgeClient,'requestReview'|'reviewTicket'|'decideReview'|'lookupOperation'|'candidateView'>;
 export type ReviewChoice=ReviewDecision['decision'];
@@ -7,7 +8,7 @@ export type ReviewActions={request:boolean;decide:boolean};
 export type CandidateReviewPending={action:'review:request'|'review:decide';key:string;decision?:ReviewChoice};
 type Pending=CandidateReviewPending;
 export type CandidateReviewSnapshot={phase:'idle'|'sending'|'unknown'|'checking'|'confirmed';ticketId:string|null;
-  pending:Pending|null;message:string;finalized:boolean};
+  pending:Pending|null;message:string;finalized:boolean;trusted:boolean};
 
 /** Keeps each submitted key frozen. Reconciliation only reads; it never sends another decision. */
 export class CandidateReviewState {
@@ -16,21 +17,26 @@ export class CandidateReviewState {
   private phase:CandidateReviewSnapshot['phase']='idle';
   private message='';
   private finalized=false;
+  private candidateTrusted=true;
   private readonly target:{candidateId:string;contentHash:string;purpose:string};
-  constructor(private client:CandidateReviewClient,private candidate:CandidateView,private actions:ReviewActions,
+  constructor(private client:CandidateReviewClient,private candidate:CandidateView,
+    private readonly scope:{projectId:string;spaceId:string},private actions:ReviewActions,
     private changed:(view:CandidateReviewSnapshot)=>void,private loaded:(value:CandidateView)=>void,
     private newKey:()=>string=()=>crypto.randomUUID(),recovered?:CandidateReviewPending){
     this.target={candidateId:candidate.candidateId,contentHash:candidate.contentHash,purpose:candidate.purpose};
+    if(!verifiedCandidateView(candidate,this.target.candidateId,this.target.purpose,scope.projectId,scope.spaceId))
+      throw new Error('Candidate review scope changed');
     this.ticketId=candidate.reviewTicketId??null;
     this.finalized=['published','rejected','cancelled'].includes(candidate.state);
     if(recovered){this.pending={...recovered};this.phase='unknown';
       this.message=`上次操作 ${recovered.key} 的提交结果待核对；不会自动重发。`;}
   }
   view():CandidateReviewSnapshot{return {phase:this.phase,ticketId:this.ticketId,pending:this.pending&&{...this.pending},
-    message:this.message,finalized:this.finalized};}
+    message:this.message,finalized:this.finalized,trusted:this.candidateTrusted};}
   update(candidate:CandidateView,client:CandidateReviewClient,actions:ReviewActions,loaded:(value:CandidateView)=>void):void{
     if(candidate.candidateId!==this.target.candidateId||candidate.contentHash!==this.target.contentHash||
-      candidate.purpose!==this.target.purpose)throw new Error('Candidate review target changed');
+      !verifiedCandidateView(candidate,this.target.candidateId,this.target.purpose,this.scope.projectId,this.scope.spaceId))
+      throw new Error('Candidate review target or scope changed');
     this.candidate=candidate;this.client=client;this.actions=actions;this.loaded=loaded;
     if(candidate.reviewTicketId)this.ticketId=candidate.reviewTicketId;
     if(['published','rejected','cancelled'].includes(candidate.state))this.finalized=true;
@@ -52,8 +58,12 @@ export class CandidateReviewState {
   private async refreshCandidate():Promise<CandidateView>{
     const response=await this.client.candidateView(this.target.candidateId,this.target.purpose);
     const value=response.data as CandidateView;
-    if(value.candidateId!==this.target.candidateId||value.contentHash!==this.target.contentHash||value.purpose!==this.target.purpose)
-      throw new Error('刷新返回了另一候选目标');
+    if(value.contentHash!==this.target.contentHash||
+      !verifiedCandidateView(value,this.target.candidateId,this.target.purpose,this.scope.projectId,this.scope.spaceId)){
+      this.candidateTrusted=false;this.emit();
+      throw new Error('刷新返回的候选目标或空间不一致');
+    }
+    this.candidateTrusted=true;
     this.candidate=value;if(value.reviewTicketId)this.ticketId=value.reviewTicketId;
     if(['published','rejected','cancelled'].includes(value.state))this.finalized=true;
     this.loaded(value);this.emit();return value;
@@ -71,6 +81,7 @@ export class CandidateReviewState {
     }catch(error){this.message=`只读刷新失败：${error instanceof Error?error.message:String(error)}`;this.emit();}
   }
   private async requestTicket(forDecision=false):Promise<string|null>{
+    if(!this.candidateTrusted)return null;
     if(this.ticketId)return this.ticketId;
     if(!this.actions.request||!(this.candidate.canRequestReview===true||forDecision&&this.candidate.canDecideReview===true))return null;
     const key=this.begin('review:request');if(!key)return null;
@@ -84,7 +95,7 @@ export class CandidateReviewState {
   }
   async request():Promise<boolean>{return !!await this.requestTicket();}
   canDecide(decision:ReviewChoice):boolean{
-    return this.actions.decide&&this.candidate.canDecideReview===true&&!this.pending&&!this.finalized&&
+    return this.candidateTrusted&&this.actions.decide&&this.candidate.canDecideReview===true&&!this.pending&&!this.finalized&&
       (this.ticketId!==null||this.actions.request)&&
       (decision==='rejected'||this.candidate.reviewable===true);
   }

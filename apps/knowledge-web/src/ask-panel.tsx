@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import type { KnowledgeClient } from '@commerce/knowledge-client';
 import type { AskRequest, AskResult, KnowledgeRef } from '@commerce/knowledge-contracts';
-import { AskState, compareAskSelection, makeAskRequest } from './ask-state';
+import { AskState, compareAskSelection, makeAskRequest, type AskSelectionComparison } from './ask-state';
 import { AnswerResearchPanel } from './answer-research-panel';
+import { actualWikiRefs } from './ask-graph';
 
 const stateName: Record<AskResult['state'], string> = {
   reserved: '已预留，待核对', running: '处理中，待核对', answered: '已有回答', needs_evidence: '需要更多依据',
@@ -23,6 +24,7 @@ type Props = {
   purpose: string;
   question: string;
   onQuestionChange?: (question: string) => void;
+  onAnswerContextQuestion?: (question: string | null) => void;
   permitted: boolean;
   selected: readonly { ref: KnowledgeRef; title: string | null }[];
   selectionPermitted: boolean;
@@ -31,27 +33,40 @@ type Props = {
   syntheticFixture: boolean;
   onRead: (ref: KnowledgeRef) => void;
   onSource: (ref: KnowledgeRef, locator?: string | null) => void;
+  onLocate?: (ref: KnowledgeRef) => boolean;
+  onActualReadRefs?: (refs: KnowledgeRef[]) => void;
+  graphExpanded?: boolean;
   researchPermitted?: boolean;
   researchReadPermitted?: boolean;
   onResearchCandidate?: (candidateId: string, frozenQuestion: string) => void;
   onClose: () => void;
 };
 
-export function AskPanel({ client, purpose, question, onQuestionChange, permitted, selected, selectionPermitted, recoveryScope, visible, syntheticFixture, onRead, onSource, researchPermitted = false, researchReadPermitted = false, onResearchCandidate = () => {}, onClose }: Props) {
+export function AskPanel({ client, purpose, question, onQuestionChange, onAnswerContextQuestion, permitted, selected, selectionPermitted, recoveryScope, visible, syntheticFixture, onRead, onSource, onLocate, onActualReadRefs, graphExpanded = false, researchPermitted = false, researchReadPermitted = false, onResearchCandidate = () => {}, onClose }: Props) {
   const [version, setVersion] = useState(0);
   const [state] = useState(() => new AskState(() => setVersion(value => value + 1)));
   const [draft, setDraft] = useState(question);
   const [money, setMoney] = useState('0');
   const [includeSourceContent, setIncludeSourceContent] = useState(false);
   const [validation, setValidation] = useState('');
+  const [formOpen, setFormOpen] = useState(true);
+  const [locateNotice, setLocateNotice] = useState('');
+  const [researchOpenSignal, setResearchOpenSignal] = useState(0);
   const seededKey = useRef<string | null>(null);
   const lastScope = useRef<string | null>(null);
   const researchTarget = useRef<HTMLDivElement | null>(null);
+  const panel = useRef<HTMLElement | null>(null);
+  const readingTop = useRef(0);
   const scope = JSON.stringify([client.scope.projectId, client.scope.spaceId, purpose]);
   useLayoutEffect(() => { state.bind(scope, client, permitted, recoveryScope); }, [state, scope, client, permitted, recoveryScope]);
   useEffect(() => { if (!state.view(scope, client, recoveryScope).key) setDraft(question); }, [question, state, scope, client, recoveryScope]);
   useLayoutEffect(() => { if (visible && permitted) void state.check(scope, client, recoveryScope); }, [visible, permitted, scope, client, recoveryScope, state]);
   const view = state.view(scope, client, recoveryScope);
+  useEffect(() => { onAnswerContextQuestion?.(visible && permitted && view.result && view.input ? view.input.question : null); }, [visible, permitted, view.result, view.input, onAnswerContextQuestion]);
+  useEffect(() => { onActualReadRefs?.(visible && permitted ? actualWikiRefs(view.result) : []); }, [visible, permitted, view.result, onActualReadRefs]);
+  useEffect(() => { setLocateNotice(''); }, [view.result]);
+  useEffect(() => { if (view.result?.state === 'answered') setFormOpen(false); }, [view.result]);
+  useLayoutEffect(() => { if (!graphExpanded && visible && panel.current) panel.current.scrollTop = readingTop.current; }, [graphExpanded, visible]);
   const locked = pending.has(view.phase);
   const invalidSelection = selectionPermitted && selected.some(({ ref }) => ref.domain !== 'knowledge' ||
     ref.projectId !== client.scope.projectId || ref.spaceId !== client.scope.spaceId || ref.contentDigest === null);
@@ -87,12 +102,17 @@ export function AskPanel({ client, purpose, question, onQuestionChange, permitte
   }
 
   const evidence = new Map(view.result?.evidence.map(item => [item.id, item]));
-  return <section className="ask-panel" hidden={!visible} aria-label="有据问答">
-    <div className="ask-heading"><div><span className="eyebrow">问题星群 · 当前用途</span><h2>有据问答</h2><p>从当前问题和联读选区出发，核对服务实际读取的准确版本与回答引用。</p></div><button className="secondary-button" type="button" onClick={onClose}>返回星图</button></div>
-    {syntheticFixture && <div className="ask-synthetic" role="status">合成工程样例 · 此处回答由合成答题器生成，无真实 LLM 调用，不代表业务结论。</div>}
+  const answered = view.result?.state === 'answered';
+  function locate(ref: KnowledgeRef) {
+    setLocateNotice(onLocate?.(ref) ? '已在右侧星图定位准确版本；可继续打开正文核对。' : '当前星图未包含这份准确版本；可打开依据核对，不会按同名或其他版本定位。');
+  }
+  return <section className="ask-panel" id="workbench-reading" ref={panel} onScroll={event => { if (!graphExpanded) readingTop.current = event.currentTarget.scrollTop; }} hidden={!visible} aria-label="有据问答">
+    <div className="ask-heading"><div><span className="eyebrow">问题星群 · 当前用途{answered && <span role="status" aria-live="polite"> · 回答已返回</span>}</span><h2>{answered ? '本次回答' : '有据问答'}</h2>{!answered && <p>从当前问题和联读选区出发，核对服务实际读取的准确版本与回答引用。</p>}</div><button className="secondary-button" type="button" onClick={onClose}>返回星图</button></div>
+    {syntheticFixture && (answered ? <p className="ask-synthetic-compact" role="status">合成工程样例 · 未调用真实 LLM · 不代表业务结论</p> : <div className="ask-synthetic" role="status">合成工程样例 · 此处回答由合成答题器生成，无真实 LLM 调用，不代表业务结论。</div>)}
     {!permitted && <div className="state-note" role="status">当前服务未配置或未开放有据问答；可继续使用探索查询与阅读。</div>}
     {permitted && !recoveryScope && <p className="minor-note">当前服务未提供会话恢复范围；刷新页面后无法核对本次问答，离开前请保存所需信息。</p>}
-    <form className="ask-form" onSubmit={submit}>
+    {answered && !formOpen && <button className="text-button ask-new-question" type="button" onClick={() => setFormOpen(true)}>修改问题或发起新问</button>}
+    {(!answered || formOpen) && <form className="ask-form" onSubmit={submit}>
       <label>提出问题<textarea aria-label="问答问题" value={locked ? view.input?.question ?? draft : draft} maxLength={2000} onChange={event => setDraft(event.target.value)} disabled={!permitted || locked} rows={3} /></label>
       {!locked && view.key && question.trim() && question.trim() !== draft && <button type="button" className="text-button" onClick={() => setDraft(question)}>使用工作台当前问题</button>}
       <div className="ask-options"><label>本次最高费用（USD）<input aria-label="最高费用（USD）" value={locked && view.input ? moneyFrom(view.input) : money} inputMode="decimal" onChange={event => setMoney(event.target.value)} disabled={!permitted || locked} /></label>
@@ -106,10 +126,35 @@ export function AskPanel({ client, purpose, question, onQuestionChange, permitte
       </div>}
       {validation && <p className="inline-error" role="alert">{validation}</p>}
       <button className="primary-button" type="submit" disabled={!permitted || locked || invalidSelection || !draft.trim()}>提交有据问答</button>
-    </form>
-    {permitted && selectionComparison.length > 0 && <section className="ask-meta" aria-label="提交选区与实际读取"><h4>本次提交的 A/B · 对照实际读取</h4>
-      {selectionComparison.map(({ ref, status, reason }, index) => {
-        const title = view.result?.evidence.find(item => item.kind === 'wiki_page' && item.ref.objectId === ref.objectId &&
+    </form>}
+    {!answered && permitted && selectionComparison.length > 0 && <AskSelectionReceipt comparison={selectionComparison} result={view.result} selected={selected} answered={false} />}
+    {view.key && !answered && <div className="ask-intent" role="status" aria-live="polite"><strong>{view.phase === 'sending' ? '提交中' : view.phase === 'checking' ? '核对中' : view.result ? stateName[view.result.state] : '提交结果待核对'}</strong>{locked && <p>此问题已锁定。只读核对原操作，不会再次提交或产生第二次付费请求。</p>}{locked && view.phase !== 'sending' && view.phase !== 'checking' && permitted && <button type="button" className="secondary-button" onClick={() => void state.check(scope, client, recoveryScope)}>只读核对</button>}</div>}
+    {view.error && <p className="inline-error" role="alert">{view.error}</p>}
+    {view.result && permitted && <div className="ask-result"><div className="ask-result-head"><h3>结论与依据</h3>{view.result.state === 'answered' && view.result.answerFingerprint && researchPermitted && researchReadPermitted && recoveryScope && <button type="button" className="secondary-button" onClick={() => { setResearchOpenSignal(value => value + 1); researchTarget.current?.scrollIntoView({ behavior: 'auto', block: 'start' }); researchTarget.current?.focus({ preventScroll: true }); }}>选择结论继续研究</button>}</div>{!answered && <p className="ask-reason">{view.result.reason}</p>}
+      {view.result.claims.map((claim, index) => <article className="ask-claim" key={index}><h4>结论 {index + 1}</h4><p>{claim.text}</p><div className="ask-citations">{claim.evidenceIds.map(id => { const item = evidence.get(id); return item && <span className="ask-citation-actions" key={id}><button type="button" onClick={() => item.kind === 'wiki_page' ? onRead(item.ref) : onSource(item.ref, item.locator)}>{item.kind === 'wiki_page' ? '认识' : '来源'} · {item.title}{item.locator ? ` · ${item.locator}` : ''}</button><button type="button" className="ask-citation-locate" onClick={() => locate(item.ref)}>图中定位</button></span>; })}</div></article>)}
+      {answered && <details className="ask-record ask-answer-reason"><summary>查看回答说明</summary><p className="ask-reason">{view.result.reason}</p></details>}
+      {locateNotice && <p className="minor-note" role="status">{locateNotice}</p>}
+    </div>}
+    {answered && permitted && selectionComparison.length > 0 && <AskSelectionReceipt comparison={selectionComparison} result={view.result} selected={selected} answered />}
+    <div ref={researchTarget} tabIndex={-1} className="ask-research-target"><AnswerResearchPanel client={client} purpose={purpose} answer={view.result?.state === 'answered' ? view.result : null}
+      permitted={researchPermitted} canRead={researchReadPermitted} recoveryScope={recoveryScope} visible={visible} openChooserSignal={researchOpenSignal} onCandidate={onResearchCandidate} /></div>
+    {view.result && permitted && <div className="ask-result ask-result-evidence">
+      <h4>本次依据（{view.result.evidence.length}）</h4>{view.result.evidence.map(item => <article className="ask-evidence" key={item.id}><div><strong>{item.title}</strong><span> · {item.kind === 'wiki_page' ? '认识' : '来源'}</span></div>{item.locator && <p className="minor-note">定位：{item.locator}</p>}<button type="button" className="text-button" onClick={() => item.kind === 'wiki_page' ? onRead(item.ref) : onSource(item.ref, item.locator)}>打开这份依据</button><EvidenceList title="成立条件" items={item.conditions} /><EvidenceList title="反例与边界" items={item.counterexamples} /><EvidenceList title="尚不确定" items={item.unknowns} /><p className="minor-note">{item.kind === 'wiki_page' ? '已读取准确 Wiki 正文；来源原文是否回查见下方记录。' : item.actualReadCoverage.length ? '来源原文已有读取记录，详情见下方。' : '来源原文读取范围见下方记录。'}</p><details className="ask-record"><summary>查看读取记录</summary><p>依据 ID：{item.id} · 准确版本：{item.ref.versionId} · 内容摘要：{item.ref.contentDigest}</p>{item.actualReadCoverage.map((read, index) => <p key={index}>{read.coverage} · {read.byteCount} 字节 · 来源版本 {read.sourceRef.versionId} · {read.exclusions.join('、') || '无排除说明'}</p>)}</details></article>)}
+      <div className="ask-meta"><h4>范围与缺口</h4><p>实际依据 {view.result.evidence.length} 份 · 检索候选 {view.result.coverage.loaded} 条 · {view.result.coverage.completeness === 'complete' ? '范围完整' : view.result.coverage.completeness === 'bounded' ? '有界结果' : '完整性未知'}{view.result.coverage.hasMore ? ' · 仍有后续页' : ''}</p>{view.result.coverage.omittedReasons.map((item, index) => <p key={index}>未包含：{item}</p>)}{view.result.gaps.map((item, index) => <p key={index}>缺口：{askGapLabel(item)}</p>)}{view.result.excluded.map((item, index) => <p key={index}>排除一份依据：{item.reason}</p>)}<details className="ask-record"><summary>查看实际模型调用与费用</summary><p>模型调用 {view.result.cost.modelCalls.state === 'known' ? view.result.cost.modelCalls.value : `未知：${view.result.cost.modelCalls.reason}`} · Token {view.result.cost.tokens.state === 'known' ? view.result.cost.tokens.value : `未知：${view.result.cost.tokens.reason}`} · 金额 {view.result.cost.money.state === 'known' ? `${view.result.cost.money.amount} ${view.result.cost.money.currency}` : `未知：${view.result.cost.money.reason}`}</p></details></div>
+    </div>}
+    {view.key && <details className="ask-record ask-global-record"><summary>查看读取记录</summary><p>原操作键：{view.key}</p>{view.input && <p>提交问题：{view.input.question} · 用途：{view.input.purpose} · 读取预算上限 {view.input.budget.maxReadBytes} 字节 · 最多 {view.input.budget.maxModelCalls} 次模型调用 · 截止 {view.input.budget.deadline}</p>}{view.result && <><p>范围：{view.result.coverage.scopeDescription}</p><p>读集指纹：{view.result.readsetFingerprint} · 回答 ID：{view.result.id}</p>{view.result.readUsage && <p>已确认读取（UTF-8 字节）：Wiki 正文载荷 {view.result.readUsage.wikiPayloadBytes} · 来源原文 {view.result.readUsage.sourceContentBytes}。准备的回答输入 {view.result.readUsage.preparedInputBytes} 字节 · 读取上限 {view.result.readUsage.maxReadBytes} 字节。未知字节用量另见缺口，不计入已确认数值。这些数值不是数据库磁盘 IO，也不是付费模型输入 token。</p>}{view.result.gaps.map((gap, index) => <p key={index}>原始缺口记录：{gap}</p>)}</>}</details>}
+  </section>;
+}
+
+export function AskSelectionReceipt({ comparison, result, selected, answered }: {
+  comparison: AskSelectionComparison[]; result: AskResult | null; selected: readonly { ref: KnowledgeRef; title: string | null }[]; answered: boolean;
+}) {
+  const count = (status: AskSelectionComparison['status']) => comparison.filter(item => item.status === status).length;
+  const summary = `本次 A/B 选区 ${comparison.length} 项 · 已读 ${count('read')}${count('excluded') ? ` · 排除 ${count('excluded')}` : ''}${count('not_read') ? ` · 未列依据 ${count('not_read')}` : ''}${count('pending') ? ` · 待核对 ${count('pending')}` : ''}`;
+  return <details className="ask-meta ask-selection-receipt" aria-label="提交选区与实际读取" open={!answered}>
+    <summary>{summary}</summary><div className="ask-selection-details">
+      {comparison.map(({ ref, status, reason }, index) => {
+        const title = result?.evidence.find(item => item.kind === 'wiki_page' && item.ref.objectId === ref.objectId &&
           item.ref.versionId === ref.versionId && item.ref.contentDigest === ref.contentDigest)?.title ??
           selected.find(item => item.ref.objectId === ref.objectId && item.ref.versionId === ref.versionId &&
             item.ref.contentDigest === ref.contentDigest)?.title ?? '提交时所选认识';
@@ -118,22 +163,8 @@ export function AskPanel({ client, purpose, question, onQuestionChange, permitte
           <details className="ask-record"><summary>准确版本</summary><p>{ref.objectId}@{ref.versionId} · 摘要 {ref.contentDigest}</p></details></div>;
       })}
       <p className="minor-note">这是原操作冻结的选区；之后在星图调整 A/B，不会改变此操作的键、输入或服务读集。</p>
-    </section>}
-    {view.key && (view.result?.state === 'answered'
-      ? <p className="ask-intent-known" role="status" aria-live="polite">回答已返回 · 可核对下方依据</p>
-      : <div className="ask-intent" role="status" aria-live="polite"><strong>{view.phase === 'sending' ? '提交中' : view.phase === 'checking' ? '核对中' : view.result ? stateName[view.result.state] : '提交结果待核对'}</strong>{locked && <p>此问题已锁定。只读核对原操作，不会再次提交或产生第二次付费请求。</p>}{locked && view.phase !== 'sending' && view.phase !== 'checking' && permitted && <button type="button" className="secondary-button" onClick={() => void state.check(scope, client, recoveryScope)}>只读核对</button>}</div>)}
-    {view.error && <p className="inline-error" role="alert">{view.error}</p>}
-    {view.result && permitted && <div className="ask-result"><div className="ask-result-head"><h3>本次回答</h3>{view.result.state === 'answered' && view.result.answerFingerprint && <button type="button" className="secondary-button" onClick={() => { researchTarget.current?.scrollIntoView({ behavior: 'auto', block: 'start' }); researchTarget.current?.focus({ preventScroll: true }); }}>选择结论继续研究</button>}</div><p className="ask-reason">{view.result.reason}</p>
-      {view.result.claims.map((claim, index) => <article className="ask-claim" key={index}><h4>结论 {index + 1}</h4><p>{claim.text}</p><div className="ask-citations">{claim.evidenceIds.map(id => { const item = evidence.get(id); return item && <button key={id} type="button" onClick={() => item.kind === 'wiki_page' ? onRead(item.ref) : onSource(item.ref, item.locator)}>{item.kind === 'wiki_page' ? '认识' : '来源'} · {item.title}</button>; })}</div></article>)}
-    </div>}
-    <div ref={researchTarget} tabIndex={-1} className="ask-research-target"><AnswerResearchPanel client={client} purpose={purpose} answer={view.result?.state === 'answered' ? view.result : null}
-      permitted={researchPermitted} canRead={researchReadPermitted} recoveryScope={recoveryScope} visible={visible} onCandidate={onResearchCandidate} /></div>
-    {view.result && permitted && <div className="ask-result ask-result-evidence">
-      <h4>本次依据（{view.result.evidence.length}）</h4>{view.result.evidence.map(item => <article className="ask-evidence" key={item.id}><div><strong>{item.title}</strong><span> · {item.kind === 'wiki_page' ? '认识' : '来源'}</span></div>{item.locator && <p className="minor-note">定位：{item.locator}</p>}<button type="button" className="text-button" onClick={() => item.kind === 'wiki_page' ? onRead(item.ref) : onSource(item.ref, item.locator)}>打开这份依据</button><EvidenceList title="成立条件" items={item.conditions} /><EvidenceList title="反例与边界" items={item.counterexamples} /><EvidenceList title="尚不确定" items={item.unknowns} /><p className="minor-note">{item.kind === 'wiki_page' ? '已读取准确 Wiki 正文；来源原文是否回查见下方记录。' : item.actualReadCoverage.length ? '来源原文已有读取记录，详情见下方。' : '来源原文读取范围见下方记录。'}</p><details className="ask-record"><summary>查看读取记录</summary><p>依据 ID：{item.id} · 准确版本：{item.ref.versionId} · 内容摘要：{item.ref.contentDigest}</p>{item.actualReadCoverage.map((read, index) => <p key={index}>{read.coverage} · {read.byteCount} 字节 · 来源版本 {read.sourceRef.versionId} · {read.exclusions.join('、') || '无排除说明'}</p>)}</details></article>)}
-      <div className="ask-meta"><h4>范围与缺口</h4><p>实际依据 {view.result.evidence.length} 份 · 检索候选 {view.result.coverage.loaded} 条 · {view.result.coverage.completeness === 'complete' ? '范围完整' : view.result.coverage.completeness === 'bounded' ? '有界结果' : '完整性未知'}{view.result.coverage.hasMore ? ' · 仍有后续页' : ''}</p>{view.result.coverage.omittedReasons.map((item, index) => <p key={index}>未包含：{item}</p>)}{view.result.gaps.map((item, index) => <p key={index}>缺口：{askGapLabel(item)}</p>)}{view.result.excluded.map((item, index) => <p key={index}>排除一份依据：{item.reason}</p>)}<h4>实际费用</h4><p>模型调用 {view.result.cost.modelCalls.state === 'known' ? view.result.cost.modelCalls.value : `未知：${view.result.cost.modelCalls.reason}`} · Token {view.result.cost.tokens.state === 'known' ? view.result.cost.tokens.value : `未知：${view.result.cost.tokens.reason}`} · 金额 {view.result.cost.money.state === 'known' ? `${view.result.cost.money.amount} ${view.result.cost.money.currency}` : `未知：${view.result.cost.money.reason}`}</p></div>
-    </div>}
-    {view.key && <details className="ask-record ask-global-record"><summary>查看读取记录</summary><p>原操作键：{view.key}</p>{view.input && <p>提交问题：{view.input.question} · 用途：{view.input.purpose} · 读取预算上限 {view.input.budget.maxReadBytes} 字节 · 最多 {view.input.budget.maxModelCalls} 次模型调用 · 截止 {view.input.budget.deadline}</p>}{view.result && <><p>范围：{view.result.coverage.scopeDescription}</p><p>读集指纹：{view.result.readsetFingerprint} · 回答 ID：{view.result.id}</p>{view.result.readUsage && <p>已确认读取（UTF-8 字节）：Wiki 正文载荷 {view.result.readUsage.wikiPayloadBytes} · 来源原文 {view.result.readUsage.sourceContentBytes}。准备的回答输入 {view.result.readUsage.preparedInputBytes} 字节 · 读取上限 {view.result.readUsage.maxReadBytes} 字节。未知字节用量另见缺口，不计入已确认数值。这些数值不是数据库磁盘 IO，也不是付费模型输入 token。</p>}{view.result.gaps.map((gap, index) => <p key={index}>原始缺口记录：{gap}</p>)}</>}</details>}
-  </section>;
+    </div>
+  </details>;
 }
 
 function EvidenceList({ title, items }: { title: string; items: string[] }) {

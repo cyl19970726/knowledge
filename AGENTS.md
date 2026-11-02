@@ -12,6 +12,14 @@ This repository contains only the standalone knowledge product and its generic d
 - Run the relevant core build and tests plus documentation checks before delivery. Report missing database coverage explicitly; never present skipped integration tests as passing coverage.
 - Skills are project-local by default. Do not install or register global skills without explicit authorization.
 
+## Standard workbench layout
+
+- Desktop surfaces that pair primary reading or task content with a graph or contextual details use the shared resizable workbench layout. Reuse its sizing, pointer and keyboard interaction, minimum widths, ratio preference, reset, expanded graph and restoration behavior; do not introduce independent per-page split implementations.
+- The question-reading view defaults to reading on the left and the persistent graph on the right. Other paired workbench views use the same layout contract with task-appropriate pane content and defaults.
+- Resizing is presentation state only. Preserve the question, exact selections, graph camera, reading position and operation identity; resizing or restoring a pane must not submit Ask or research again.
+- Narrow viewports use the shared stacked reading order and retain the same context. Keep exact readsets, user selection and unpublished candidates visually distinct at every width.
+- The owning visual and interaction contract is `docs/knowledge/frontend/design-system.md`; implementation coverage and evidence belong to `wiki-loop-adaptation.md` and its linked validation records.
+
 ## Branch and release handoff
 
 - Isolate concurrent implementation in a dedicated worktree or clone and a feature branch. Preserve other tasks' changes and do not commit unless requested.

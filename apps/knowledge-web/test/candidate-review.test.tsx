@@ -7,10 +7,12 @@ import {CandidateLookupPanel,ResearchTriptychWhenRelevant,candidateBelongsToRese
   candidateReviewRecoveryKey,showLegacyResearchContext} from '../src/App.tsx';
 import {CandidateReview,hasCandidateReviewControls} from '../src/candidate-review.tsx';
 import {CandidateReviewState,type CandidateReviewClient} from '../src/candidate-review-state.ts';
+import {verifiedCandidateView} from '../src/candidate-scope.ts';
 
 const id='00000000-0000-4000-8000-000000000041';
 const ticketId='00000000-0000-4000-8000-000000000042';
 const digest='c'.repeat(64);
+const scope={projectId:'project',spaceId:'space'};
 function candidate(overrides:Partial<CandidateView>={}):CandidateView{
   return {candidateId:id,contentHash:digest,purpose:'exploration_reading',proposer:'synthetic-proposer',
     rationale:'准确依据',createdAt:'2026-11-02T00:00:00.000Z',state:'waiting_for_review',
@@ -21,8 +23,52 @@ const ticket:ReviewTicket={id:ticketId,target:{kind:'candidate',candidateId:id,c
 const envelope=<T,>(data:T)=>({data});
 function state(client:CandidateReviewClient,data=candidate(),keys=['request-key','decide-key']){
   let index=0;
-  return new CandidateReviewState(client,data,{request:true,decide:true},()=>{},()=>{},()=>keys[index++]!);
+  return new CandidateReviewState(client,data,scope,{request:true,decide:true},()=>{},()=>{},()=>keys[index++]!);
 }
+
+test('full candidate load rejects a reviewable response with another ID, purpose, or changed ref scope',()=>{
+  const ref:CandidateView['changes'][number]['ref']={projectId:'project',spaceId:'space',domain:'knowledge',objectId:id,versionId:ticketId,contentDigest:digest};
+  const change={ref} as CandidateView['changes'][number];
+  const valid=candidate({changes:[change,{...change,ref:{...ref,objectId:'another'}}]});
+  assert.equal(verifiedCandidateView(valid,id,'exploration_reading','project','space'),valid);
+  assert.equal(hasCandidateReviewControls(valid),true);
+  const wrong=[
+    {...valid,candidateId:'another'},
+    {...valid,purpose:'another-purpose'},
+    {...valid,changes:[change,{...change,ref:{...ref,projectId:'another-project'}}]},
+    {...valid,changes:[change,{...change,ref:{...ref,spaceId:'another-space'}}]},
+  ];
+  for(const response of wrong){
+    const accepted=verifiedCandidateView(response,id,'exploration_reading','project','space');
+    assert.equal(accepted,null);
+    assert.equal(accepted && hasCandidateReviewControls(accepted),null);
+  }
+});
+
+test('a valid candidate followed by a cross-space refresh is never loaded or used for another decision',async()=>{
+  const ref:CandidateView['changes'][number]['ref']={projectId:'project',spaceId:'space',domain:'knowledge',objectId:id,versionId:ticketId,contentDigest:digest};
+  const change={ref} as CandidateView['changes'][number];
+  const initial=candidate({reviewTicketId:ticketId,changes:[change]});
+  const foreign=candidate({reviewTicketId:ticketId,changes:[{...change,ref:{...ref,spaceId:'another-space'}}]});
+  const loaded:CandidateView[]=[];
+  let decisions=0;
+  let latest=foreign;
+  const client={candidateView:async()=>envelope(latest),reviewTicket:async()=>envelope(ticket),
+    decideReview:async()=>{decisions++;return envelope({target:ticket.target});}} as unknown as CandidateReviewClient;
+  const controller=new CandidateReviewState(client,initial,scope,{request:true,decide:true},()=>{},value=>loaded.push(value));
+  assert.equal(controller.canDecide('approved_for_purpose'),true);
+  await controller.refresh();
+  assert.deepEqual(loaded,[]);
+  assert.match(controller.view().message,/刷新失败|失配|不一致/);
+  assert.equal(controller.canDecide('approved_for_purpose'),false);
+  assert.equal(await controller.request(),false);
+  assert.equal(await controller.decide('approved_for_purpose','旧候选理由'),false);
+  assert.equal(decisions,0);
+  latest=initial;
+  await controller.refresh();
+  assert.deepEqual(loaded,[initial]);
+  assert.equal(controller.canDecide('approved_for_purpose'),true);
+});
 
 test('decision requests exact candidate ticket then freezes digest, purpose and distinct operation keys',async()=>{
   const calls:{kind:string;data:unknown;options:unknown}[]=[];
@@ -124,7 +170,7 @@ test('a recovered unknown key remains locked even if the candidate now appears p
     candidateView:async()=>envelope(candidate({state:'published',reviewTicketId:ticketId})),
   } as unknown as CandidateReviewClient;
   const controller=new CandidateReviewState(client,candidate({state:'published',reviewTicketId:ticketId}),
-    {request:true,decide:true},()=>{},()=>{},()=> 'new-key',
+    scope,{request:true,decide:true},()=>{},()=>{},()=> 'new-key',
     {action:'review:decide',key:'frozen-decision-key',decision:'approved_for_purpose'});
   assert.equal(controller.view().pending?.key,'frozen-decision-key');
   assert.equal(await controller.decide('approved_for_purpose','reason'),false);
@@ -137,7 +183,7 @@ test('a recovered unknown key remains locked even if the candidate now appears p
 test('permission gates and legacy candidate compatibility render safely',()=>{
   const noRights=candidate({reviewable:false,reviewIssues:['来源 <unsafe>'],canRequestReview:false,canDecideReview:false});
   const client={} as CandidateReviewClient;
-  const html=renderToStaticMarkup(createElement(CandidateReview,{candidate:noRights,client,
+  const html=renderToStaticMarkup(createElement(CandidateReview,{candidate:noRights,client,scope,
     actions:{request:false,decide:false},onCandidate:()=>{}}));
   assert.match(html,/请求候选独立审阅<\/button>/);
   assert.match(html,/批准或拒绝需要独立审阅者身份/);
@@ -146,7 +192,7 @@ test('permission gates and legacy candidate compatibility render safely',()=>{
   const legacy=candidate();delete legacy.canRequestReview;delete legacy.canDecideReview;delete legacy.reviewTicketId;
   assert.equal(hasCandidateReviewControls(legacy),false);
   assert.equal(hasCandidateReviewControls(noRights),true);
-  const controller=new CandidateReviewState(client,noRights,{request:false,decide:false},()=>{},()=>{});
+  const controller=new CandidateReviewState(client,noRights,scope,{request:false,decide:false},()=>{},()=>{});
   assert.equal(controller.canDecide('rejected'),false);
 });
 
@@ -155,7 +201,7 @@ test('terminal candidates show read-only status without decision controls or per
   for(const [state,label] of [['published','已发表'],['rejected','已拒绝'],['cancelled','已取消']] as const){
     const data=candidate({state,reviewable:false,reviewIssues:['历史来源问题'],
       canRequestReview:false,canDecideReview:false,reviewTicketId:ticketId});
-    const html=renderToStaticMarkup(createElement(CandidateReview,{candidate:data,client,
+    const html=renderToStaticMarkup(createElement(CandidateReview,{candidate:data,client,scope,
       actions:{request:false,decide:false},onCandidate:()=>{}}));
     assert.match(html,new RegExp(`候选${label}，可只读核对，不能再次审批`));
     assert.match(html,/只读刷新候选与票据/);
@@ -185,7 +231,7 @@ test('linked candidate shows the verified preview and folded exact IDs without a
 });
 
 test('review card keeps exact target in details and shows a Chinese state without changing controls',()=>{
-  const html=renderToStaticMarkup(createElement(CandidateReview,{candidate:candidate(),client:{} as CandidateReviewClient,
+  const html=renderToStaticMarkup(createElement(CandidateReview,{candidate:candidate(),client:{} as CandidateReviewClient,scope,
     actions:{request:true,decide:false},onCandidate:()=>{}}));
   assert.match(html,/候选独立审阅/);
   assert.match(html,/等待独立审阅/);

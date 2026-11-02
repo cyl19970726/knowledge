@@ -27,10 +27,10 @@ function savePending(key:string|undefined,pending:CandidateReviewPending|null):v
   try{if(pending)sessionStorage.setItem(key,JSON.stringify(pending));else sessionStorage.removeItem(key);}catch{/* Storage may be disabled. */}
 }
 
-export function CandidateReview({candidate,client,actions,onCandidate,recoveryKey}: {candidate:CandidateView;client:CandidateReviewClient;
-  actions:ReviewActions;onCandidate:(value:CandidateView)=>void;recoveryKey?:string}){
+export function CandidateReview({candidate,client,scope,actions,onCandidate,recoveryKey}: {candidate:CandidateView;client:CandidateReviewClient;
+  scope:{projectId:string;spaceId:string};actions:ReviewActions;onCandidate:(value:CandidateView)=>void;recoveryKey?:string}){
   const [,setVersion]=useState(0);
-  const [controller]=useState(()=>new CandidateReviewState(client,candidate,actions,view=>{
+  const [controller]=useState(()=>new CandidateReviewState(client,candidate,scope,actions,view=>{
     savePending(recoveryKey,view.pending);setVersion(value=>value+1);
   },onCandidate,undefined,readPending(recoveryKey)));
   controller.update(candidate,client,actions,onCandidate);
@@ -39,7 +39,7 @@ export function CandidateReview({candidate,client,actions,onCandidate,recoveryKe
   const view=controller.view(),busy=view.phase==='sending'||view.phase==='checking';
   const terminalMessage=candidateTerminalMessage(candidate.state);
   const stateLabel:Record<CandidateView['state'],string>={waiting_for_review:'等待独立审阅',cancelled:'已取消',published:'曾发表',rejected:'已拒绝',outcome_unknown:'状态待核对'};
-  const requestAllowed=actions.request&&candidate.canRequestReview===true&&!view.ticketId&&!view.pending&&!view.finalized;
+  const requestAllowed=view.trusted&&actions.request&&candidate.canRequestReview===true&&!view.ticketId&&!view.pending&&!view.finalized;
   const decideAllowed=controller.canDecide(decision)&&reason.trim().length>0&&!busy;
   const decisionLabel=decision==='rejected'?'拒绝':decision==='exploration_only'?'仅探索用途批准并发表':'批准并发表';
   const submit=(event:FormEvent)=>{event.preventDefault();void controller.decide(decision,reason);};
