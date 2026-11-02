@@ -332,3 +332,100 @@ body{background:#0b1119;color:#e9edf5}
 .view-explore .graph-card{position:relative}
 @media(min-width:981px){.view-explore .graph-toolbar{position:absolute;z-index:5;top:12px;left:12px;right:12px;height:auto;padding:0;background:transparent;border:0;pointer-events:none}.view-explore .graph-toolbar .view-switch,.view-explore .graph-toolbar .toolbar-actions{pointer-events:auto;padding:3px;border:1px solid #29394ee8;border-radius:9px;background:#09131fe8;box-shadow:0 8px 24px #0008,inset 0 1px #ffffff08;backdrop-filter:blur(12px)}.view-explore .graph-toolbar .seg{border:0;background:transparent;padding:7px 11px}.view-explore .graph-toolbar .seg.selected{background:#29223d;box-shadow:inset 0 0 0 1px #70539d}.view-explore .graph-toolbar .small-icon{width:31px;height:31px;border:0;background:transparent}.view-explore .graph-toolbar .toolbar-separator{height:19px;background:#354258;margin:0 4px}}
 @media(max-width:980px){.view-explore .graph-toolbar{position:relative;top:auto;left:auto;right:auto;height:44px;pointer-events:auto;background:#0b1521}}
+.search-box[hidden],.ask-panel[hidden],.explore-page>div[hidden]{display:none!important}
+.ask-entry{margin:0 17px 18px;padding:10px 16px;color:#4d397f}
+.ask-panel{margin:0 17px 20px;padding:23px;max-width:1060px;background:#fff;border:1px solid #e2dceb;border-radius:8px;box-shadow:0 4px 16px #4233600d}
+.ask-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:15px}.ask-heading h2{margin:5px 0;color:#241b44;font-size:26px}.ask-heading p{color:#68738c;font-size:14px}
+.ask-synthetic{padding:12px 14px;margin:15px 0;background:#fff0c9;border:2px solid #c77a20;border-radius:5px;color:#754411;font-weight:750;line-height:1.6}
+.ask-form{border-top:1px solid #e9e5f0;padding-top:16px}.ask-form>label,.ask-options>label:not(.ask-checkbox){display:flex;flex-direction:column;gap:7px;color:#394661;font-size:13px;font-weight:650}.ask-form textarea,.ask-form input[type=text],.ask-options input:not([type=checkbox]){width:100%;padding:10px 12px;border:1px solid #d9dce7;border-radius:5px;background:#fff;color:#25304d}.ask-form textarea{resize:vertical;min-height:88px}.ask-options{display:flex;align-items:end;gap:22px;margin-top:12px}.ask-options>label:first-child{max-width:240px}.ask-checkbox{display:flex;align-items:center;gap:7px;padding-bottom:10px;font-size:13px;color:#34415d}.ask-checkbox input{width:16px;height:16px}.ask-form .primary-button{margin-top:6px}
+.ask-intent{margin:18px 0;padding:13px 16px;background:#fff8e9;border:1px solid #dfbb77;border-radius:5px;color:#604319}.ask-intent strong,.ask-intent small{display:block}.ask-intent small{overflow-wrap:anywhere;margin-top:4px}.ask-intent p{font-size:13px}.ask-intent button{margin-top:6px}
+.ask-result{margin-top:24px;border-top:1px solid #e3dcec;padding-top:16px}.ask-result h3{margin:0 0 10px;color:#302450}.ask-result h4{color:#394368;margin:16px 0 6px}.ask-reason{white-space:pre-wrap;line-height:1.7}.ask-claim,.ask-evidence,.ask-meta{background:#faf9fd;border:1px solid #e6e1ef;border-radius:5px;padding:14px 16px;margin:12px 0}.ask-claim p,.ask-evidence p,.ask-meta p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65}.ask-citations{display:flex;flex-wrap:wrap;gap:7px}.ask-citations button{border:1px solid #c8b9e1;background:#f1ebfa;color:#503889;padding:7px 10px;border-radius:4px;text-align:left}.ask-evidence small{display:block;color:#68738c;overflow-wrap:anywhere;margin:6px 0}.ask-evidence .text-button{padding-left:0}.ask-evidence-list{display:flex;gap:8px;align-items:baseline;margin:9px 0;font-size:13px}.ask-evidence-list b{min-width:78px;color:#4c5872}.ask-evidence-list ul{margin:0;padding-left:18px}.ask-evidence-list li{margin:3px 0}.ask-evidence-list span{color:#8790a3}.ask-meta{font-size:13px}
+@media(max-width:680px){.ask-panel{margin:0 3px 15px;padding:16px}.ask-entry{margin:0 3px 12px}.ask-heading{flex-direction:column}.ask-options{align-items:stretch;flex-direction:column;gap:10px}.ask-options>label:first-child{max-width:none}.ask-checkbox{padding-bottom:0}}
+.candidate-body,.candidate-change,.candidate-version{min-width:0}
+.candidate-body .research-reason,.candidate-change h3{overflow-wrap:anywhere}
+.candidate-review-block{border:1px solid #d9a46d;border-left:4px solid #bd7143;border-radius:5px;background:#fff7ed;padding:10px 13px;margin:13px 0;color:#75442b;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+.candidate-review-block ul{margin:7px 0 0;padding-left:20px}.candidate-review-block li{margin:4px 0}
+.candidate-compare{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
+.candidate-version{border:1px solid #e9e4ef;border-radius:5px;background:#fcfbfe;padding:12px;overflow-wrap:anywhere}
+.candidate-version-before{background:#f8f8fa}.candidate-version h4{font-size:13px;color:#504467;margin:0 0 10px}.candidate-version>strong{display:block;font-size:13px;color:#333c54}
+.candidate-version .prose{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;margin:10px 0;color:#34415d}
+.candidate-ref,.candidate-meta,.candidate-version .minor-note{overflow-wrap:anywhere;word-break:break-word;white-space:pre-wrap}
+.candidate-ref{font-size:11px;color:#68738c;line-height:1.5}.candidate-version .text-button{padding-left:0;text-align:left;white-space:normal;overflow-wrap:anywhere}
+.candidate-version .info-list{margin:10px 0}.candidate-version .info-list h3,.candidate-groups h5{font-size:12px;color:#4f5a75;margin:0 0 4px}.candidate-version .info-list ul,.candidate-groups ul{margin:4px 0;padding-left:20px;font-size:12px;line-height:1.65;overflow-wrap:anywhere}
+.candidate-groups{margin-top:11px}.candidate-groups li{margin:4px 0}
+.candidate-review-panel{padding:19px;margin-top:15px;min-width:0;overflow-wrap:anywhere}
+.candidate-review-panel .minor-note{font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+.candidate-review-panel .button-row{margin:13px 0;flex-wrap:wrap}
+.candidate-review-caution,.candidate-review-pending{border:1px solid #d9a46d;border-left:4px solid #bd7143;border-radius:5px;background:#fff7ed;padding:11px 13px;color:#75442b;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+.candidate-decision-form{display:grid;gap:11px;max-width:620px;margin-top:14px}
+.candidate-decision-form label{display:grid;gap:6px;color:#394661;font-size:13px;font-weight:650}
+.candidate-decision-form select,.candidate-decision-form textarea{width:100%;border:1px solid #d9dce7;border-radius:5px;background:#fff;color:#25304d;padding:10px 12px}
+.candidate-decision-form textarea{min-height:94px;resize:vertical;white-space:pre-wrap;overflow-wrap:anywhere}
+.candidate-decision-form .primary-button{justify-self:start}
+.candidate-review-message{margin-top:12px;color:#46536e;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+.candidate-review-pending{margin-top:12px}.candidate-review-pending p{margin:0 0 8px}
+.candidate-lookup{padding:19px;margin-top:15px;min-width:0;overflow-wrap:anywhere}
+.candidate-lookup h2{font-size:18px;color:#263451;line-height:1.4;margin:0 0 12px}
+.candidate-lookup-form{display:flex;align-items:end;gap:10px;flex-wrap:wrap}
+.candidate-lookup-form label{display:grid;gap:6px;flex:1 1 300px;color:#394661;font-size:13px;font-weight:650}
+.candidate-lookup-form input{width:100%;padding:10px 12px;border:1px solid #d9dce7;border-radius:5px;background:#fff;color:#25304d}
+.candidate-lookup>.minor-note{font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+.candidate-standalone{margin-top:18px;border-top:1px solid #e9e3f0;padding-top:15px;min-width:0}
+/* A standalone review keeps both exact versions visible; narrow legacy columns retain their scroll window. */
+.candidate-standalone .candidate-body{max-height:none;overflow:visible}
+@media(min-width:981px){.candidate-standalone .candidate-compare{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Maintenance inbox */
+.maintenance-page,.maintenance-page *{min-width:0}.maintenance-page{max-width:1200px;overflow-wrap:anywhere}
+.maintenance-page .page-heading p{max-width:720px;line-height:1.65}
+.maintenance-projection{padding:13px 16px;margin:0 0 16px;border:1px solid #e4deed;border-radius:6px;background:#faf8fd;color:#4f4673}
+.maintenance-projection p{font-size:12px;line-height:1.6;margin:5px 0 0}
+.maintenance-columns{display:grid;grid-template-columns:minmax(240px,.85fr) minmax(0,1.4fr);gap:14px;align-items:start}
+.maintenance-list,.maintenance-detail,.maintenance-findings{padding:18px}.maintenance-page h2{font-size:18px;margin:0 0 13px;color:#2c3653}
+.maintenance-list ul,.maintenance-findings ul{list-style:none;margin:0 0 14px;padding:0}
+.maintenance-list li+li,.maintenance-findings li+li{border-top:1px solid #ebe8f0}
+.maintenance-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 9px;width:100%;padding:12px 9px;border:0;border-radius:5px;background:transparent;color:#34415d;text-align:left}
+.maintenance-item:hover,.maintenance-item.selected{background:#f2eef9}.maintenance-item strong{font-size:14px}.maintenance-item span{font-size:12px;color:#64518f}
+.maintenance-item small,.maintenance-item time{grid-column:1/-1;color:#69758d;line-height:1.45}.maintenance-item small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.maintenance-detail-head{display:flex;justify-content:space-between;gap:10px;color:#53427f}.maintenance-detail article>p,.maintenance-related>p{font-size:13px;line-height:1.7;white-space:pre-wrap}
+.maintenance-detail h3{font-size:15px;color:#34415d;margin:18px 0 8px}.maintenance-facts,.maintenance-cost{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:7px 13px;font-size:12px;line-height:1.55}
+.maintenance-facts dt,.maintenance-cost dt{color:#78849a}.maintenance-facts dd,.maintenance-cost dd{margin:0;overflow-wrap:anywhere}.maintenance-actions{display:flex;flex-wrap:wrap;gap:8px;margin:17px 0}
+.maintenance-related{padding:13px;margin:14px 0;border:1px solid #e6e1ef;border-radius:5px;background:#fdfcff}.maintenance-related .text-button{display:block;margin:7px 0}
+.maintenance-answer{padding:11px 0;border-top:1px solid #e8e4ef;font-size:13px;line-height:1.6}.maintenance-answer p{margin:5px 0;white-space:pre-wrap}
+.maintenance-pending{padding:12px;border:1px solid #dfbb77;border-radius:5px;background:#fff8e9;color:#67471d;font-size:13px;line-height:1.55}.maintenance-pending p{overflow-wrap:anywhere}
+.maintenance-exact{margin:12px 0;color:#69758d;font-size:12px}.maintenance-exact summary{cursor:pointer}.maintenance-exact pre{max-width:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;padding:9px;background:#f6f5f9;border-radius:4px}
+.maintenance-findings{margin-top:14px}.maintenance-findings li{padding:12px 0;font-size:13px}.maintenance-findings li>span{float:right;color:#69568c}.maintenance-findings li p{line-height:1.6;white-space:pre-wrap}.maintenance-findings li small{color:#74819a}
+@media(max-width:760px){.maintenance-columns{grid-template-columns:minmax(0,1fr)}.maintenance-list,.maintenance-detail,.maintenance-findings{padding:14px}.maintenance-page .secondary-button{max-width:100%;white-space:normal}.mobile-nav{flex-wrap:wrap}}
+.maintenance-shell[hidden]{display:none}
+
+/* Ask, candidate review and maintenance share the R1 dark reading surfaces. */
+.workbench-heading-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex:none;min-width:0}
+.view-explore .ask-entry{margin:0;white-space:nowrap;padding:9px 13px;border-color:#7554a2;background:#201b32;color:#e3cbff;box-shadow:none}
+.view-explore .ask-entry:hover{background:#302446}
+.view-explore .ask-panel{flex:1 1 0;min-height:0;overflow-y:auto;margin:0 0 10px;max-width:none;min-width:0;background:linear-gradient(180deg,#141e2c,#101824);border-color:#304159;color:#dce5f4;box-shadow:inset 0 1px #ffffff08,0 14px 35px #0005}
+.ask-heading h2,.ask-result h3{color:#f0e8fb}.ask-heading p,.ask-evidence small,.ask-evidence-list span{color:#a9b7cd}
+.ask-form{border-color:#33435a}.ask-form>label,.ask-options>label:not(.ask-checkbox),.ask-checkbox{color:#d4dff0}
+.ask-form textarea,.ask-form input[type=text],.ask-options input:not([type=checkbox]){background:#0d1623;border-color:#3a4b62;color:#e5edf9}
+.ask-synthetic,.ask-intent{background:#332611;border-color:#a87627;color:#f6d38b}
+.ask-result{border-color:#33435a}.ask-result h4,.ask-evidence-list b{color:#c7b4ed}
+.ask-claim,.ask-evidence,.ask-meta{background:#182435;border-color:#35445b;color:#dce6f6}
+.ask-claim p,.ask-evidence p,.ask-meta p{color:#dce6f6}
+.ask-citations button{background:#29223d;border-color:#7659a2;color:#e0cafa}
+.candidate-review-block,.candidate-review-caution,.candidate-review-pending{background:#302519;border-color:#ac7940;color:#f1d4a8}
+.candidate-version,.candidate-version-before,.candidate-review-panel,.candidate-lookup{background:#141e2b;border-color:#314057;color:#d9e4f5}
+.candidate-version h4,.candidate-version>strong,.candidate-lookup h2,.candidate-version .info-list h3,.candidate-groups h5{color:#e9d6fb}
+.candidate-version .prose,.candidate-decision-form label,.candidate-lookup-form label{color:#dce6f4}
+.candidate-ref,.candidate-meta,.candidate-version .minor-note,.candidate-review-message,.candidate-lookup>.minor-note{color:#aebcd0}
+.candidate-standalone{border-color:#35435a}.candidate-compare{min-width:0}
+.candidate-decision-form select,.candidate-decision-form textarea,.candidate-lookup-form input{background:#0d1623;border-color:#3a4b62;color:#e5edf9}
+.maintenance-page{color:#d9e4f4}.maintenance-page h2,.maintenance-detail h3{color:#edf0f9}
+.maintenance-projection,.maintenance-related,.maintenance-exact pre{background:#172334;border-color:#33435a;color:#d6e0f0}
+.maintenance-item{color:#d8e3f2}.maintenance-item:hover,.maintenance-item.selected{background:#28233a}
+.maintenance-item span,.maintenance-detail-head,.maintenance-findings li>span{color:#d5b6ff}
+.maintenance-item small,.maintenance-item time,.maintenance-facts dt,.maintenance-cost dt,.maintenance-findings li small,.maintenance-exact{color:#aab9ce}
+.maintenance-list li+li,.maintenance-findings li+li,.maintenance-answer{border-color:#344257}
+.maintenance-pending{background:#332611;border-color:#a87627;color:#f6d38b}
+.maintenance-findings li p,.maintenance-answer p,.maintenance-detail article>p,.maintenance-related>p{color:#d7e1ef}
+.maintenance-page .secondary-button,.candidate-review-panel .secondary-button,.candidate-lookup .secondary-button{background:#201b32;border-color:#7554a2;color:#e3cbff}
+@media(max-width:980px){.view-explore .workbench-heading{gap:9px}.workbench-heading-actions{width:100%;justify-content:space-between;flex-wrap:wrap}}
+@media(max-width:680px){.view-explore .ask-panel{padding:16px}.view-explore .ask-entry{padding:8px 10px}.workbench-heading-actions{gap:7px}.view-explore .perspective-tabs{max-width:100%}.view-explore .perspective-tabs button{min-width:0}}

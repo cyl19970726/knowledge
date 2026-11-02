@@ -2,8 +2,11 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
 
-// Server-side only: allow an isolated preview without redirecting another workspace's API.
-const apiTarget = process.env.KNOWLEDGE_WEB_API_TARGET ?? 'http://127.0.0.1:4311';
+// Each isolated development instance can target its own loopback API.
+const apiPort=Number(process.env.KNOWLEDGE_DEV_API_PORT??4311);
+if(!Number.isInteger(apiPort)||apiPort<1||apiPort>65535)throw new Error('KNOWLEDGE_DEV_API_PORT must be a valid loopback port');
+// An explicit preview target remains available for the R1 isolated stress harness.
+const apiTarget=process.env.KNOWLEDGE_WEB_API_TARGET??`http://127.0.0.1:${apiPort}`;
 
 export default defineConfig({
   plugins: [react()],

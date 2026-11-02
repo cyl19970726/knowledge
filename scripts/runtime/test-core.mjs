@@ -7,11 +7,12 @@ const suites = [
   ['packages/knowledge/test', new Set(['daily-research.test.ts', 'daily-report-archive.test.ts'])],
   ['packages/knowledge-contracts/test', new Set()],
   ['packages/knowledge-client/test', new Set()],
+  ['packages/knowledge-application/test', new Set()],
   ['apps/knowledge-api/test', new Set()],
   ['apps/knowledge-web/test', new Set()],
 ];
 const files = suites.flatMap(([directory, excluded]) => readdirSync(new URL(`../../${directory}/`, import.meta.url))
-  .filter(name => name.endsWith('.test.ts') && !excluded.has(name))
+  .filter(name => /\.test\.tsx?$/.test(name) && !excluded.has(name))
   .map(name => `${directory}/${name}`)
   .sort());
 const child = spawn(process.execPath, [

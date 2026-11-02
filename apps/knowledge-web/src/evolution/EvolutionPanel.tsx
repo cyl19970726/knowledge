@@ -3,7 +3,6 @@ import type { CandidateView, KnowledgeRef, ResearchResult } from '@commerce/know
 import type { KnowledgeClient } from '@commerce/knowledge-client';
 import { refKey } from '../graph/view-model';
 import { publishedPair, versionDate, versionDateParts } from './versions';
-import './evolution.css';
 
 type History = Awaited<ReturnType<KnowledgeClient['history']>>['data'];
 type Comparison = Awaited<ReturnType<KnowledgeClient['compare']>>['data'];
