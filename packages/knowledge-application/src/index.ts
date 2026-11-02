@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID,createHash } from 'node:crypto';
 import type { KnowledgeStore, RevisionView } from '@commerce/knowledge-core/types';
 import { KnowledgeError } from '@commerce/knowledge-core/types';
 import { digest } from '@commerce/knowledge-core/utils';
@@ -16,7 +16,12 @@ export interface ReceiptPort {
 export interface SourceOwnerPort {
   readRecord(scope:Scope, ref:KnowledgeRef, context:ReadContext):Promise<SourceRecord|null>;
   readContent(scope:Scope, ref:KnowledgeRef, anchor:unknown, context:ReadContext):Promise<SourceContent|null>;
+  /** Owner must enforce the limit before returning text; an absent method never falls back to an unbounded read. */
+  readContentBounded?(scope:Scope,ref:KnowledgeRef,anchor:unknown,context:ReadContext,maxBytes:number):Promise<SourceContent|null>;
 }
+export interface WikiCandidate {ref:Pick<KnowledgeRef,'objectId'|'versionId'>;title:string;payloadBytes:number;storageDigest:string}
+export interface BoundedWikiPage {ref:KnowledgeRef;title:string;body:string;conditions:string[];counterexamples:string[];unknowns:string[];
+  citations:KnowledgeCitation[];sourceGroups:string[];storageDigest:string;payloadBytes:number;admitted:boolean;frozenRevision?:import('@commerce/knowledge-core/types').KnowledgeRevision}
 export interface KnowledgeApplicationOptions {store:KnowledgeStore; receipts:ReceiptPort; sources?:SourceOwnerPort; now?:()=>Date; policyVersion?:string; receiptTtlMs?:number}
 
 const sameScope=(a:Scope,b:Scope)=>a.projectId===b.projectId&&a.spaceId===b.spaceId;
@@ -75,7 +80,7 @@ export function createKnowledgeApplication(options:KnowledgeApplicationOptions){
       if(citation.kind==='media')return {ref:fromVersionRef(citation.anchor.sourceRef,context.scope,'evidence',null),
         locator:`record:${JSON.stringify(citation.anchor)}`,supports:citation.supports};
       const domains=[...new Set(revision.dependencies.filter(dep=>dep.ref.objectId===citation.sourceRef.objectId&&dep.ref.versionId===citation.sourceRef.versionId&&dep.domain!=='knowledge').map(dep=>dep.domain))];
-      const citedDomain=domains.length===1&&['source','analysis','evidence'].includes(domains[0])?domains[0] as 'source'|'analysis'|'evidence':'source';
+      const citedDomain=citation.sourceDomain??(domains.length===1&&['source','analysis','evidence'].includes(domains[0])?domains[0] as 'source'|'analysis'|'evidence':'source');
       let citedRef=fromVersionRef(citation.sourceRef,context.scope,citedDomain,null);
       if(options.sources){let record:SourceRecord|null=null;try{record=await options.sources.readRecord(context.scope,citedRef,context);}catch(error){
         if(!(error instanceof KnowledgeError)||![403,404,503].includes(error.status))throw error;
@@ -113,9 +118,10 @@ export function createKnowledgeApplication(options:KnowledgeApplicationOptions){
     assertContext(context);if(request.purpose!==context.purpose)throw new KnowledgeError('PURPOSE_MISMATCH','Requested purpose differs from authenticated context',403);
     if(request.profileIds?.length||request.topics?.length||request.kinds?.some(kind=>kind!=='wiki_page'))
       throw new KnowledgeError('QUERY_FILTER_UNSUPPORTED','This bounded lexical reader supports wiki_page only; profile and topic filters are unavailable',422);
-    const epoch=await options.store.epoch(context.scope.projectId),plan=planWikiLexicalQuery(request.question);
+    const epoch=await options.store.epoch(context.scope.projectId),plan=planWikiLexicalQuery(request.question,request.retrievalMethod??'wiki-lexical-v1');
     const binding={scope:context.scope,principalId:context.principal.id,purpose:context.purpose,question:request.question,limit:request.limit,
-      profileIds:request.profileIds??[],kinds:request.kinds??[],topics:request.topics??[]};
+      profileIds:request.profileIds??[],kinds:request.kinds??[],topics:request.topics??[],
+      ...plan.methodVersion==='wiki-lexical-v2'?{retrievalMethod:plan.methodVersion}:{}};
     const offset=cursorOffset(request.cursor,binding,epoch);
     const views=await options.store.search(context.scope.projectId,{kinds:['wiki_page'],spaceId:context.scope.spaceId,
       lexical:{methodVersion:plan.methodVersion,terms:plan.terms},limit:request.limit+1,offset});
@@ -126,6 +132,100 @@ export function createKnowledgeApplication(options:KnowledgeApplicationOptions){
     return {data:{items,originalQuestion:request.question,retrieval:{methodVersion:plan.methodVersion,terms:plan.terms,truncated:plan.termsTruncated},
       readReceiptId:saved.id,readsetFingerprint:saved.readsetFingerprint,pageFingerprint:saved.pageFingerprint,
       emptyState:items.length?null:plan.terms.length?'no_matches_in_scope':'unclassified'},coverage};
+  }
+  async function queryCandidates(context:ReadContext,request:QueryRequest){
+    assertContext(context);
+    if(request.purpose!==context.purpose)throw new KnowledgeError('PURPOSE_MISMATCH','Candidate purpose differs from context',403);
+    if(request.profileIds?.length||request.topics?.length||request.kinds?.some(kind=>kind!=='wiki_page'))
+      throw new KnowledgeError('QUERY_FILTER_UNSUPPORTED','Candidate reader supports Wiki pages without profile or topic filters',422);
+    if(!options.store.wikiCandidates)throw new KnowledgeError('BOUNDED_WIKI_READ_UNSUPPORTED','Metadata-only Wiki retrieval is unavailable',503);
+    const epoch=await options.store.epoch(context.scope.projectId),plan=planWikiLexicalQuery(request.question,request.retrievalMethod??'wiki-lexical-v2');
+    const binding={kind:'wiki_candidates',scope:context.scope,principalId:context.principal.id,purpose:context.purpose,
+      question:request.question,limit:request.limit,methodVersion:plan.methodVersion};
+    const offset=cursorOffset(request.cursor,binding,epoch);
+    const rows=await options.store.wikiCandidates(context.scope.projectId,{spaceId:context.scope.spaceId,
+      lexical:plan,limit:request.limit+1,offset});
+    if(await options.store.epoch(context.scope.projectId)!==epoch)throw new KnowledgeError('READSET_CHANGED','Knowledge changed during candidate lookup',409);
+    const items=rows.slice(0,request.limit),hasMore=rows.length>request.limit;
+    return {data:{items},coverage:pageCoverage(context.scope,epoch,items.length,hasMore,
+      hasMore?nextCursor(binding,epoch,offset+items.length):null,['Candidate metadata does not establish a content read'])};
+  }
+  async function readCandidate(context:ReadContext,candidate:WikiCandidate,maxBytes:number):Promise<BoundedWikiPage>{
+    assertContext(context);
+    if(!options.store.getBounded||!options.store.inspectFrozen)throw new KnowledgeError('BOUNDED_WIKI_READ_UNSUPPORTED','Bounded Wiki content reader is unavailable',503);
+    if(!Number.isSafeInteger(maxBytes)||maxBytes<0||maxBytes>10_000_000)throw new KnowledgeError('READ_BUDGET_INVALID','Bounded content byte limit is invalid',422);
+    const metadata=await options.store.inspectFrozen(context.scope.projectId,candidate.ref);
+    if(!metadata||metadata.spaceId!==context.scope.spaceId||metadata.kind!=='wiki_page'||!metadata.published)
+      throw new KnowledgeError('NOT_FOUND','Candidate is not visible in this space',404);
+    if(metadata.storageDigest!==candidate.storageDigest||metadata.payloadBytes!==candidate.payloadBytes)
+      throw new KnowledgeError('READSET_CHANGED','Candidate metadata changed before bounded read',409);
+    const review=metadata.review;
+    if(!metadata.current||!metadata.validity.valid||review?.purpose!==context.purpose||
+      !(review.decision==='approved_for_purpose'||review.decision==='exploration_only'&&context.purpose==='exploration_reading'))
+      throw new KnowledgeError('CANDIDATE_NOT_ADMITTED','Candidate is not current and reviewed for this purpose',403);
+    await authorizeCriticalSources(context,metadata);
+    if(candidate.payloadBytes>maxBytes)throw new KnowledgeError('KNOWLEDGE_READ_BUDGET_EXCEEDED','Wiki payload exceeds the remaining content budget',422);
+    const found=await options.store.getBounded(context.scope.projectId,candidate.ref,maxBytes);
+    if(!found||found.view.revision.kind!=='wiki_page'||!found.view.published||spaceOf(found.view)!==context.scope.spaceId)
+      throw new KnowledgeError('NOT_FOUND','Candidate Wiki version is unavailable in this space',404);
+    if(found.storageDigest!==candidate.storageDigest||found.payloadBytes!==candidate.payloadBytes)
+      throw new KnowledgeError('READSET_CHANGED','Candidate storage fingerprint changed before content read',409);
+    const {view}=found,revision=view.revision;
+    if(revision.kind!=='wiki_page')throw new KnowledgeError('NOT_FOUND','Bounded candidate is not a Wiki page',404);
+    const content=revision.content,policy=evaluateKnowledgeRevision(view,context.purpose);
+    // Source references are navigation metadata until a bounded owner read succeeds.
+    const citations:KnowledgeCitation[]=content.citations.map(citation=>{
+      if(citation.kind==='media')return {ref:fromVersionRef(citation.anchor.sourceRef,context.scope,'evidence',null),locator:`record:${JSON.stringify(citation.anchor)}`,supports:citation.supports};
+      const domains=[...new Set(revision.dependencies.filter(dep=>dep.ref.objectId===citation.sourceRef.objectId&&dep.ref.versionId===citation.sourceRef.versionId&&dep.domain!=='knowledge').map(dep=>dep.domain))];
+      const domain=citation.sourceDomain??(domains.length===1&&['source','analysis','evidence'].includes(domains[0])?domains[0] as 'source'|'analysis'|'evidence':'source');
+      return {ref:fromVersionRef(citation.sourceRef,context.scope,domain,null),locator:citation.locator,supports:citation.supports};
+    });
+    return {ref:refOf(context,view),title:revision.title,body:revision.body,conditions:content.conditions,counterexamples:content.counterexamples,
+      unknowns:content.unknowns,citations,sourceGroups:revision.sourceGroups,storageDigest:found.storageDigest,payloadBytes:found.payloadBytes,admitted:policy.admitted,frozenRevision:revision};
+  }
+  async function readWikiExactBounded(context:ReadContext,ref:KnowledgeRef,maxBytes:number):Promise<BoundedWikiPage>{
+    assertContext(context);assertRef(context,ref);
+    if(!ref.contentDigest||!options.store.inspectFrozen)throw new KnowledgeError('EXACT_DIGEST_REQUIRED','Exact bounded Wiki requires its canonical digest',422);
+    const state=await options.store.inspectFrozen(context.scope.projectId,version(ref));
+    if(!state||state.spaceId!==context.scope.spaceId||state.kind!=='wiki_page')throw new KnowledgeError('NOT_FOUND','Wiki metadata is unavailable',404);
+    const page=await readCandidate(context,{ref:{objectId:ref.objectId,versionId:ref.versionId},title:'',payloadBytes:state.payloadBytes,storageDigest:state.storageDigest},maxBytes);
+    if(page.ref.contentDigest!==ref.contentDigest)throw new KnowledgeError('EXACT_REF_MISMATCH','Frozen Wiki digest differs from requested version',409);
+    return page;
+  }
+  async function validateFrozenWiki(context:ReadContext,ref:KnowledgeRef,storageDigest:string){
+    assertContext(context);assertRef(context,ref);
+    if(!options.store.inspectFrozen||!/^[0-9a-f]{64}$/.test(storageDigest))throw new KnowledgeError('BOUNDED_WIKI_READ_UNSUPPORTED','Frozen Wiki metadata verifier is unavailable',503);
+    const state=await options.store.inspectFrozen(context.scope.projectId,version(ref));
+    const review=state?.review;
+    if(!state||state.storageDigest!==storageDigest||state.spaceId!==context.scope.spaceId||state.kind!=='wiki_page'||
+      !state.published||!state.current||!state.validity.valid||review?.purpose!==context.purpose||
+      !(review.decision==='approved_for_purpose'||review.decision==='exploration_only'&&context.purpose==='exploration_reading'))
+      throw new KnowledgeError('ASK_READSET_INVALIDATED','Frozen Wiki input is no longer current, unchanged and admitted',409);
+    await authorizeCriticalSources(context,state);
+  }
+  async function validateHistoricalWiki(context:ReadContext,ref:KnowledgeRef,storageDigest:string){
+    assertContext(context);assertRef(context,ref);
+    if(!options.store.inspectFrozen||!/^[0-9a-f]{64}$/.test(storageDigest))throw new KnowledgeError('BOUNDED_WIKI_READ_UNSUPPORTED','Historical Wiki verifier is unavailable',503);
+    const state=await options.store.inspectFrozen(context.scope.projectId,version(ref)),review=state?.review;
+    if(!state||state.storageDigest!==storageDigest||state.spaceId!==context.scope.spaceId||state.kind!=='wiki_page'||!state.published||review?.purpose!==context.purpose||
+      !(review.decision==='approved_for_purpose'||review.decision==='exploration_only'&&context.purpose==='exploration_reading'))
+      throw new KnowledgeError('HISTORICAL_WIKI_READ_FORBIDDEN','Historical Wiki version is not intact and reviewed for this purpose',403);
+    // Historical visibility retains source authorization; it does not grant current adoption.
+    await authorizeCriticalSources(context,state);
+  }
+  async function authorizeCriticalSources(context:ReadContext,state:{criticalSources?:Array<{domain:'source'|'analysis'|'evidence';ref:Pick<KnowledgeRef,'objectId'|'versionId'>}>;criticalSourcesComplete?:boolean}){
+    if(state.criticalSourcesComplete!==true||!state.criticalSources)
+      throw new KnowledgeError('ASK_READSET_INVALIDATED','Critical source authorization coverage cannot be established',409);
+    for(const dependency of state.criticalSources){
+      const record=await sourceRecord(context,fromVersionRef(dependency.ref,context.scope,dependency.domain,null));
+      if(!record.readability.metadataVisible||!record.readability.contentReadable)
+        throw new KnowledgeError('ASK_READSET_INVALIDATED','A critical source is not currently readable for this purpose',409);
+    }
+  }
+  async function assertReadEpoch(context:ReadContext,expected:number|null){
+    assertContext(context);
+    if(expected===null||!Number.isSafeInteger(expected)||await options.store.epoch(context.scope.projectId)!==expected)
+      throw new KnowledgeError('READSET_CHANGED','Knowledge or source rights changed before provider dispatch',409);
   }
   async function catalog(context:ReadContext,request:CatalogRequest){
     assertContext(context);if(request.profileIds?.length)throw new KnowledgeError('CATALOG_FILTER_UNSUPPORTED','Profile filtering is not supported by the current bounded catalog',422);if(request.purpose!==context.purpose)throw new KnowledgeError('PURPOSE_MISMATCH','Purpose mismatch',403);
@@ -254,7 +354,25 @@ export function createKnowledgeApplication(options:KnowledgeApplicationOptions){
     if(!options.sources)throw new KnowledgeError('SOURCE_READER_UNAVAILABLE','No authenticated source-owner reader is configured',503);
     const content=await options.sources.readContent(context.scope,ref,anchor,context);if(!content)throw new KnowledgeError('NOT_FOUND','Exact source content unavailable',404);assertOwnerRef(ref,content.ref);assertOwnerRef(content.ref,content.actualCoverage.sourceRef);
     if(content.ref.contentDigest!==content.contentDigest)throw new KnowledgeError('SOURCE_DIGEST_MISMATCH','Source content digest differs from its exact reference',409);return content;}
-  return {query,catalog,exact,history,compare,graph,readReceipt,sourceRecord,sourceContent,policyVersion};
+  async function sourceContentBounded(context:ReadContext,ref:KnowledgeRef,anchor:unknown,maxBytes:number){
+    assertContext(context);assertRef(context,ref,ref.domain);
+    if(ref.domain==='knowledge')throw new KnowledgeError('SOURCE_DOMAIN_UNSUPPORTED','Use bounded Wiki read for this domain',422);
+    if(!Number.isSafeInteger(maxBytes)||maxBytes<0||maxBytes>1_000_000)throw new KnowledgeError('READ_BUDGET_INVALID','Bounded source byte limit is invalid',422);
+    if(!options.sources?.readContentBounded)throw new KnowledgeError('BOUNDED_SOURCE_READ_UNSUPPORTED','Source owner does not enforce a bounded content read',503);
+    const content=await options.sources.readContentBounded(context.scope,ref,anchor,context,maxBytes);
+    if(!content)throw new KnowledgeError('NOT_FOUND','Exact source content unavailable',404);
+    assertOwnerRef(ref,content.ref);assertOwnerRef(content.ref,content.actualCoverage.sourceRef);
+    if(content.ref.contentDigest!==content.contentDigest)throw new KnowledgeError('SOURCE_DIGEST_MISMATCH','Bounded source digest differs',409);
+    if(content.media)throw new KnowledgeError('SOURCE_CONTENT_UNSUPPORTED','The bounded answer input currently supports text sources only',422);
+    if(content.actualCoverage.byteCount!==Buffer.byteLength(content.content,'utf8'))
+      throw new KnowledgeError('SOURCE_CONTENT_INTEGRITY','Bounded source byte receipt differs from the returned text',409);
+    if(createHash('sha256').update(content.content,'utf8').digest('hex')!==content.contentDigest)
+      throw new KnowledgeError('SOURCE_CONTENT_INTEGRITY','Bounded source text does not match its exact digest',409);
+    if(Buffer.byteLength(content.content,'utf8')>maxBytes||content.actualCoverage.byteCount>maxBytes)
+      throw new KnowledgeError('SOURCE_READ_BUDGET_EXCEEDED','Source owner exceeded the admitted content limit',422);
+    return content;
+  }
+  return {query,queryCandidates,readCandidate,readWikiExactBounded,validateFrozenWiki,validateHistoricalWiki,assertReadEpoch,catalog,exact,history,compare,graph,readReceipt,sourceRecord,sourceContent,sourceContentBounded,policyVersion};
 }
 export type KnowledgeApplication=ReturnType<typeof createKnowledgeApplication>;
 export * from './sources.ts';
@@ -263,3 +381,12 @@ export * from './uses.ts';
 export * from './reviews.ts';
 export * from './feedback-source.ts';
 export * from './status-policy.ts';
+export * from './ask.ts';
+export * from './source-intake.ts';
+export * from './wiki-compile.ts';
+export * from './maintenance.ts';
+export * from './relation-judgment.ts';
+export * from './decision-codecs.ts';
+export * from './source-plan.ts';
+export * from './coordination.ts';
+export * from './coordination-port.ts';

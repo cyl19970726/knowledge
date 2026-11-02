@@ -295,6 +295,8 @@ export function createKnowledgeService(options: KnowledgeServiceOptions) {
     const sourceRecords: RegisteredSource[] = [];
     for(const citation of citationsOf(rev)) {
       if(citation.kind==='source') {
+        if(citation.sourceDomain&&citation.sourceDomain!=='source')
+          throw new KnowledgeError('EXTERNAL_SOURCE_ASSURANCE_REQUIRED','External source citations need an explicit owner admission and publication assurance adapter',422);
         const record=await source(rev.projectId,citation.sourceRef); sourceRecords.push(record); groups.add(record.sourceGroup);
         dependencies.push({domain:'source',ref:record.ref,role:rev.kind==='wiki_page'?'uses':'supports',critical:true});
       } else {

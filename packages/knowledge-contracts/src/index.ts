@@ -42,8 +42,8 @@ export const KnowledgeDocumentSchema = z.strictObject({ ref: KnowledgeRefSchema,
 export type KnowledgeDocument = z.infer<typeof KnowledgeDocumentSchema>;
 export const PageRequestSchema = z.strictObject({ limit: z.int().min(1).max(100), cursor: Cursor.optional() });
 export const CapabilityRequestSchema = z.strictObject({ clientContractVersion: Text(100).optional() });
-export const CapabilitiesSchema = z.strictObject({ permittedActions: List(Text(100), 100), purposes: List(Purpose, 100), profiles: List(ProfileRefSchema, 100), mode: z.enum(['ready','read_only']), contractVersion: z.literal(CONTRACT_VERSION), policyVersion: Text(100), limits: z.record(Text(100), Int(Number.MAX_SAFE_INTEGER)) });
-export const QueryRequestSchema = PageRequestSchema.extend({ question: Text(2000), purpose: Purpose, profileIds: List(Text(100), 20).optional(), kinds: List(Text(100), 20).optional(), topics: List(Text(100), 20).optional() });
+export const CapabilitiesSchema = z.strictObject({ permittedActions: List(Text(100), 100), purposes: List(Purpose, 100), profiles: List(ProfileRefSchema, 100), mode: z.enum(['ready','read_only']), contractVersion: z.literal(CONTRACT_VERSION), policyVersion: Text(100), limits: z.record(Text(100), Int(Number.MAX_SAFE_INTEGER)), recoveryScope: Sha256Schema.optional() });
+export const QueryRequestSchema = PageRequestSchema.extend({ question: Text(2000), purpose: Purpose, profileIds: List(Text(100), 20).optional(), kinds: List(Text(100), 20).optional(), topics: List(Text(100), 20).optional(), retrievalMethod: z.enum(['wiki-lexical-v1','wiki-lexical-v2']).optional() });
 export type QueryRequest = z.infer<typeof QueryRequestSchema>;
 export const QueryResultSchema = z.strictObject({ items: List(KnowledgeDocumentSchema, 100), originalQuestion: Text(2000), retrieval: z.strictObject({ methodVersion: Text(100), terms: List(Text(100), 100), truncated: z.boolean() }), readReceiptId: IdSchema, readsetFingerprint: Sha256Schema, pageFingerprint: Sha256Schema, emptyState: EmptyStateSchema.nullable() });
 export type QueryResult = z.infer<typeof QueryResultSchema>;
@@ -83,6 +83,8 @@ export const SourceRecordSchema = z.strictObject({ ref: KnowledgeRefSchema, head
 export type SourceRecord = z.infer<typeof SourceRecordSchema>;
 export const SourceMediaSchema = z.strictObject({ kind:z.literal('image'), mimeType:z.enum(['image/png','image/jpeg','image/webp']), base64:z.string().max(5_600_000), byteCount:Int(4_000_000), digest:Sha256Schema });
 export const SourceOwnerRequestSchema = z.strictObject({scope:ScopeSchema,ref:KnowledgeRefSchema,purpose:Purpose,subjectId:Text(200),anchor:AnchorSchema.nullable().optional()});
+/** Separate endpoint contract: old owners must not silently ignore a content limit. */
+export const BoundedSourceOwnerRequestSchema = SourceOwnerRequestSchema.extend({maxBytes:Int(1_000_000)});
 export const SourceContentSchema = z.strictObject({ ref: KnowledgeRefSchema, contentDigest: Sha256Schema, content: z.string().max(1_000_000), media:SourceMediaSchema.optional(), anchor: AnchorSchema.nullable(), actualCoverage: ReadCoverageSchema, readability: SourceReadabilitySchema });
 export const ReceiptItemSchema = z.strictObject({ ref: KnowledgeRefSchema, revisionDigest: Sha256Schema, statusAtRead: KnowledgeStatusSchema, sourceGroups: List(SourceGroupSchema,100), title: Text(500), summary: z.string().max(2000) });
 export const ReadReceiptSchema = z.strictObject({ id: IdSchema, requestDigest: Sha256Schema, request: z.discriminatedUnion('kind',[z.strictObject({kind:z.literal('query'),payload:QueryRequestSchema}),z.strictObject({kind:z.literal('catalog'),payload:CatalogRequestSchema}),z.strictObject({kind:z.literal('exact'),payload:ExactReadSchema}),z.strictObject({kind:z.literal('history'),payload:HistoryRequestSchema})]), orderedItems: List(ReceiptItemSchema,100), readsetFingerprint: Sha256Schema, pageFingerprint: Sha256Schema, coverage: CoverageSchema, purpose: Purpose, policyVersion: Text(100), effectiveScope: ScopeSchema, principalId: Text(200), clientInstallationId: Text(200), actualReads: List(ReadCoverageSchema,100), createdAt: TimestampSchema, expiresAt: TimestampSchema });
@@ -90,6 +92,46 @@ export type ReadReceipt = z.infer<typeof ReadReceiptSchema>;
 const KnownUnknownNumber = z.discriminatedUnion('state',[z.strictObject({state:z.literal('known'),value:Int(Number.MAX_SAFE_INTEGER)}),z.strictObject({state:z.literal('unknown'),reason:Text(500)})]);
 export const CostSchema = z.strictObject({ modelCalls: KnownUnknownNumber, tokens: KnownUnknownNumber, money: z.discriminatedUnion('state',[z.strictObject({state:z.literal('known'),amount:z.number().finite().min(0),currency:z.string().regex(/^[A-Z]{3}$/),source:Text(200)}),z.strictObject({state:z.literal('unknown'),reason:Text(500)})]) });
 export const BudgetSchema = z.strictObject({maxModelCalls:Int(1000),maxReadBytes:Int(10_000_000),deadline:TimestampSchema,maxMoney:z.strictObject({amount:z.number().finite().min(0),currency:z.string().regex(/^[A-Z]{3}$/)}).nullable()});
+export const AskRequestSchema = z.strictObject({question:Text(2000),purpose:Purpose,limit:z.int().min(1).max(20),maxPages:z.int().min(1).max(5),includeSourceContent:z.boolean(),selectedRefs:List(KnowledgeRefSchema,5).optional(),budget:BudgetSchema}).superRefine((request,ctx)=>{
+ const refs=request.selectedRefs??[];
+ if(refs.some(ref=>ref.domain!=='knowledge'||ref.contentDigest===null))ctx.addIssue({code:'custom',path:['selectedRefs'],message:'Selected Wiki references require exact content digests'});
+ if(new Set(refs.map(ref=>`${ref.objectId}/${ref.versionId}`)).size!==refs.length)ctx.addIssue({code:'custom',path:['selectedRefs'],message:'Selected exact versions must be distinct'});
+});
+export type AskRequest = z.infer<typeof AskRequestSchema>;
+export const AskClaimSchema = z.strictObject({text:Text(5000),evidenceIds:z.array(Text(100)).min(1).max(20)}).superRefine((claim,ctx)=>{
+  if(new Set(claim.evidenceIds).size!==claim.evidenceIds.length)
+    ctx.addIssue({code:'custom',path:['evidenceIds'],message:'Claim evidence IDs must be distinct'});
+});
+export type AskClaim = z.infer<typeof AskClaimSchema>;
+export const AskEvidenceReceiptSchema = z.strictObject({id:Text(100),kind:z.enum(['wiki_page','source_content']),ref:KnowledgeRefSchema,title:Text(500),locator:Text(2000).nullable(),conditions:List(Text(1000),100),counterexamples:List(Text(1000),100),unknowns:List(Text(1000),100),actualReadCoverage:List(ReadCoverageSchema,100),storageDigest:Sha256Schema.optional(),sourceGroups:List(SourceGroupSchema,100).optional(),wiki:z.strictObject({profile:ProfileRefSchema,identity:z.strictObject({key:Text(300),aliases:List(Text(300),100)})}).optional()});
+export type AskEvidenceReceipt = z.infer<typeof AskEvidenceReceiptSchema>;
+export const AskProviderAnswerSchema = z.strictObject({outcome:z.enum(['answered','needs_evidence','refused']),claims:List(AskClaimSchema,50),reason:Text(5000),gaps:List(Text(1000),100)}).superRefine((answer,ctx)=>{
+  if(answer.outcome==='answered'&&answer.claims.length===0)ctx.addIssue({code:'custom',path:['claims'],message:'answered requires at least one cited claim'});
+  if(answer.outcome!=='answered'&&answer.claims.length>0)ctx.addIssue({code:'custom',path:['claims'],message:'non-answered outcome cannot contain claims'});
+});
+export type AskProviderAnswer = z.infer<typeof AskProviderAnswerSchema>;
+export const AskReadUsageSchema = z.strictObject({wikiPayloadBytes:Int(10_000_000),sourceContentBytes:Int(10_000_000),preparedInputBytes:Int(11_000_000),maxReadBytes:Int(10_000_000)});
+export const AskResultSchema = z.strictObject({id:IdSchema,question:Text(2000),purpose:Purpose,state:z.enum(['reserved','running','answered','needs_evidence','refused','failed','outcome_unknown']),claims:List(AskClaimSchema,50),evidence:List(AskEvidenceReceiptSchema,100),excluded:List(z.strictObject({ref:KnowledgeRefSchema,reason:Text(1000)}),100),coverage:CoverageSchema,readsetFingerprint:Sha256Schema,cost:CostSchema,readUsage:AskReadUsageSchema.optional(),provider:z.strictObject({id:Text(100),modelRequested:Text(200),modelReturned:Text(200).nullable(),requestId:Text(200).nullable()}).nullable(),reason:Text(5000),gaps:List(Text(1000),100),createdAt:TimestampSchema,completedAt:TimestampSchema.nullable()}).superRefine((result,ctx)=>{
+  if(result.state==='answered'&&result.claims.length===0)ctx.addIssue({code:'custom',path:['claims'],message:'answered requires at least one cited claim'});
+  if(result.state!=='answered'&&result.claims.length>0)ctx.addIssue({code:'custom',path:['claims'],message:'non-answered state cannot contain claims'});
+  const evidenceIds=new Set<string>();
+  for(const [index,item] of result.evidence.entries()){
+    if(evidenceIds.has(item.id))ctx.addIssue({code:'custom',path:['evidence',index,'id'],message:'Evidence IDs must be distinct'});
+    evidenceIds.add(item.id);
+    if(item.kind==='wiki_page'&&item.ref.domain!=='knowledge'||item.kind==='source_content'&&item.ref.domain==='knowledge')
+      ctx.addIssue({code:'custom',path:['evidence',index,'ref','domain'],message:'Evidence kind and reference domain disagree'});
+    if(item.ref.contentDigest===null)
+      ctx.addIssue({code:'custom',path:['evidence',index,'ref','contentDigest'],message:'Evidence requires an exact content digest'});
+  }
+  for(const [claimIndex,claim] of result.claims.entries())for(const [refIndex,id] of claim.evidenceIds.entries())
+    if(!evidenceIds.has(id))ctx.addIssue({code:'custom',path:['claims',claimIndex,'evidenceIds',refIndex],message:'Claim cites evidence outside the result readset'});
+});
+export type AskResult = z.infer<typeof AskResultSchema>;
+export const AskLookupResultSchema = z.strictObject({state:z.enum(['committed','unknown']),answer:AskResultSchema.nullable()}).superRefine((result,ctx)=>{
+  if((result.state==='committed')!==(result.answer!==null))
+    ctx.addIssue({code:'custom',path:['answer'],message:'Only a committed lookup may carry an answer operation'});
+});
+export type AskLookupResult = z.infer<typeof AskLookupResultSchema>;
 export const ResearchRequestSchema = z.strictObject({question:Text(2000),purpose:Purpose,sourceRefs:List(KnowledgeRefSchema,100),knowledgeRefs:List(KnowledgeRefSchema,100),readReceiptId:IdSchema.optional(),baseHeads:List(z.strictObject({objectId:IdSchema,versionId:IdSchema.nullable()}),100),budget:BudgetSchema,allowExternalAcquisition:z.literal(false),feedbackIds:List(IdSchema,100).optional()});
 export const ExecutionStateSchema = z.enum(['queued','running','waiting_for_source','waiting_for_review','cancel_requested','succeeded','failed','cancelled','outcome_unknown']);
 export const OperationSchema = z.strictObject({id:IdSchema,researchId:IdSchema.optional(),state:ExecutionStateSchema,inputDigest:Sha256Schema,commitStatus:CommitStatusSchema,statusUrl:Text(2000),attemptId:IdSchema.nullable(),reason:Text(1000).nullable(),cost:CostSchema});
@@ -106,9 +148,10 @@ export const CandidateReceiptSchema = z.strictObject({candidateId:IdSchema,chang
 /** A bounded review projection of an immutable staged change set, never a second candidate store. */
 export const CandidateViewSchema = z.strictObject({candidateId:IdSchema,contentHash:Sha256Schema,purpose:Purpose,
   proposer:Text(200),rationale:Text(5000),createdAt:TimestampSchema,
-  state:z.enum(['waiting_for_review','cancelled','published','rejected','outcome_unknown']),
+  state:z.enum(['waiting_for_review','cancelled','published','rejected','outcome_unknown']),reviewable:z.boolean().optional(),reviewIssues:List(Text(1000),100).optional(),canRequestReview:z.boolean().optional(),canDecideReview:z.boolean().optional(),reviewTicketId:IdSchema.nullable().optional(),
   exactReadset:List(KnowledgeRefSchema,100),changes:List(z.strictObject({ref:KnowledgeRefSchema,
-    title:Text(500),body:z.string().max(100_000),profile:ProfileRefSchema,
+    title:Text(500),body:z.string().max(100_000),profile:ProfileRefSchema,effect:Text(100).optional(),
+    before:z.strictObject({ref:KnowledgeRefSchema,title:Text(500),body:z.string().max(100_000),conditions:List(Text(12000),50),counterexamples:List(Text(12000),50),unknowns:List(Text(12000),50)}).nullable().optional(),
     conditions:List(Text(1000),100),counterexamples:List(Text(1000),100),unknowns:List(Text(1000),100),
     nextQuestions:List(Text(1000),100),sourceGroups:List(SourceGroupSchema,100)}),100)});
 export const ReviewTargetSchema = z.discriminatedUnion('kind',[z.strictObject({kind:z.literal('candidate'),candidateId:IdSchema,contentHash:Sha256Schema}),z.strictObject({kind:z.literal('research_result'),researchId:IdSchema,resultDigest:Sha256Schema})]);
@@ -155,3 +198,114 @@ export type SourceRevoke=z.infer<typeof SourceRevokeSchema>;
 
 export type ReadCoverage=z.infer<typeof ReadCoverageSchema>;
 export type LookupResult=z.infer<typeof LookupResultSchema>;
+
+/** Source intake preserves the owner's exact identity. It confers no publication authority. */
+export const ExactSourceRefSchema = KnowledgeRefSchema.extend({domain:z.enum(['source','analysis','evidence']),contentDigest:Sha256Schema});
+export const SourceEventRequestSchema = z.strictObject({adapterId:Text(100),eventKey:Text(200),producerSequence:Int(Number.MAX_SAFE_INTEGER),
+  occurredAt:TimestampSchema,purpose:Purpose,sourceRef:ExactSourceRefSchema});
+export type SourceEventRequest = z.infer<typeof SourceEventRequestSchema>;
+export const SourceEventRecordSchema = z.strictObject({id:IdSchema,request:SourceEventRequestSchema,inputDigest:Sha256Schema,
+  source:SourceRecordSchema,registeredAt:TimestampSchema,assurance:z.literal('read_time_only'),state:z.literal('registered')});
+export type SourceEventRecord = z.infer<typeof SourceEventRecordSchema>;
+/** Offsets are UTF-8 bytes in the exact source text, never character indices or inferred identities. */
+export const EntityMentionProposalSchema = z.strictObject({entityType:Text(100),surface:z.string().min(1).max(1000),
+  startByte:Int(1_000_000),endByte:Int(1_000_000)});
+export const EntityMentionExtractionSchema = z.strictObject({methodVersion:Text(200),mentions:List(EntityMentionProposalSchema,100)});
+export type EntityMentionExtraction = z.infer<typeof EntityMentionExtractionSchema>;
+export const EntityMentionRecordSchema = EntityMentionProposalSchema.extend({id:IdSchema,sourceRef:ExactSourceRefSchema,
+  resolution:z.literal('unresolved')});
+export const EntityMentionBatchSchema = z.strictObject({id:IdSchema,sourceEventId:IdSchema,methodVersion:Text(200),inputDigest:Sha256Schema,
+  sourceRef:ExactSourceRefSchema,sourceGroups:List(SourceGroupSchema,100),mentions:List(EntityMentionRecordSchema,100),
+  actualReadCoverage:ReadCoverageSchema,semanticCoverage:z.literal('unknown'),provenance:z.literal('caller_proposed'),recordedAt:TimestampSchema});
+export type EntityMentionBatch = z.infer<typeof EntityMentionBatchSchema>;
+
+export const SourceEventLookupSchema = z.discriminatedUnion('state',[z.strictObject({state:z.literal('known'),event:SourceEventRecordSchema}),z.strictObject({state:z.literal('unknown'),event:z.null()})]);
+
+export const WikiCompileRequestSchema = z.strictObject({question:Text(2000),purpose:Purpose,sourceEventIds:z.array(IdSchema).min(1).max(20),
+  queries:z.array(Text(500)).min(1).max(5),judgmentIds:List(IdSchema,3).optional(),limit:z.int().min(1).max(20),maxPages:z.int().min(1).max(5),budget:BudgetSchema});
+export type WikiCompileRequest = z.infer<typeof WikiCompileRequestSchema>;
+export const WikiDraftChangeSchema = z.strictObject({targetEvidenceId:Text(100).nullable(),profile:ProfileRefSchema,identityKey:Text(300),
+  title:Text(500),summary:Text(12000),conditions:List(Text(1000),50),counterexamples:List(Text(1000),50),unknowns:List(Text(1000),50),
+  nextQuestions:List(Text(1000),50),supportEvidenceIds:z.array(Text(100)).min(1).max(50),rationale:Text(3000)});
+export type WikiDraftChange = z.infer<typeof WikiDraftChangeSchema>;
+export const WikiCompileProposalSchema = z.strictObject({outcome:z.enum(['proposed','no_change','needs_evidence','refused']),drafts:List(WikiDraftChangeSchema,5),reason:Text(5000),gaps:List(Text(1000),100)}).superRefine((value,ctx)=>{
+  if((value.outcome==='proposed')!==(value.drafts.length>0))ctx.addIssue({code:'custom',path:['drafts'],message:'Only a proposed outcome has nonempty drafts'});
+});
+export type WikiCompileProposal = z.infer<typeof WikiCompileProposalSchema>;
+export const WikiCompileResultSchema = z.strictObject({id:IdSchema,question:Text(2000),purpose:Purpose,
+  state:z.enum(['reserved','running','draft_ready','waiting_for_review','no_change','needs_evidence','refused','failed','outcome_unknown','published','rejected']),
+  publication:PublicationSchema.nullable().optional(),reviewReceiptId:IdSchema.nullable().optional(),reviewDecision:z.enum(['approved_for_purpose','exploration_only','rejected']).optional(),
+  drafts:List(WikiDraftChangeSchema,5),candidate:CandidateReceiptSchema.nullable(),
+  stageStatus:z.enum(['not_requested','not_configured','blocked_source_assurance','staged']),stageIntent:z.strictObject({requestHash:Sha256Schema}).optional(),
+  evidence:List(AskEvidenceReceiptSchema,100),excluded:List(z.strictObject({ref:KnowledgeRefSchema,reason:Text(1000)}),100),
+  readUsage:AskReadUsageSchema,readsetFingerprint:Sha256Schema,coverage:CoverageSchema,cost:CostSchema,
+  provider:z.strictObject({id:Text(100),modelRequested:Text(200),modelReturned:Text(200).nullable(),requestId:Text(200).nullable()}).nullable(),
+  reason:Text(5000),gaps:List(Text(1000),100),createdAt:TimestampSchema,completedAt:TimestampSchema.nullable()});
+export type WikiCompileResult = z.infer<typeof WikiCompileResultSchema>;
+export const WikiCompileLookupSchema = z.discriminatedUnion('state',[z.strictObject({state:z.literal('known'),compilation:WikiCompileResultSchema}),z.strictObject({state:z.literal('unknown'),compilation:z.null()})]);
+
+export const MaintenanceTriggerSchema=z.strictObject({stream:z.enum(['source_intake','knowledge','manual','periodic']),eventKey:Text(300),sequence:Int(Number.MAX_SAFE_INTEGER),ref:KnowledgeRefSchema.nullable(),sourceEventId:IdSchema.nullable()});
+export const MaintenanceTaskRequestSchema=z.strictObject({kind:z.enum(['source_research','recompile','lint_page','relation_check']),subjectRef:KnowledgeRefSchema.nullable(),sourceEventIds:List(IdSchema,20),relatedRefs:List(KnowledgeRefSchema,50),reason:Text(3000),methodVersion:Text(100),rubricVersion:Text(100)});
+export type MaintenanceTaskRequest=z.infer<typeof MaintenanceTaskRequestSchema>;
+export type MaintenanceTrigger=z.infer<typeof MaintenanceTriggerSchema>;
+export const MaintenanceOutcomeSchema=z.strictObject({state:z.enum(['completed','no_change','needs_evidence','waiting_for_review','failed','outcome_unknown','cancelled','superseded']),findingIds:List(IdSchema,100),compilationId:IdSchema.nullable(),judgmentId:IdSchema.nullable(),reason:Text(5000),cost:CostSchema});
+export type MaintenanceOutcome=z.infer<typeof MaintenanceOutcomeSchema>;
+export const MaintenanceTaskSchema=z.strictObject({id:IdSchema,request:MaintenanceTaskRequestSchema,trigger:MaintenanceTriggerSchema,inputDigest:Sha256Schema,
+ state:z.enum(['queued','running','completed','no_change','needs_evidence','waiting_for_review','failed','outcome_unknown','cancelled','superseded']),attempts:Int(100),attemptId:IdSchema.nullable(),leaseToken:Int(Number.MAX_SAFE_INTEGER),cancelRequested:z.boolean(),dispatchState:z.enum(['not_dispatched','dispatch_prepared','response_recorded']),outcome:MaintenanceOutcomeSchema.nullable(),createdAt:TimestampSchema,updatedAt:TimestampSchema});
+export type MaintenanceTask=z.infer<typeof MaintenanceTaskSchema>;
+export const MaintenanceTaskPageSchema=z.strictObject({items:List(MaintenanceTaskSchema,100),hasMore:z.boolean(),nextCursor:Cursor.nullable()});
+export const MaintenanceFindingSchema=z.strictObject({id:IdSchema,taskId:IdSchema.nullable(),kind:z.enum(['review_due','broken_link','orphan','invalid_critical_basis','missing_citation','duplicate_source_group','suspected_duplicate','semantic_relation','source_unavailable']),subjectRef:KnowledgeRefSchema,relatedRefs:List(KnowledgeRefSchema,50),reason:Text(3000),methodVersion:Text(100),status:z.enum(['open','superseded','resolved']),createdAt:TimestampSchema});
+export type MaintenanceFinding=z.infer<typeof MaintenanceFindingSchema>;
+export const LintPassRequestSchema=z.strictObject({cycleKey:Text(200),shard:z.int().min(0).max(255),shardCount:z.int().min(1).max(256),limit:z.int().min(1).max(100),methodVersion:Text(100)}).superRefine((v,ctx)=>{if(v.shard>=v.shardCount)ctx.addIssue({code:'custom',path:['shard'],message:'Shard must be below shardCount'});});
+export type LintPassRequest=z.infer<typeof LintPassRequestSchema>;
+export const LintPassSchema=z.strictObject({id:IdSchema,request:LintPassRequestSchema,scanned:Int(1_000_000),lastObjectId:IdSchema.nullable(),complete:z.boolean(),findingIds:List(IdSchema,1000),findingCount:Int(Number.MAX_SAFE_INTEGER).optional(),startEpoch:Int(Number.MAX_SAFE_INTEGER),observedEpoch:Int(Number.MAX_SAFE_INTEGER),consistency:z.literal('incremental_current_heads'),omittedReasons:List(Text(1000),100),updatedAt:TimestampSchema});
+export type LintPass=z.infer<typeof LintPassSchema>;
+export const DecisionQuestionSchema=z.discriminatedUnion('type',[
+ z.strictObject({id:Text(100),type:z.literal('predicate'),instructions:Text(5000),yes:Text(2000).optional(),no:Text(2000).optional()}),
+ z.strictObject({id:Text(100),type:z.literal('choice'),instructions:Text(5000),options:z.array(z.strictObject({value:Text(100),description:Text(2000)})).min(2).max(30)}),
+ z.strictObject({id:Text(100),type:z.literal('score'),instructions:Text(5000),levels:z.array(z.strictObject({value:z.number().finite(),description:Text(2000)})).min(2).max(30)})]);
+export type DecisionQuestion=z.infer<typeof DecisionQuestionSchema>;
+export const DecisionAnswerSchema=z.strictObject({id:Text(100),type:z.enum(['predicate','choice','score']),state:z.enum(['answered','refused','insufficient_evidence','not_evaluated','provider_error']),value:z.union([z.string(),z.number().finite(),z.null()]),probability:z.number().min(0).max(1).nullable(),distribution:z.record(z.string(),z.number().min(0).max(1)).nullable(),confidence:z.number().min(0).max(1).nullable(),reason:Text(1000).nullable()});
+export type DecisionAnswer=z.infer<typeof DecisionAnswerSchema>;
+export const DecisionBatchResultSchema=z.strictObject({modelReturned:Text(200),answers:List(DecisionAnswerSchema,100),inputTokens:Int(Number.MAX_SAFE_INTEGER).nullable(),outputTokens:Int(Number.MAX_SAFE_INTEGER).nullable(),requestId:Text(200).nullable(),raw:z.json()});
+export type DecisionBatchResult=z.infer<typeof DecisionBatchResultSchema>;
+
+export const RelationJudgmentRequestSchema=z.strictObject({left:KnowledgeRefSchema,right:KnowledgeRefSchema,purpose:Purpose,rubricVersion:Text(100),questions:z.array(DecisionQuestionSchema).min(1).max(100),budget:BudgetSchema});
+export type RelationJudgmentRequest=z.infer<typeof RelationJudgmentRequestSchema>;
+export const RelationJudgmentSchema=z.strictObject({id:IdSchema,request:RelationJudgmentRequestSchema,state:z.enum(['reserved','running','answered','needs_evidence','refused','failed','outcome_unknown']),
+ evidence:List(AskEvidenceReceiptSchema,2),readUsage:AskReadUsageSchema,inputFingerprint:Sha256Schema,batch:DecisionBatchResultSchema.nullable(),cost:CostSchema,
+ provider:z.strictObject({id:Text(100),version:Text(100),modelRequested:Text(200),modelReturned:Text(200).nullable()}).nullable(),
+ sourceRelation:z.enum(['same_original','declared_distinct_groups','unknown']),resolution:z.enum(['review','needs_evidence','not_related','unknown']),reason:Text(5000),createdAt:TimestampSchema,completedAt:TimestampSchema.nullable()});
+export type RelationJudgment=z.infer<typeof RelationJudgmentSchema>;
+export const RelationJudgmentLookupSchema=z.discriminatedUnion('state',[z.strictObject({state:z.literal('known'),judgment:RelationJudgmentSchema}),z.strictObject({state:z.literal('unknown'),judgment:z.null()})]);
+export const MaintenanceCollectRequestSchema=z.strictObject({purpose:Purpose,methodVersion:Text(100),rubricVersion:Text(100),limit:z.int().min(1).max(500)});
+export const MaintenanceCollectResultSchema=z.strictObject({taskIds:List(IdSchema,2000),sourceThrough:Int(Number.MAX_SAFE_INTEGER),knowledgeThrough:Int(Number.MAX_SAFE_INTEGER),hasMore:z.boolean(),skipped:Int(100000),createdCount:Int(Number.MAX_SAFE_INTEGER).optional(),omittedReasons:List(Text(1000),100).optional()});
+export const MaintenanceFindingPageSchema=z.strictObject({items:List(MaintenanceFindingSchema,100),hasMore:z.boolean(),nextCursor:Cursor.nullable()});
+export const LintRequestSchema=LintPassRequestSchema.safeExtend({purpose:Purpose});
+
+export const SearchProjectionStatusSchema=z.strictObject({formatVersion:z.literal('wiki-bigram-v1'),ready:z.boolean(),complete:z.boolean(),lastObjectId:Text(200).nullable(),scanned:Int(Number.MAX_SAFE_INTEGER),blockedRows:Int(Number.MAX_SAFE_INTEGER),updatedAt:TimestampSchema});
+export type SearchProjectionStatus=z.infer<typeof SearchProjectionStatusSchema>;
+export const SearchProjectionBuildRequestSchema=z.strictObject({purpose:Purpose,limit:z.int().min(1).max(5000),restart:z.boolean()});
+
+/** Planning emits research questions and exact proposed spans, never published knowledge. */
+export const SourcePlanRequestSchema=z.strictObject({sourceEventId:IdSchema,purpose:Purpose,methodVersion:Text(100),budget:BudgetSchema});
+export type SourcePlanRequest=z.infer<typeof SourcePlanRequestSchema>;
+export const SourcePlanProposalSchema=z.strictObject({outcome:z.enum(['planned','needs_evidence','refused']),question:Text(2000).nullable(),queries:List(Text(500),5),mentions:List(EntityMentionProposalSchema,100),reason:Text(5000),gaps:List(Text(1000),100)}).superRefine((value,ctx)=>{
+ if(value.outcome==='planned'&&(!value.question||!value.queries.length))ctx.addIssue({code:'custom',message:'Planned research needs a question and queries'});
+ if(value.outcome!=='planned'&&(value.question!==null||value.queries.length||value.mentions.length))ctx.addIssue({code:'custom',message:'Non-planned outcomes cannot contain a research proposal'});
+ if(new Set(value.queries).size!==value.queries.length)ctx.addIssue({code:'custom',message:'Research queries must be distinct'});
+});
+export type SourcePlanProposal=z.infer<typeof SourcePlanProposalSchema>;
+export const SourcePlanResultSchema=z.strictObject({id:IdSchema,request:SourcePlanRequestSchema,state:z.enum(['reserved','running','planned','needs_evidence','refused','failed','outcome_unknown']),evidence:List(AskEvidenceReceiptSchema,1),proposal:SourcePlanProposalSchema.nullable(),provenance:z.literal('model_proposed'),readUsage:AskReadUsageSchema,inputFingerprint:Sha256Schema,cost:CostSchema,provider:z.strictObject({id:Text(100),version:Text(100),modelRequested:Text(200),modelReturned:Text(200).nullable(),requestId:Text(200).nullable()}).nullable(),raw:z.json().nullable(),reason:Text(5000),createdAt:TimestampSchema,completedAt:TimestampSchema.nullable()});
+export type SourcePlanResult=z.infer<typeof SourcePlanResultSchema>;
+export const SourcePlanLookupSchema=z.discriminatedUnion('state',[z.strictObject({state:z.literal('known'),plan:SourcePlanResultSchema}),z.strictObject({state:z.literal('unknown'),plan:z.null()})]);
+
+export const CoordinationStepSchema=z.strictObject({kind:z.enum(['planning','discovery','judgment','compilation']),key:Text(200),request:z.json(),resultId:IdSchema.nullable(),state:z.enum(['planned','running','known','failed','outcome_unknown']),cost:CostSchema,readBytes:Int(10_000_000)});
+export type CoordinationStep=z.infer<typeof CoordinationStepSchema>;
+export const CoordinationRequestSchema=z.strictObject({taskId:IdSchema,taskInputDigest:Sha256Schema,purpose:Purpose,policyVersion:Text(100),sourceEventId:IdSchema.nullable(),budget:BudgetSchema});
+export type CoordinationRequest=z.infer<typeof CoordinationRequestSchema>;
+export const CoordinationRunSchema=z.strictObject({id:IdSchema,request:CoordinationRequestSchema,state:z.enum(['reserved','running','waiting_for_review','no_change','needs_evidence','refused','failed','outcome_unknown','completed','cancelled']),sourcePlanId:IdSchema.nullable(),compilationOutcome:z.enum(['published','rejected']).optional(),candidateRefs:List(KnowledgeRefSchema,5),discovery:z.strictObject({epoch:Int(Number.MAX_SAFE_INTEGER).nullable(),evidence:List(AskEvidenceReceiptSchema,5),hasMore:z.boolean()}).nullable().optional(),readAccounting:z.literal('acknowledged_steps').optional(),judgmentIds:List(IdSchema,3),compilationId:IdSchema.nullable(),steps:List(CoordinationStepSchema,8),cost:CostSchema,readBytes:Int(10_000_000),reason:Text(5000),gaps:List(Text(1000),100),createdAt:TimestampSchema,completedAt:TimestampSchema.nullable()});
+export type CoordinationRun=z.infer<typeof CoordinationRunSchema>;
+
+export type Budget=z.infer<typeof BudgetSchema>;
+export type Cost=z.infer<typeof CostSchema>;

@@ -67,7 +67,7 @@ export function wikiPageFrozenDependencies(input:{content:WikiPageContent;depend
   // Citation location establishes an exact critical read, not the argument's stance.
   // The selected basis dependency alone records whether that material supports or challenges.
   const cited:Dependency[]=input.content.citations.map(citation=>citation.kind==='source'
-    ? {domain:'source',ref:citation.sourceRef,role:'uses',critical:true}
+    ? {domain:citation.sourceDomain??'source',ref:citation.sourceRef,role:'uses',critical:true}
     : {domain:'evidence',ref:citation.anchor.sourceRef,role:'uses',critical:true});
   // Persisted JSONB drops undefined optional fields; hash the same JSON values.
   const selected=JSON.parse(JSON.stringify(input.dependencies)) as Dependency[];

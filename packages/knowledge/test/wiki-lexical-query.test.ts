@@ -24,3 +24,11 @@ test('uninformative input has zero terms, and long inputs disclose the bound',()
   assert.deepEqual(overlong.terms,['usable']);
   assert.equal(overlong.termsTruncated,true,'an oversized token is disclosed, not sent to the store or silently shortened');
 });
+
+test('v2 chooses the same bounded terms while exposing a distinct method version',()=>{
+  const question='查找 Blue Harbor 与 Ａｕｒｏｒａ';
+  const v1=planWikiLexicalQuery(question),v2=planWikiLexicalQuery(question,'wiki-lexical-v2');
+  assert.deepEqual(v2.terms,v1.terms);
+  assert.equal(v1.methodVersion,'wiki-lexical-v1');
+  assert.equal(v2.methodVersion,'wiki-lexical-v2');
+});

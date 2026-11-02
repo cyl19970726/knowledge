@@ -5,7 +5,7 @@ import { ResearchSourceProjectionSchema } from './research-source.js';
 
 export const CitationSchema = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('media'), anchor: EvidenceAnchorSchema, supports: z.string().trim().min(1) }),
-  z.strictObject({ kind: z.literal('source'), sourceRef: VersionRefSchema, locator: z.string().trim().min(1).nullable(), supports: z.string().trim().min(1) }),
+  z.strictObject({ kind: z.literal('source'), sourceRef: VersionRefSchema, sourceDomain:z.enum(['source','analysis','evidence']).optional(), locator: z.string().trim().min(1).nullable(), supports: z.string().trim().min(1) }),
 ]);
 export type Citation = z.infer<typeof CitationSchema>;
 

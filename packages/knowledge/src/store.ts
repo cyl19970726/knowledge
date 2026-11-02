@@ -3,7 +3,7 @@ import type { Pool, PoolClient } from 'pg';
 type QueryClient = Pick<PoolClient,'query'>;
 import type { VersionRef } from '../../contracts/src/index.ts';
 import { KnowledgeError } from './types.ts';
-import type { Dependency, DependencyDomain, Invalidity, KnowledgeCatalogSummary, KnowledgeChangeSet, KnowledgeEvent, KnowledgeImpactResult, KnowledgeReview, KnowledgeRevision, KnowledgeStore, Publication, RevisionView, Validity } from './types.ts';
+import type { Dependency, DependencyDomain, Invalidity, KnowledgeCatalogSummary, KnowledgeChangeSet, KnowledgeEvent, KnowledgeImpactResult, KnowledgeKind, KnowledgeReview, KnowledgeRevision, KnowledgeStore, Publication, RevisionView, Validity } from './types.ts';
 import { assertPublicationPermit, capturePublicationPermit, hasPublicationAuthorityScopes, isPublicationScopeProtected, setPublicationAuthorityScope, type PublicationScopeFacts } from './wiki-publication-authority.ts';
 import { citationsOf } from './utils.ts';
 
@@ -12,6 +12,70 @@ const refKey = (ref: VersionRef) => `${ref.objectId}:${ref.versionId}`;
 const canonical = (value: unknown): unknown => Array.isArray(value) ? value.map(canonical) :
   value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>[k,canonical(v)])) : value;
 const same = (a: unknown, b: unknown) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
+type WikiLexicalInput={methodVersion:'wiki-lexical-v1'|'wiki-lexical-v2';terms:string[]};
+function assertWikiLexical(lexical:WikiLexicalInput,kinds:readonly string[]):void{
+  if(!['wiki-lexical-v1','wiki-lexical-v2'].includes(lexical.methodVersion)||lexical.terms.length>64||
+    lexical.terms.some(term=>term.length<2||term.length>64)||!kinds.length||kinds.some(kind=>kind!=='wiki_page'))
+    throw new KnowledgeError('WIKI_LEXICAL_PLAN_INVALID','Bounded WikiPage lexical plan required',422);
+}
+/** Shared ranking expression for full search and metadata-only candidate reads. */
+function wikiLexicalJoin(methodVersion:WikiLexicalInput['methodVersion']):string{
+  const v2=methodVersion==='wiki-lexical-v2';
+  const key='position(t.term in n.identity_key)>0';
+  const alias=`EXISTS (SELECT 1 FROM jsonb_array_elements_text(n.aliases) AS a(value)
+    WHERE position(t.term in lower(normalize(a.value,NFKC)))>0)`;
+  return `CROSS JOIN LATERAL (SELECT lower(normalize(r.title,NFKC)) AS title,
+      lower(normalize(r.body,NFKC)) AS body${v2?`,
+      lower(normalize(COALESCE(r.payload->'content'->'identity'->>'key',''),NFKC)) AS identity_key,
+      CASE WHEN jsonb_typeof(r.payload->'content'->'identity'->'aliases')='array'
+        THEN r.payload->'content'->'identity'->'aliases' ELSE '[]'::jsonb END AS aliases`:''}) n
+    CROSS JOIN LATERAL (SELECT COALESCE(SUM((
+      CASE WHEN position(t.term in n.title)>0 THEN 4 ELSE 0 END+
+      CASE WHEN position(t.term in n.body)>0 THEN 1 ELSE 0 END${v2?`+
+      CASE WHEN ${key} THEN 4 WHEN ${alias} THEN 3 ELSE 0 END`:''})*LEAST(char_length(t.term),4)),0)::int AS score,
+      COALESCE(array_agg(t.term ORDER BY t.ord) FILTER (WHERE
+        position(t.term in n.title)>0 OR position(t.term in n.body)>0${v2?` OR ${key} OR ${alias}`:''}),'{}'::text[]) AS matched_terms
+      FROM unnest($3::text[]) WITH ORDINALITY AS t(term,ord)) lex`;
+}
+const revisionSpaceSql=`COALESCE(r.payload->'binding'->>'spaceId',
+  CASE WHEN r.kind=ANY(ARRAY['case','collection','comparison','pattern'])
+    THEN 'legacy:video-research' ELSE 'legacy:knowledge' END)`;
+/** The gate and both paths share one statement snapshot. Grams only prefilter;
+ * the original ranking expression below remains the authority for matches. */
+function wikiLexicalSource(method:WikiLexicalInput['methodVersion'],spaceParam:string,disabled=false){
+  const plain=`FROM ccl_knowledge_revisions r
+    JOIN ccl_knowledge_heads h ON h.project_id=r.project_id AND h.object_id=r.object_id AND h.version_id=r.version_id`;
+  if(disabled)return {prefix:'',from:plain};
+  const grams=method==='wiki-lexical-v2'?'grams_v2':'grams_v1';
+  return {prefix:`WITH projection_gate AS MATERIALIZED (
+      SELECT COALESCE((SELECT ready AND format_version='wiki-bigram-v1'
+        FROM ccl_knowledge_wiki_search_scopes WHERE project_id=$1 AND space_id=${spaceParam}::text),false)
+        AND NOT EXISTS (SELECT 1 FROM unnest($3::text[]) term WHERE char_length(term)<2) AS ready
+    ), projected_matches AS MATERIALIZED (
+      SELECT DISTINCT p.object_id,p.version_id
+      FROM projection_gate gate CROSS JOIN unnest($3::text[]) q(term)
+      CROSS JOIN LATERAL (SELECT object_id,version_id
+        FROM ccl_knowledge_wiki_search_heads p
+        WHERE p.project_id=$1 AND p.space_id=${spaceParam}::text
+          AND p.format_version='wiki-bigram-v1' AND p.indexable
+          AND p.${grams} @> ccl_wiki_search_bigrams(q.term)) p
+      WHERE gate.ready
+    ), eligible_wiki_refs AS MATERIALIZED (
+      SELECT object_id,version_id FROM projected_matches
+      UNION ALL
+      SELECT r.object_id,r.version_id ${plain}
+      WHERE r.project_id=$1 AND r.kind='wiki_page'
+        AND (${spaceParam}::text IS NULL OR ${revisionSpaceSql}=${spaceParam})
+        AND NOT (SELECT ready FROM projection_gate)
+    ) `,
+    from:`FROM eligible_wiki_refs eligible
+      JOIN ccl_knowledge_revisions r ON r.project_id=$1
+        AND r.object_id=eligible.object_id AND r.version_id=eligible.version_id
+      JOIN ccl_knowledge_heads h ON h.project_id=r.project_id AND h.object_id=r.object_id AND h.version_id=r.version_id`};
+}
+/** A storage fingerprint of PostgreSQL's JSONB text, separate from public canonical content digests. */
+const storageProjection=`octet_length(r.payload::text) AS payload_bytes,
+  encode(sha256(convert_to(r.payload::text,'UTF8')),'hex') AS storage_digest`;
 
 async function tx<T>(pool: Pool, action: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
@@ -39,7 +103,7 @@ async function publicationFacts(client: QueryClient, projectId: string, seed: Pu
   const facts = Object.fromEntries(Object.entries(seed).map(([key, values]) => [key, new Set(values)])) as Record<keyof PublicationScopeFacts, Set<string>>;
   const queue = [...revisions];
   const refs = [...exactRefs];
-  const citedSources: Array<{domain:'source'|'evidence';ref:VersionRef}> = [];
+  const citedSources: Array<{domain:'source'|'analysis'|'evidence';ref:VersionRef}> = [];
   const lookedUp = new Set<string>();
   const seen = new Set<string>();
   const add = (revision: KnowledgeRevision) => {
@@ -63,7 +127,7 @@ async function publicationFacts(client: QueryClient, projectId: string, seed: Pu
     for (const citation of citationsOf(revision)) {
       const ref = citation.kind==='source'?citation.sourceRef:citation.anchor.sourceRef;
       facts.sourceObjectIds.add(ref.objectId);
-      citedSources.push({domain:citation.kind==='source'?'source':'evidence',ref});
+      citedSources.push({domain:citation.kind==='source'?citation.sourceDomain??'source':'evidence',ref});
     }
     for (const dep of revision.dependencies) {
       if (dep.domain === 'knowledge') refs.push(dep.ref);
@@ -110,10 +174,11 @@ async function publicationFacts(client: QueryClient, projectId: string, seed: Pu
 interface ReadContext {
   at?:string;
   heads:Map<string,string|null>; invalidities:Map<string,Invalidity[]>;
-  revisions:Map<string,{payload:KnowledgeRevision;published_at:Date|null}|null>;
+  revisions:Map<string,{assessment:{reviewDueAt:string|null;dependencies:Dependency[]};published_at:Date|null}|null>;
   effects:Map<string,string|null>; reviews:Map<string,KnowledgeReview|null>;
 }
 const readContext=():ReadContext=>({heads:new Map(),invalidities:new Map(),revisions:new Map(),effects:new Map(),reviews:new Map()});
+const assessmentOf=(revision:KnowledgeRevision)=>({reviewDueAt:revision.scope.reviewDueAt,dependencies:revision.dependencies});
 async function headRow(client: QueryClient, projectId: string, objectId: string, context?:ReadContext): Promise<string | null> {
   if(context?.heads.has(objectId))return context.heads.get(objectId)!;
   const r = context?.at ? await client.query<{version_id:string}>(`SELECT version_id FROM ccl_knowledge_revisions WHERE project_id=$1 AND object_id=$2 AND published_at<=$3::timestamptz ORDER BY published_at DESC,version_id DESC LIMIT 1`,[projectId,objectId,context.at]) :
@@ -138,17 +203,21 @@ async function assess(client: QueryClient, projectId: string, deps: Dependency[]
     issues.push(...await invalidityRows(client, projectId, dep.domain, dep.ref,context));
     if (dep.domain !== 'knowledge') continue;
     let record=context?.revisions.get(refKey(dep.ref));
-    if(record===undefined){const r = await client.query<{payload:KnowledgeRevision;published_at:Date|null}>(
-      'SELECT payload,published_at FROM ccl_knowledge_revisions WHERE project_id=$1 AND object_id=$2 AND version_id=$3',
-      [projectId,dep.ref.objectId,dep.ref.versionId]);record=r.rows[0]??null;context?.revisions.set(refKey(dep.ref),record);}
+    if(record===undefined){const r = await client.query<{review_due_at:string|null;dependencies:Dependency[];published_at:Date|null}>(
+      `SELECT payload->'scope'->>'reviewDueAt' AS review_due_at,
+        payload->'dependencies' AS dependencies,published_at
+       FROM ccl_knowledge_revisions WHERE project_id=$1 AND object_id=$2 AND version_id=$3`,
+      [projectId,dep.ref.objectId,dep.ref.versionId]);
+      const row=r.rows[0];record=row?{assessment:{reviewDueAt:row.review_due_at,dependencies:row.dependencies},published_at:row.published_at}:null;
+      context?.revisions.set(refKey(dep.ref),record);}
     if (!record?.published_at || (context?.at&&Date.parse(String(record.published_at))>Date.parse(context.at))) {
       issues.push({ domain:'knowledge',ref:dep.ref,reason:'missing_or_unpublished',state:'stale',createdAt:new Date().toISOString() });
       continue;
     }
-    const rev = record.payload;
+    const rev = record.assessment;
     if (await headRow(client,projectId,dep.ref.objectId,context) !== dep.ref.versionId)
       issues.push({ domain:'knowledge',ref:dep.ref,reason:'superseded',state:'stale',createdAt:new Date().toISOString() });
-    if (rev.scope.reviewDueAt && Date.parse(rev.scope.reviewDueAt) <= (context?.at?Date.parse(context.at):Date.now()))
+    if (rev.reviewDueAt && Date.parse(rev.reviewDueAt) <= (context?.at?Date.parse(context.at):Date.now()))
       issues.push({ domain:'knowledge',ref:dep.ref,reason:'review_due',state:'review_due',createdAt:new Date().toISOString() });
     let effect=context?.effects.get(refKey(dep.ref));
     if(effect===undefined){const rows = await client.query<{effect:string}>(
@@ -165,18 +234,22 @@ async function assess(client: QueryClient, projectId: string, deps: Dependency[]
   return { valid:issues.length === 0, issues };
 }
 async function revisionView(client: QueryClient, projectId: string, rev: KnowledgeRevision, publishedAt: Date|null,context?:ReadContext): Promise<RevisionView> {
-  const published=publishedAt!==null,shared=context??readContext();shared.revisions.set(refKey(rev.ref),{payload:rev,published_at:publishedAt});
+  const published=publishedAt!==null,shared=context??readContext();shared.revisions.set(refKey(rev.ref),{assessment:assessmentOf(rev),published_at:publishedAt});
   const current = published && await headRow(client,projectId,rev.ref.objectId,shared) === rev.ref.versionId;
-  let review=shared.reviews.get(refKey(rev.ref));
+  const review=await reviewRow(client,projectId,rev.ref,shared);
+  const validity = await assess(client,projectId,[{domain:'knowledge',ref:rev.ref,role:'uses',critical:true}],new Set(),shared);
+  return {revision:rev,current,published,publishedAt:publishedAt?.toISOString()??null,review,validity};
+}
+async function reviewRow(client:QueryClient,projectId:string,ref:VersionRef,context?:ReadContext):Promise<KnowledgeReview|null>{
+  let review=context?.reviews.get(refKey(ref));
   if(review===undefined){const reviewRows = await client.query<{payload:KnowledgeReview}>(
     `SELECT v.payload FROM ccl_knowledge_revisions r
       LEFT JOIN ccl_knowledge_publications p ON p.project_id=r.project_id AND p.changeset_id=r.changeset_id
       JOIN ccl_knowledge_reviews v ON v.project_id=r.project_id AND v.changeset_id=r.changeset_id
         AND (p.review_id IS NULL OR p.review_id=v.id)
      WHERE r.project_id=$1 AND r.object_id=$2 AND r.version_id=$3 ORDER BY v.recorded_seq DESC LIMIT 1`,
-    [projectId,rev.ref.objectId,rev.ref.versionId]);review=reviewRows.rows[0]?.payload??null;shared.reviews.set(refKey(rev.ref),review);}
-  const validity = await assess(client,projectId,[{domain:'knowledge',ref:rev.ref,role:'uses',critical:true}],new Set(),shared);
-  return {revision:rev,current,published,publishedAt:publishedAt?.toISOString()??null,review,validity};
+    [projectId,ref.objectId,ref.versionId]);review=reviewRows.rows[0]?.payload??null;context?.reviews.set(refKey(ref),review);}
+  return review;
 }
 async function cascade(client: QueryClient, projectId: string, domain: DependencyDomain, ref: VersionRef, reason: string, state: Invalidity['state'], createdAt: string): Promise<VersionRef[]> {
   const affected: VersionRef[] = [];
@@ -209,10 +282,13 @@ async function cascade(client: QueryClient, projectId: string, domain: Dependenc
 export function createKnowledgeStore(pool: Pool, options: {
   writerGrant?: KnowledgeWriterGrant;
   sourceMatches?: (projectId: string, query: string) => Promise<VersionRef[]>;
+  /** Trusted host diagnostic control; it never changes lexical ranking semantics. */
+  wikiSearchProjection?: 'auto'|'disabled';
   /** Trusted host verifier reconstructs the entire original registration; no caller-provided exemption flag. */
   verifySourceAdmission?: (change: KnowledgeChangeSet) => Promise<boolean>;
 } = {}): KnowledgeStore {
   const sourceMatches=options.sourceMatches;
+  const projectionDisabled=options.wikiSearchProjection==='disabled';
   return {
     async capturePublicationPermit(projectId, facts, methodVersion) {
       return capturePublicationPermit(pool, projectId, await publicationFacts(pool, projectId, facts), methodVersion);
@@ -363,6 +439,59 @@ export function createKnowledgeStore(pool: Pool, options: {
         'SELECT payload,published_at FROM ccl_knowledge_revisions WHERE project_id=$1 AND object_id=$2 AND version_id=$3',[projectId,ref.objectId,ref.versionId]);
       return r.rows[0] ? revisionView(client,projectId,r.rows[0].payload,r.rows[0].published_at) : null;
     }); },
+    async getBounded(projectId,ref,maxBytes){
+      if(!Number.isSafeInteger(maxBytes)||maxBytes<0)
+        throw new KnowledgeError('KNOWLEDGE_READ_BUDGET_INVALID','Nonnegative integer byte limit required',422);
+      return tx(pool,async client=>{
+        const r=await client.query<{payload:KnowledgeRevision;published_at:Date|null;payload_bytes:number;storage_digest:string}>(
+          `SELECT r.payload,r.published_at,${storageProjection} FROM ccl_knowledge_revisions r
+           WHERE r.project_id=$1 AND r.object_id=$2 AND r.version_id=$3
+             AND octet_length(r.payload::text)::bigint<=$4::bigint`,[projectId,ref.objectId,ref.versionId,maxBytes]);
+        const row=r.rows[0];
+        if(row)return {view:await revisionView(client,projectId,row.payload,row.published_at),
+          payloadBytes:row.payload_bytes,storageDigest:row.storage_digest};
+        const size=await client.query<{payload_bytes:number}>(
+          `SELECT octet_length(r.payload::text) AS payload_bytes FROM ccl_knowledge_revisions r
+           WHERE r.project_id=$1 AND r.object_id=$2 AND r.version_id=$3`,[projectId,ref.objectId,ref.versionId]);
+        if(!size.rows[0])return null;
+        throw new KnowledgeError('KNOWLEDGE_READ_BUDGET_EXCEEDED','Knowledge revision exceeds the byte limit',422);
+      });
+    },
+    async inspectFrozen(projectId,ref){return tx(pool,async client=>{
+      const r=await client.query<{kind:KnowledgeKind;space_id:string;published_at:Date|null;payload_bytes:number;storage_digest:string}>(
+        `SELECT r.kind,${revisionSpaceSql} AS space_id,r.published_at,${storageProjection}
+         FROM ccl_knowledge_revisions r WHERE r.project_id=$1 AND r.object_id=$2 AND r.version_id=$3`,
+        [projectId,ref.objectId,ref.versionId]);
+      const row=r.rows[0];if(!row)return null;
+      const context=readContext(),published=row.published_at!==null;
+      const current=published&&await headRow(client,projectId,ref.objectId,context)===ref.versionId;
+      const review=await reviewRow(client,projectId,ref,context);
+      const visited=new Set<string>();
+      const validity=await assess(client,projectId,[{domain:'knowledge',ref,role:'uses',critical:true}],visited,context);
+      // VersionRef identities are UUIDs, so ':' safely separates the existing assessment keys.
+      const criticalSources:Array<{domain:'source'|'analysis'|'evidence';ref:VersionRef}>=[];
+      for(const key of visited){const [domain,objectId,versionId]=key.split(':');
+        if(domain==='source'||domain==='analysis'||domain==='evidence')criticalSources.push({domain,ref:{objectId,versionId}});}
+      return {kind:row.kind,spaceId:row.space_id,published,current,review,validity,
+        storageDigest:row.storage_digest,payloadBytes:row.payload_bytes,criticalSources:criticalSources.slice(0,100),criticalSourcesComplete:criticalSources.length<=100};
+    });},
+    async wikiCandidates(projectId,options){
+      assertWikiLexical(options.lexical,['wiki_page']);
+      if(!options.lexical.terms.length)return [];
+      return tx(pool,async client=>{
+        const source=wikiLexicalSource(options.lexical.methodVersion,'$6',projectionDisabled);
+        const r=await client.query<{object_id:string;version_id:string;title:string;payload_bytes:number;storage_digest:string}>(
+          `${source.prefix}SELECT r.object_id,r.version_id,r.title,${storageProjection}
+           ${source.from}
+           ${wikiLexicalJoin(options.lexical.methodVersion)}
+           WHERE r.project_id=$1 AND r.kind=ANY($2::text[]) AND lex.score>0 AND ${revisionSpaceSql}=$6
+           ORDER BY lex.score DESC,r.object_id,r.version_id LIMIT $4 OFFSET $5`,
+          [projectId,['wiki_page'],options.lexical.terms,Math.min(Math.max(options.limit,0),200),
+            Math.max(options.offset,0),options.spaceId]);
+        return r.rows.map(row=>({ref:{objectId:row.object_id,versionId:row.version_id},title:row.title,
+          payloadBytes:row.payload_bytes,storageDigest:row.storage_digest}));
+      });
+    },
     async getAsOf(projectId,ref,cutoffAt) {
       if(!Number.isFinite(Date.parse(cutoffAt)))throw new KnowledgeError('INVALID_CUTOFF','Valid historical cutoff required',422);
       return tx(pool,async client=>{
@@ -385,10 +514,7 @@ export function createKnowledgeStore(pool: Pool, options: {
     async search(projectId,options) {
       const query=options.query?.trim() ?? '';
       const lexical=options.lexical;
-      if(lexical&&(lexical.methodVersion!=='wiki-lexical-v1'||lexical.terms.length>64||
-        lexical.terms.some(term=>term.length<2||term.length>64)||
-        !options.kinds?.length||options.kinds.some(kind=>kind!=='wiki_page')))
-        throw new KnowledgeError('WIKI_LEXICAL_PLAN_INVALID','Bounded WikiPage lexical plan required',422);
+      if(lexical)assertWikiLexical(lexical,options.kinds??[]);
       if(lexical&&!lexical.terms.length)return [];
       // Resolve navigation matches before taking a transaction client. The adapter may share this pool.
       const sourceRefs=!lexical&&query&&sourceMatches ? await sourceMatches(projectId,query) : [];
@@ -396,25 +522,17 @@ export function createKnowledgeStore(pool: Pool, options: {
       const kinds=options.kinds?.length ? options.kinds : null;
       const sourceGroups=options.sourceGroups?.length ? [...new Set(options.sourceGroups.filter(group=>group.trim().length>0))] : null;
       const sourceGroupParam=lexical?'$6':'$7',platformParam=lexical?'$7':'$8',spaceParam=lexical?'$8':'$9';
-      const lexicalJoin=lexical?`CROSS JOIN LATERAL (SELECT lower(normalize(r.title,NFKC)) AS title,
-          lower(normalize(r.body,NFKC)) AS body) n
-        CROSS JOIN LATERAL (SELECT COALESCE(SUM((
-          CASE WHEN position(t.term in n.title)>0 THEN 4 ELSE 0 END+
-          CASE WHEN position(t.term in n.body)>0 THEN 1 ELSE 0 END)*LEAST(char_length(t.term),4)),0)::int AS score,
-          COALESCE(array_agg(t.term ORDER BY t.ord) FILTER (WHERE
-            position(t.term in n.title)>0 OR position(t.term in n.body)>0),'{}'::text[]) AS matched_terms
-          FROM unnest($3::text[]) WITH ORDINALITY AS t(term,ord)) lex`:'';
+      const lexicalJoin=lexical?wikiLexicalJoin(lexical.methodVersion):'';
+      const source=lexical?wikiLexicalSource(lexical.methodVersion,spaceParam,projectionDisabled):null;
       const r=await client.query<{payload:KnowledgeRevision;published_at:Date;score:number|null;matched_terms:string[]|null}>(
-        `SELECT r.payload,r.published_at,${lexical?'lex.score,lex.matched_terms':'NULL::int AS score,NULL::text[] AS matched_terms'}
-        FROM ccl_knowledge_revisions r
-        JOIN ccl_knowledge_heads h ON h.project_id=r.project_id AND h.object_id=r.object_id AND h.version_id=r.version_id
+        `${source?.prefix??''}SELECT r.payload,r.published_at,${lexical?'lex.score,lex.matched_terms':'NULL::int AS score,NULL::text[] AS matched_terms'}
+        ${source?.from??`FROM ccl_knowledge_revisions r
+        JOIN ccl_knowledge_heads h ON h.project_id=r.project_id AND h.object_id=r.object_id AND h.version_id=r.version_id`}
         ${lexicalJoin}
         WHERE r.project_id=$1 AND ($2::text[] IS NULL OR r.kind=ANY($2))
           AND ${lexical?'lex.score>0':`($3='' OR position(lower($3) in lower(r.title || ' ' || r.body))>0 OR EXISTS (SELECT 1 FROM jsonb_to_recordset($6::jsonb) AS src("objectId" text,"versionId" text) WHERE src."objectId"=r.object_id AND src."versionId"=r.version_id))`}
           AND (${sourceGroupParam}::text[] IS NULL OR r.payload->'sourceGroups' ?| ${sourceGroupParam}::text[])
-          AND (${spaceParam}::text IS NULL OR COALESCE(r.payload->'binding'->>'spaceId',
-            CASE WHEN r.kind=ANY(ARRAY['case','collection','comparison','pattern'])
-              THEN 'legacy:video-research' ELSE 'legacy:knowledge' END)=${spaceParam})
+          AND (${spaceParam}::text IS NULL OR ${revisionSpaceSql}=${spaceParam})
           AND (${platformParam}::text IS NULL OR (${platformParam}<>'unknown' AND (
             COALESCE(r.payload->'scope'->'applicability'->'platforms','["tiktok"]'::jsonb) ? ${platformParam}
             OR (COALESCE(r.payload->'scope'->'applicability'->'platforms','["tiktok"]'::jsonb) ?| ARRAY['tiktok','douyin','xiaohongshu'])
@@ -426,7 +544,7 @@ export function createKnowledgeStore(pool: Pool, options: {
           [projectId,kinds,query,Math.min(Math.max(options.limit??50,0),200),Math.max(options.offset??0,0),JSON.stringify(sourceRefs),
             sourceGroups?.length?sourceGroups:null,options.platform??null,options.spaceId??null]);
       const views: RevisionView[] = [],context=readContext();
-      for (const x of r.rows) {context.heads.set(x.payload.ref.objectId,x.payload.ref.versionId);context.revisions.set(refKey(x.payload.ref),{payload:x.payload,published_at:x.published_at});}
+      for (const x of r.rows) {context.heads.set(x.payload.ref.objectId,x.payload.ref.versionId);context.revisions.set(refKey(x.payload.ref),{assessment:assessmentOf(x.payload),published_at:x.published_at});}
       if(r.rows.length){
         const ids=r.rows.map(x=>x.payload.ref.versionId);
         const reviews=await client.query<{version_id:string;payload:KnowledgeReview}>(`SELECT DISTINCT ON (r.version_id) r.version_id,v.payload
@@ -557,3 +675,6 @@ export function createKnowledgeStore(pool: Pool, options: {
     },
   };
 }
+
+// Canonical revision validation for trusted adapters using the public core entry.
+export {KnowledgeRevisionSchema} from './schemas.ts';

@@ -157,7 +157,7 @@ export interface Invalidity { domain: DependencyDomain; ref: VersionRef; reason:
 export interface Validity { valid: boolean; issues: Invalidity[] }
 export interface RevisionView { revision: KnowledgeRevision; current: boolean; published: boolean; review: KnowledgeReview | null; validity: Validity;
   publishedAt?:string|null;
-  searchMatch?:{methodVersion:'wiki-lexical-v1';matchedTerms:string[];score:number} }
+  searchMatch?:{methodVersion:'wiki-lexical-v1'|'wiki-lexical-v2';matchedTerms:string[];score:number} }
 export interface KnowledgeCatalogSummary {ref:VersionRef;kind:KnowledgeKind;title:string;summary:string;createdAt:string;reviewDecision:KnowledgeReview['decision']|null;reviewDueAt:string|null;reviewDue:boolean;withdrawn:boolean;invalidityRecorded:boolean}
 export interface KnowledgeCatalogPage {schemaVersion:'1.0';items:KnowledgeCatalogSummary[];pageInfo:{total:number;hasMore:boolean;nextCursor:string|null}}
 export interface KnowledgeImpactResult {schemaVersion:'1.0';basis:'authoritative_critical_dependencies';rootId:string;affectedIds:string[];criticalEdgeIds:string[];complete:boolean;completeness:'complete'|'unknown'|'truncated';limit:number}
@@ -173,11 +173,14 @@ export interface KnowledgeStore {
   recordReview(review: KnowledgeReview, client?: Pick<import('pg').PoolClient,'query'>): Promise<KnowledgeReview>;
   publish(projectId: string, changeSetId: string, contentHash: string, client?: Pick<import('pg').PoolClient,'query'>, expectedEpoch?: number): Promise<Publication>;
   get(projectId: string, ref: VersionRef): Promise<RevisionView | null>;
+  wikiCandidates?(projectId:string,options:{spaceId:string;lexical:{methodVersion:'wiki-lexical-v1'|'wiki-lexical-v2';terms:string[]};limit:number;offset:number}):Promise<Array<{ref:VersionRef;title:string;payloadBytes:number;storageDigest:string}>>;
+  getBounded?(projectId:string,ref:VersionRef,maxBytes:number):Promise<{view:RevisionView;payloadBytes:number;storageDigest:string}|null>;
+  inspectFrozen?(projectId:string,ref:VersionRef):Promise<{kind:KnowledgeKind;spaceId:string;published:boolean;current:boolean;review:KnowledgeReview|null;validity:Validity;storageDigest:string;payloadBytes:number;criticalSources:Array<{domain:'source'|'analysis'|'evidence';ref:VersionRef}>;criticalSourcesComplete:boolean}|null>;
   getAsOf?(projectId:string,ref:VersionRef,cutoffAt:string):Promise<RevisionView|null>;
   head(projectId: string, objectId: string): Promise<VersionRef | null>;
   history(projectId: string, objectId: string): Promise<RevisionView[]>;
   search(projectId: string, options: { query?: string; kinds?: KnowledgeKind[]; sourceGroups?: string[]; platform?: ContentPlatform; spaceId?: string; limit?: number; offset?: number;
-    lexical?:{methodVersion:'wiki-lexical-v1';terms:string[]} }): Promise<RevisionView[]>;
+    lexical?:{methodVersion:'wiki-lexical-v1'|'wiki-lexical-v2';terms:string[]} }): Promise<RevisionView[]>;
   catalog(projectId:string,options:{query?:string;kinds?:KnowledgeKind[];platform?:ContentPlatform;cursor?:string;limit?:number}):Promise<KnowledgeCatalogPage>;
   impact(projectId:string,rootId:string):Promise<KnowledgeImpactResult>;
   countCurrent(projectId:string):Promise<number>;

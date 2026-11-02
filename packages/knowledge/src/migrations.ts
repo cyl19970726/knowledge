@@ -1,6 +1,7 @@
 import type { Pool } from 'pg';
 import { migrateKnowledgeWriterAuthority } from './writer-authority.ts';
 import { migratePublicationAuthority } from './wiki-publication-authority.ts';
+import { migrateWikiSearchProjection } from './wiki-search-projection.ts';
 
 /** Additive, idempotent knowledge storage. All records are project scoped. */
 export async function migrateKnowledge(pool: Pool): Promise<void> {
@@ -66,6 +67,7 @@ export async function migrateKnowledge(pool: Pool): Promise<void> {
     `);
     await migratePublicationAuthority(client);
     await migrateKnowledgeWriterAuthority(client);
+    await migrateWikiSearchProjection(client);
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');

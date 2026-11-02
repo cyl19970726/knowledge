@@ -1,10 +1,11 @@
 import {createHash} from 'node:crypto';
-import {SourceOwnerRequestSchema,SourceRecordSchema,SourceContentSchema,type KnowledgeRef} from '@commerce/knowledge-contracts';
-import type {SourceOwnerPort} from '@commerce/knowledge-application';
+import {SourceOwnerRequestSchema,BoundedSourceOwnerRequestSchema,SourceRecordSchema,SourceContentSchema,type KnowledgeRef,type Scope,type SourceContent} from '@commerce/knowledge-contracts';
+import type {SourceOwnerPort,ReadContext} from '@commerce/knowledge-application';
 import {KnowledgeError} from '@commerce/knowledge-core/types';
+type BoundedOwner=SourceOwnerPort & {readContentBounded?:(scope:Scope,ref:KnowledgeRef,anchor:unknown,context:ReadContext,maxBytes:number)=>Promise<SourceContent|null>};
 
 /** Explicit server-to-server read port. No discovery, redirects, remote writes or publication proof. */
-export function createHttpSourceOwner(options:{baseUrl:string;token:string;fetch?:typeof globalThis.fetch}):SourceOwnerPort {
+export function createHttpSourceOwner(options:{baseUrl:string;token:string;fetch?:typeof globalThis.fetch;supportsBoundedContent?:boolean}):SourceOwnerPort {
   const url=new URL(options.baseUrl);
   if(url.username||url.password||url.search||url.hash||url.protocol!=='https:'&&
     !(url.protocol==='http:'&&['127.0.0.1','localhost','[::1]'].includes(url.hostname))||options.token.length<24)
@@ -15,13 +16,15 @@ export function createHttpSourceOwner(options:{baseUrl:string;token:string;fetch
       requested.contentDigest!==null&&requested.contentDigest!==actual.contentDigest)
       throw new KnowledgeError('SOURCE_REF_MISMATCH','Business owner returned a different exact reference',409);
   }
-  async function request(operation:'record'|'content',scope:Parameters<SourceOwnerPort['readRecord']>[0],ref:KnowledgeRef,context:Parameters<SourceOwnerPort['readRecord']>[2],anchor?:unknown){
-    const body=SourceOwnerRequestSchema.parse({scope,ref,purpose:context.purpose,subjectId:context.principal.id,...(operation==='content'?{anchor:anchor??null}:{})});
+  async function request(operation:'record'|'content'|'content-bounded',scope:Parameters<SourceOwnerPort['readRecord']>[0],ref:KnowledgeRef,context:Parameters<SourceOwnerPort['readRecord']>[2],anchor?:unknown,maxBytes?:number){
+    const payload={scope,ref,purpose:context.purpose,subjectId:context.principal.id,...(operation!=='record'?{anchor:anchor??null}:{})};
+    const body=operation==='content-bounded'?BoundedSourceOwnerRequestSchema.parse({...payload,maxBytes}):SourceOwnerRequestSchema.parse(payload);
     let response:Response;
     try {response=await fetcher(`${endpoint}/${operation}`,{method:'POST',headers:{Authorization:`Bearer ${options.token}`,'Content-Type':'application/json'},
       body:JSON.stringify(body),redirect:'error',signal:AbortSignal.timeout(20_000)});}
     catch {throw new KnowledgeError('SOURCE_OWNER_UNAVAILABLE','Business source owner is unavailable',503);}
-    const limit=operation==='content'?7_000_000:100_000;
+    // JSON escaping can expand text up to six times; this bounds the envelope independently from the admitted text limit.
+    const limit=operation==='content-bounded'?Math.min(7_000_000,100_000+maxBytes!*6):operation==='content'?7_000_000:100_000;
     if(Number(response.headers.get('content-length'))>limit){await response.body?.cancel();throw new KnowledgeError('SOURCE_OWNER_RESPONSE_INVALID','Business source response exceeds the read limit',502);}
     const reader=response.body?.getReader();let length=0;const chunks:Uint8Array[]=[];
     if(reader)try{for(;;){const chunk=await reader.read();if(chunk.done)break;length+=chunk.value.byteLength;
@@ -30,7 +33,7 @@ export function createHttpSourceOwner(options:{baseUrl:string;token:string;fetch
     let value:unknown;try{value=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{throw new KnowledgeError('SOURCE_OWNER_RESPONSE_INVALID','Business source response is invalid',502);}
     if(!response.ok){
       if(response.status===404)return null;
-      const code=value&&typeof value==='object'&&'code' in value&&typeof value.code==='string'&&/^SOURCE_[A-Z_]{1,80}$/.test(value.code)?value.code:'SOURCE_OWNER_FAILED';
+      const code=value&&typeof value==='object'&&'code' in value&&typeof value.code==='string'&&/^(?:SOURCE_[A-Z_]{1,80}|BOUNDED_SOURCE_READ_UNSUPPORTED)$/.test(value.code)?value.code:'SOURCE_OWNER_FAILED';
       throw new KnowledgeError(response.status===401||response.status===403?'SOURCE_FORBIDDEN':code,
         response.status===401||response.status===403?'Business source access is forbidden':'Business source read failed',
         [400,403,409,422,503].includes(response.status)?response.status:response.status===401?403:502);
@@ -50,13 +53,32 @@ export function createHttpSourceOwner(options:{baseUrl:string;token:string;fetch
         content.actualCoverage.byteCount!==bytes.length||content.media&&(content.media.digest!==content.contentDigest||content.media.byteCount!==bytes.length)||
         !content.readability.contentReadable||content.readability.assurance!=='read_time_only')
         throw new KnowledgeError('SOURCE_CONTENT_INTEGRITY','Business source content or coverage does not match its exact digest',409);
-      return content;}};
+      return content;},
+    async readContentBounded(scope,ref,anchor,context,maxBytes){
+      if(!options.supportsBoundedContent)throw new KnowledgeError('BOUNDED_SOURCE_READ_UNSUPPORTED','Bounded content support must be explicitly configured',503);
+      const value=await request('content-bounded',scope,ref,context,anchor,maxBytes);if(value===null)return null;
+      const parsed=SourceContentSchema.safeParse(value);if(!parsed.success)throw new KnowledgeError('SOURCE_OWNER_RESPONSE_INVALID','Bounded source response is invalid',502);
+      const content=parsed.data;sameRef(ref,content.ref);sameRef(content.ref,content.actualCoverage.sourceRef);
+      if(content.media)throw new KnowledgeError('SOURCE_CONTENT_UNSUPPORTED','Bounded answer input supports text only',422);
+      const bytes=Buffer.from(content.content,'utf8');
+      if(bytes.length>maxBytes)throw new KnowledgeError('SOURCE_READ_BUDGET_EXCEEDED','Business source owner exceeded its content limit',422);
+      if(content.ref.contentDigest!==content.contentDigest||createHash('sha256').update(bytes).digest('hex')!==content.contentDigest||
+        content.actualCoverage.byteCount!==bytes.length||!content.readability.contentReadable||content.readability.assurance!=='read_time_only')
+        throw new KnowledgeError('SOURCE_CONTENT_INTEGRITY','Bounded source content or coverage differs from its exact digest',409);
+      return content;
+    }};
 }
 
 /** Domains retain their original owner; the managed registry is never populated by this bridge. */
-export function routeSourceOwners(managed:SourceOwnerPort,business?:SourceOwnerPort):SourceOwnerPort {
-  function owner(ref:KnowledgeRef){if(ref.domain==='source')return managed;
+export function routeSourceOwners(managed:SourceOwnerPort,business?:SourceOwnerPort):SourceOwnerPort & Required<Pick<BoundedOwner,'readContentBounded'>> {
+  function owner(ref:KnowledgeRef):BoundedOwner{if(ref.domain==='source')return managed;
     if(ref.domain!=='analysis'&&ref.domain!=='evidence')throw new KnowledgeError('SOURCE_DOMAIN_UNSUPPORTED','Reference domain is unsupported',422);
     if(!business)throw new KnowledgeError('SOURCE_OWNER_UNCONNECTED','Business source owner is not connected',503);return business;}
-  return {readRecord:(scope,ref,context)=>owner(ref).readRecord(scope,ref,context),readContent:(scope,ref,anchor,context)=>owner(ref).readContent(scope,ref,anchor,context)};
+  return {readRecord:(scope,ref,context)=>owner(ref).readRecord(scope,ref,context),readContent:(scope,ref,anchor,context)=>owner(ref).readContent(scope,ref,anchor,context),
+    readContentBounded:async(scope,ref,anchor,context,maxBytes)=>{
+      const selected=owner(ref);
+      if(!selected.readContentBounded)
+        throw new KnowledgeError('BOUNDED_SOURCE_READ_UNSUPPORTED','Selected source owner does not support bounded reads',503);
+      return selected.readContentBounded(scope,ref,anchor,context,maxBytes);
+    }};
 }

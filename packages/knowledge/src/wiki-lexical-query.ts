@@ -1,5 +1,7 @@
 /** A bounded word-overlap reader, not synonym or semantic retrieval. */
 export const WIKI_LEXICAL_METHOD_VERSION='wiki-lexical-v1' as const;
+export const WIKI_LEXICAL_V2_METHOD_VERSION='wiki-lexical-v2' as const;
+export type WikiLexicalMethodVersion=typeof WIKI_LEXICAL_METHOD_VERSION|typeof WIKI_LEXICAL_V2_METHOD_VERSION;
 const MAX_TERMS=64;
 const stopwords=new Set(['的','了','和','与','或','及','在','是','有','为','把','被','对','从','到','这','那','我','你','他',
   '我们','你们','他们','这个','那个','这些','那些','一个','一些','什么','怎么','如何','怎样','为什么','是否','可以','应该',
@@ -9,8 +11,8 @@ const han=/^\p{Script=Han}+$/u;
 const latin=/^[\p{Script=Latin}\p{Number}]+$/u;
 const segmenter=new Intl.Segmenter('zh',{granularity:'word'});
 
-export interface WikiLexicalPlan {methodVersion:typeof WIKI_LEXICAL_METHOD_VERSION;terms:string[];termsTruncated:boolean;}
-export function planWikiLexicalQuery(rawQuery:string):WikiLexicalPlan{
+export interface WikiLexicalPlan {methodVersion:WikiLexicalMethodVersion;terms:string[];termsTruncated:boolean;}
+export function planWikiLexicalQuery(rawQuery:string,methodVersion:WikiLexicalMethodVersion=WIKI_LEXICAL_METHOD_VERSION):WikiLexicalPlan{
   const normalized=rawQuery.normalize('NFKC').toLowerCase();
   const found:string[]=[],seen=new Set<string>();
   let termsTruncated=false;
@@ -34,5 +36,5 @@ export function planWikiLexicalQuery(rawQuery:string):WikiLexicalPlan{
       }else if(latin.test(token))add(token);
     }
   }
-  return {methodVersion:WIKI_LEXICAL_METHOD_VERSION,terms:found,termsTruncated};
+  return {methodVersion,terms:found,termsTruncated};
 }
