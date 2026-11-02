@@ -164,8 +164,8 @@ export function MaintenanceInboxContent({ view, state, canCancel, canReadProject
               onClick={() => void state.loadCoordination()}>只读查看协调记录</button>}
             {view.coordinationLoaded && !view.coordination && <p className="minor-note">这项任务没有协调记录。</p>}
             {view.coordination && <section className="maintenance-related" aria-label="协调记录"><h3>协调记录 · {coordinationStateName[view.coordination.state]}</h3>
-              <p>{view.coordination.reason}</p><p className="minor-note">协调记录汇总已知步骤；无变化提案仍需独立审阅，来源规划及提及仅是模型提案，不自动消歧或发表。</p>
-              <dl className="maintenance-facts"><dt>来源规划</dt><dd>{view.coordination.sourcePlanId ? `已有记录 ${view.coordination.sourcePlanId.slice(0, 8)}…` : '未记录'}</dd>
+              <p>{view.coordination.reason}</p>{view.coordination.request.subjectRef && <p className="minor-note">本轮从已有 Wiki 的准确版本出发，检查它与其他认识的关联；没有新来源入库事件。</p>}<p className="minor-note">协调记录汇总已知步骤；无变化提案仍需独立审阅，来源规划及提及仅是模型提案，不自动消歧或发表。</p>
+              <dl className="maintenance-facts"><dt>来源规划</dt><dd>{view.coordination.sourcePlanId ? `已有记录 ${view.coordination.sourcePlanId.slice(0, 8)}…` : view.coordination.request.subjectRef ? '从已有 Wiki 定位，无来源规划' : '未记录'}</dd>
                 <dt>参与比较的页面</dt><dd>{view.coordination.candidateRefs.length} 条准确引用</dd>
                 <dt>关系判断</dt><dd>{view.coordination.judgmentIds.length} 项</dd>
                 <dt>编纂</dt><dd>{view.coordination.compilationId ? `已有记录 ${view.coordination.compilationId.slice(0, 8)}…` : '未记录'}</dd></dl>

@@ -57,6 +57,40 @@ const sequence=(value:string|number)=>{const n=Number(value);if(!Number.isSafeIn
 const refKey=(ref:Pick<KnowledgeRef,'objectId'|'versionId'>)=>`${ref.objectId}:${ref.versionId}`;
 const cursorKey=(context:ReadContext)=>digest(identity(context));
 
+function validateTask(context:ReadContext,request:MaintenanceTaskRequest,trigger:MaintenanceTrigger):void{
+  MaintenanceTaskRequestSchema.parse(request);MaintenanceTriggerSchema.parse(trigger);
+  scopeRef(context,request.subjectRef);scopeRef(context,trigger.ref);
+  for(const ref of request.relatedRefs)scopeRef(context,ref);
+  if(trigger.ref&&request.subjectRef&&digest(trigger.ref)!==digest(request.subjectRef)||
+    trigger.sourceEventId&&request.kind==='source_research'&&!request.sourceEventIds.includes(trigger.sourceEventId))
+    throw new KnowledgeError('MAINTENANCE_TRIGGER_MISMATCH','Trigger does not name the task subject or source event',409);
+  if(request.kind==='source_research'&&(!request.sourceEventIds.length||!request.subjectRef||
+    !['source','analysis','evidence'].includes(request.subjectRef.domain)))
+    throw new KnowledgeError('MAINTENANCE_TASK_INPUT','Source research needs an exact source event and subject',422);
+  if(request.kind==='recompile'&&(!request.subjectRef||request.subjectRef.domain!=='knowledge'))
+    throw new KnowledgeError('MAINTENANCE_TASK_INPUT','Recompile needs an exact Wiki subject',422);
+}
+
+/** Caller owns the writer-guarded transaction. Task insertion and its source cursor must commit together. */
+export async function insertMaintenanceTask(client:PoolClient,context:ReadContext,
+  request:MaintenanceTaskRequest,trigger:MaintenanceTrigger):Promise<{value:MaintenanceTask;created:boolean}>{
+  validateTask(context,request,trigger);const id=randomUUID(),inputDigest=digest({scope:context.scope,
+    principalId:context.principal.id,installationId:context.principal.clientInstallationId,purpose:context.purpose,
+    request,trigger});
+  const inserted=await client.query<TaskRow>(`INSERT INTO ccl_knowledge_maintenance_tasks
+    (id,project_id,space_id,principal_id,installation_id,purpose,input_digest,request,trigger,state)
+    VALUES($6,$1,$2,$3,$4,$5,$7,$8,$9,'queued')
+    ON CONFLICT(project_id,space_id,principal_id,installation_id,purpose,input_digest) DO NOTHING RETURNING *`,
+    [...identity(context),id,inputDigest,request,trigger]);
+  if(inserted.rows[0])return {value:task(inserted.rows[0]),created:true};
+  const old=(await client.query<TaskRow>(`SELECT * FROM ccl_knowledge_maintenance_tasks WHERE ${where} AND input_digest=$6`,
+    [...identity(context),inputDigest])).rows[0];
+  if(!old||digest({scope:context.scope,principalId:context.principal.id,
+    installationId:context.principal.clientInstallationId,purpose:context.purpose,request:old.request,trigger:old.trigger})!==inputDigest)
+    throw new KnowledgeError('MAINTENANCE_IDEMPOTENCY_CONFLICT','Task digest collision or missing original',409);
+  return {value:task(old),created:false};
+}
+
 /** Core migration precedes this one; source-intake migration precedes event collection. */
 export async function migrateMaintenanceTasks(pool:Pool):Promise<void>{
   await pool.query(`CREATE TABLE IF NOT EXISTS ccl_knowledge_maintenance_tasks(
@@ -142,36 +176,7 @@ export function createPgMaintenanceTasks(pool:Pool,grant:KnowledgeWriterGrant):M
       FROM ccl_knowledge_maintenance_tasks WHERE ${where} AND id=$6${lock?' FOR UPDATE':''}`,
       [...identity(context),id])).rows[0];return row??null;
   }
-  function validate(context:ReadContext,request:MaintenanceTaskRequest,trigger:MaintenanceTrigger):void{
-    MaintenanceTaskRequestSchema.parse(request);MaintenanceTriggerSchema.parse(trigger);
-    scopeRef(context,request.subjectRef);scopeRef(context,trigger.ref);
-    for(const ref of request.relatedRefs)scopeRef(context,ref);
-    if(trigger.ref&&request.subjectRef&&digest(trigger.ref)!==digest(request.subjectRef)||
-      trigger.sourceEventId&&request.kind==='source_research'&&!request.sourceEventIds.includes(trigger.sourceEventId))
-      throw new KnowledgeError('MAINTENANCE_TRIGGER_MISMATCH','Trigger does not name the task subject or source event',409);
-    if(request.kind==='source_research'&&(!request.sourceEventIds.length||!request.subjectRef||
-      !['source','analysis','evidence'].includes(request.subjectRef.domain)))
-      throw new KnowledgeError('MAINTENANCE_TASK_INPUT','Source research needs an exact source event and subject',422);
-    if(request.kind==='recompile'&&(!request.subjectRef||request.subjectRef.domain!=='knowledge'))
-      throw new KnowledgeError('MAINTENANCE_TASK_INPUT','Recompile needs an exact Wiki subject',422);
-  }
-  async function insertTask(client:PoolClient,context:ReadContext,request:MaintenanceTaskRequest,trigger:MaintenanceTrigger){
-    validate(context,request,trigger);const id=randomUUID(),inputDigest=digest({scope:context.scope,
-      principalId:context.principal.id,installationId:context.principal.clientInstallationId,purpose:context.purpose,
-      request,trigger});
-    const inserted=await client.query<TaskRow>(`INSERT INTO ccl_knowledge_maintenance_tasks
-      (id,project_id,space_id,principal_id,installation_id,purpose,input_digest,request,trigger,state)
-      VALUES($6,$1,$2,$3,$4,$5,$7,$8,$9,'queued')
-      ON CONFLICT(project_id,space_id,principal_id,installation_id,purpose,input_digest) DO NOTHING RETURNING *`,
-      [...identity(context),id,inputDigest,request,trigger]);
-    if(inserted.rows[0])return {value:task(inserted.rows[0]),created:true};
-    const old=(await client.query<TaskRow>(`SELECT * FROM ccl_knowledge_maintenance_tasks WHERE ${where} AND input_digest=$6`,
-      [...identity(context),inputDigest])).rows[0];
-    if(!old||digest({scope:context.scope,principalId:context.principal.id,
-      installationId:context.principal.clientInstallationId,purpose:context.purpose,request:old.request,trigger:old.trigger})!==inputDigest)
-      throw new KnowledgeError('MAINTENANCE_IDEMPOTENCY_CONFLICT','Task digest collision or missing original',409);
-    return {value:task(old),created:false};
-  }
+  const insertTask=insertMaintenanceTask;
   function recordCreated(collected:Collected,made:Awaited<ReturnType<typeof insertTask>>){
     if(!made.created)return;
     collected.createdCount++;

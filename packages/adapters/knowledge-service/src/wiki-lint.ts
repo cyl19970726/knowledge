@@ -135,9 +135,9 @@ export function createPgWikiLint(pool:Pool,grant:KnowledgeWriterGrant){
             ON r.project_id=h.project_id AND r.object_id=h.object_id AND r.version_id=h.version_id
           WHERE h.project_id=$1 AND r.kind='wiki_page' AND r.published_at IS NOT NULL
             AND r.payload->'binding'->>'spaceId'=$2
-            AND ($3::uuid IS NULL OR h.object_id::uuid>$3::uuid)
-            AND get_byte(uuid_send(h.object_id::uuid),0)%$4=$6
-          ORDER BY h.object_id::uuid LIMIT $7`,
+            AND ($3::uuid IS NULL OR r.object_id::uuid>$3::uuid)
+            AND get_byte(uuid_send(r.object_id::uuid),0)%$4=$6
+          ORDER BY r.object_id::uuid LIMIT $7`,
           [context.scope.projectId,context.scope.spaceId,row.last_object_id,request.shardCount,
             context.purpose,request.shard,request.limit+1])).rows;
         const page=heads.slice(0,request.limit),findingIds:string[]=[];

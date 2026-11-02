@@ -7,9 +7,9 @@ import {createWikiSearchProjection} from '@commerce/knowledge-core/wiki-search-p
 import type {KnowledgeWriterGrant} from '@commerce/knowledge-core/writer-authority';
 import {createSyntheticResearchService,createMaintenanceApplication,type CapabilityContext,type MaintenanceProcessor,type SyntheticResearchProvider} from '@commerce/knowledge-application';
 import {createPgKnowledgeOperations,migrateKnowledgeOperations,createPgKnowledgeReceiptPort,migrateKnowledgeReadReceipts} from '@commerce/knowledge-service-adapter';
-import {createPgSourceRegistry,migrateManagedSources,createPgMaintenanceTasks,migrateMaintenanceTasks,createPgWikiLint,migrateWikiLint,migrateSourceIntake} from '@commerce/knowledge-service-adapter';
+import {createPgSourceRegistry,migrateManagedSources,createPgMaintenanceTasks,migrateMaintenanceTasks,createPgWikiLint,migrateWikiLint,migrateSourceIntake,migrateSemanticSweeps,createPgSemanticSweep} from '@commerce/knowledge-service-adapter';
 
-export interface KnowledgeWorkerConfig {pool:Pool;projectId:string;writerGrant:KnowledgeWriterGrant;provider?:SyntheticResearchProvider;enableResearch?:boolean;maintenance?:{context:CapabilityContext;methodVersion:string;rubricVersion:string;processor?:MaintenanceProcessor;searchProjection?:{limit:number};lint?:{cyclePrefix:string;shardCount:number;limit:number}}}
+export interface KnowledgeWorkerConfig {pool:Pool;projectId:string;writerGrant:KnowledgeWriterGrant;provider?:SyntheticResearchProvider;enableResearch?:boolean;maintenance?:{context:CapabilityContext;methodVersion:string;rubricVersion:string;processor?:MaintenanceProcessor;searchProjection?:{limit:number};lint?:{cyclePrefix:string;shardCount:number;limit:number};semanticSweep?:{cyclePrefix:string;shardCount:number;limit:number;maxTasksPerShard:number}}}
 /** The only built-in provider is explicitly synthetic and performs no paid/model calls. */
 export async function createKnowledgeWorker(config:KnowledgeWorkerConfig){
   if(!config.projectId)throw new Error('Explicit knowledge project required');
@@ -20,12 +20,13 @@ export async function createKnowledgeWorker(config:KnowledgeWorkerConfig){
     sources:createPgSourceRegistry(config.pool,{writerGrant:config.writerGrant}),provider:config.provider});
   const maintenance=config.maintenance;
   const projection=createWikiSearchProjection(config.pool,{writerGrant:config.writerGrant});let projectionProgress:string|undefined;
-  let maintained:ReturnType<typeof createMaintenanceApplication>|undefined,shard=0,lastLintCycle='';const lintUpdates=new Map<number,string>();
+  let maintained:ReturnType<typeof createMaintenanceApplication>|undefined,shard=0,lastLintCycle='';const lintUpdates=new Map<number,string>();let semanticShard=0,lastSemanticCycle='';const semanticProgress=new Map<number,string>();
   if(maintenance){
     if(maintenance.context.scope.projectId!==config.projectId)throw new Error('Maintenance context must match the configured worker project');
     if(maintenance.lint&&(!Number.isInteger(maintenance.lint.shardCount)||maintenance.lint.shardCount<1||maintenance.lint.shardCount>256))throw new Error('Lint shard count must be 1..256');
     await migrateSourceIntake(config.pool);await migrateMaintenanceTasks(config.pool);await migrateWikiLint(config.pool);
-    maintained=createMaintenanceApplication({tasks:createPgMaintenanceTasks(config.pool,config.writerGrant),lint:createPgWikiLint(config.pool,config.writerGrant),processor:maintenance.processor});
+    if(maintenance.semanticSweep){if(!maintenance.processor?.kinds.includes('relation_check'))throw new Error('Periodic Wiki discovery needs an explicit relation processor');await migrateSemanticSweeps(config.pool);}
+    maintained=createMaintenanceApplication({tasks:createPgMaintenanceTasks(config.pool,config.writerGrant),lint:createPgWikiLint(config.pool,config.writerGrant),processor:maintenance.processor,semanticSweep:maintenance.semanticSweep?createPgSemanticSweep(config.pool,config.writerGrant):undefined});
   }
   return {async runOne(signal?:AbortSignal){
     signal?.throwIfAborted();let changed=false;
@@ -41,6 +42,15 @@ export async function createKnowledgeWorker(config:KnowledgeWorkerConfig){
         const cycleKey=`${policy.cyclePrefix}:${new Date().toISOString().slice(0,10)}`;if(cycleKey!==lastLintCycle){lintUpdates.clear();lastLintCycle=cycleKey;}
         const pass=await maintained.runLint(maintenance.context,{cycleKey,shard,shardCount:policy.shardCount,limit:policy.limit,methodVersion:maintenance.methodVersion});
         changed=changed||pass.updatedAt!==lintUpdates.get(shard);lintUpdates.set(shard,pass.updatedAt);if(pass.complete)shard=(shard+1)%policy.shardCount;
+      }
+      if(maintenance.semanticSweep){const policy=maintenance.semanticSweep;
+        const cycleKey=`${policy.cyclePrefix}:${new Date().toISOString().slice(0,10)}`;
+        if(cycleKey!==lastSemanticCycle){semanticProgress.clear();lastSemanticCycle=cycleKey;semanticShard=0;}
+        const pass=await maintained.runSemanticSweep(maintenance.context,{cycleKey,shard:semanticShard,shardCount:policy.shardCount,
+          limit:policy.limit,maxTasksPerShard:policy.maxTasksPerShard,methodVersion:maintenance.methodVersion,rubricVersion:maintenance.rubricVersion});
+        const progress=JSON.stringify([pass.scanned,pass.lastObjectId,pass.taskCount,pass.complete,pass.limitReached]);
+        changed=changed||progress!==semanticProgress.get(semanticShard);semanticProgress.set(semanticShard,progress);
+        if(pass.complete||pass.limitReached)semanticShard=(semanticShard+1)%policy.shardCount;
       }
       if(maintenance.processor)changed=!!await maintained.runOne(maintenance.context,signal)||changed;
     }

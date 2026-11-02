@@ -183,6 +183,15 @@ export function createKnowledgeApplication(options:KnowledgeApplicationOptions){
     return {ref:refOf(context,view),title:revision.title,body:revision.body,conditions:content.conditions,counterexamples:content.counterexamples,
       unknowns:content.unknowns,citations,sourceGroups:revision.sourceGroups,storageDigest:found.storageDigest,payloadBytes:found.payloadBytes,admitted:policy.admitted,frozenRevision:revision};
   }
+  /** Exact metadata only. A caller must still use readCandidate for bounded content and current rights. */
+  async function inspectWikiCandidate(context:ReadContext,ref:KnowledgeRef):Promise<WikiCandidate>{
+    assertContext(context);assertRef(context,ref);
+    if(!options.store.inspectFrozen)throw new KnowledgeError('BOUNDED_WIKI_READ_UNSUPPORTED','Frozen Wiki inspection is unavailable',503);
+    const state=await options.store.inspectFrozen(context.scope.projectId,version(ref));
+    if(!state||state.spaceId!==context.scope.spaceId||state.kind!=='wiki_page'||!state.published)
+      throw new KnowledgeError('NOT_FOUND','Wiki metadata is unavailable in this scope',404);
+    return {ref:version(ref),title:'',payloadBytes:state.payloadBytes,storageDigest:state.storageDigest};
+  }
   async function readWikiExactBounded(context:ReadContext,ref:KnowledgeRef,maxBytes:number):Promise<BoundedWikiPage>{
     assertContext(context);assertRef(context,ref);
     if(!ref.contentDigest||!options.store.inspectFrozen)throw new KnowledgeError('EXACT_DIGEST_REQUIRED','Exact bounded Wiki requires its canonical digest',422);
@@ -372,7 +381,7 @@ export function createKnowledgeApplication(options:KnowledgeApplicationOptions){
       throw new KnowledgeError('SOURCE_READ_BUDGET_EXCEEDED','Source owner exceeded the admitted content limit',422);
     return content;
   }
-  return {query,queryCandidates,readCandidate,readWikiExactBounded,validateFrozenWiki,validateHistoricalWiki,assertReadEpoch,catalog,exact,history,compare,graph,readReceipt,sourceRecord,sourceContent,sourceContentBounded,policyVersion};
+  return {query,queryCandidates,readCandidate,inspectWikiCandidate,readWikiExactBounded,validateFrozenWiki,validateHistoricalWiki,assertReadEpoch,catalog,exact,history,compare,graph,readReceipt,sourceRecord,sourceContent,sourceContentBounded,policyVersion};
 }
 export type KnowledgeApplication=ReturnType<typeof createKnowledgeApplication>;
 export * from './sources.ts';

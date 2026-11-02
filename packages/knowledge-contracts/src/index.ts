@@ -221,8 +221,13 @@ export type EntityMentionBatch = z.infer<typeof EntityMentionBatchSchema>;
 
 export const SourceEventLookupSchema = z.discriminatedUnion('state',[z.strictObject({state:z.literal('known'),event:SourceEventRecordSchema}),z.strictObject({state:z.literal('unknown'),event:z.null()})]);
 
-export const WikiCompileRequestSchema = z.strictObject({question:Text(2000),purpose:Purpose,sourceEventIds:z.array(IdSchema).min(1).max(20),
-  queries:z.array(Text(500)).min(1).max(5),judgmentIds:List(IdSchema,3).optional(),limit:z.int().min(1).max(20),maxPages:z.int().min(1).max(5),budget:BudgetSchema});
+export const WikiCompileRequestSchema = z.strictObject({question:Text(2000),purpose:Purpose,sourceEventIds:List(IdSchema,20),selectedRefs:List(KnowledgeRefSchema,5).optional(),
+  queries:z.array(Text(500)).min(1).max(5),judgmentIds:List(IdSchema,3).optional(),limit:z.int().min(1).max(20),maxPages:z.int().min(1).max(5),budget:BudgetSchema}).superRefine((value,ctx)=>{
+ const refs=value.selectedRefs??[];
+ if(!value.sourceEventIds.length&&!refs.length)ctx.addIssue({code:'custom',message:'Compilation needs exact source events or selected Wiki versions'});
+ if(refs.some(ref=>ref.domain!=='knowledge'||ref.contentDigest===null))ctx.addIssue({code:'custom',path:['selectedRefs'],message:'Selected Wiki inputs need canonical digests'});
+ if(new Set(refs.map(ref=>`${ref.objectId}/${ref.versionId}`)).size!==refs.length)ctx.addIssue({code:'custom',path:['selectedRefs'],message:'Selected Wiki versions must be distinct'});
+});
 export type WikiCompileRequest = z.infer<typeof WikiCompileRequestSchema>;
 export const WikiDraftChangeSchema = z.strictObject({targetEvidenceId:Text(100).nullable(),profile:ProfileRefSchema,identityKey:Text(300),
   title:Text(500),summary:Text(12000),conditions:List(Text(1000),50),counterexamples:List(Text(1000),50),unknowns:List(Text(1000),50),
@@ -260,6 +265,13 @@ export const LintPassRequestSchema=z.strictObject({cycleKey:Text(200),shard:z.in
 export type LintPassRequest=z.infer<typeof LintPassRequestSchema>;
 export const LintPassSchema=z.strictObject({id:IdSchema,request:LintPassRequestSchema,scanned:Int(1_000_000),lastObjectId:IdSchema.nullable(),complete:z.boolean(),findingIds:List(IdSchema,1000),findingCount:Int(Number.MAX_SAFE_INTEGER).optional(),startEpoch:Int(Number.MAX_SAFE_INTEGER),observedEpoch:Int(Number.MAX_SAFE_INTEGER),consistency:z.literal('incremental_current_heads'),omittedReasons:List(Text(1000),100),updatedAt:TimestampSchema});
 export type LintPass=z.infer<typeof LintPassSchema>;
+/** Periodic discovery creates bounded tasks; no model runs during the metadata sweep. */
+export const SemanticSweepRequestSchema=z.strictObject({cycleKey:Text(200),shard:z.int().min(0).max(255),shardCount:z.int().min(1).max(256),limit:z.int().min(1).max(100),maxTasksPerShard:z.int().min(1).max(10000),methodVersion:Text(100),rubricVersion:Text(100)}).superRefine((v,ctx)=>{if(v.shard>=v.shardCount)ctx.addIssue({code:'custom',path:['shard'],message:'Shard must be below shardCount'});});
+export type SemanticSweepRequest=z.infer<typeof SemanticSweepRequestSchema>;
+export const SemanticSweepSchema=z.strictObject({id:IdSchema,request:SemanticSweepRequestSchema,scanned:Int(1_000_000),lastObjectId:IdSchema.nullable(),complete:z.boolean(),limitReached:z.boolean(),taskIds:List(IdSchema,100),taskCount:Int(10000),skipped:Int(1_000_000),startEpoch:Int(Number.MAX_SAFE_INTEGER),observedEpoch:Int(Number.MAX_SAFE_INTEGER),consistency:z.literal('incremental_current_heads'),omittedReasons:List(Text(1000),100),updatedAt:TimestampSchema});
+export type SemanticSweep=z.infer<typeof SemanticSweepSchema>;
+export const SemanticSweepApiRequestSchema=SemanticSweepRequestSchema.safeExtend({purpose:Purpose});
+
 export const DecisionQuestionSchema=z.discriminatedUnion('type',[
  z.strictObject({id:Text(100),type:z.literal('predicate'),instructions:Text(5000),yes:Text(2000).optional(),no:Text(2000).optional()}),
  z.strictObject({id:Text(100),type:z.literal('choice'),instructions:Text(5000),options:z.array(z.strictObject({value:Text(100),description:Text(2000)})).min(2).max(30)}),
@@ -302,9 +314,9 @@ export const SourcePlanLookupSchema=z.discriminatedUnion('state',[z.strictObject
 
 export const CoordinationStepSchema=z.strictObject({kind:z.enum(['planning','discovery','judgment','compilation']),key:Text(200),request:z.json(),resultId:IdSchema.nullable(),state:z.enum(['planned','running','known','failed','outcome_unknown']),cost:CostSchema,readBytes:Int(10_000_000)});
 export type CoordinationStep=z.infer<typeof CoordinationStepSchema>;
-export const CoordinationRequestSchema=z.strictObject({taskId:IdSchema,taskInputDigest:Sha256Schema,purpose:Purpose,policyVersion:Text(100),sourceEventId:IdSchema.nullable(),budget:BudgetSchema});
+export const CoordinationRequestSchema=z.strictObject({taskId:IdSchema,taskInputDigest:Sha256Schema,purpose:Purpose,policyVersion:Text(100),sourceEventId:IdSchema.nullable(),subjectRef:KnowledgeRefSchema.optional(),budget:BudgetSchema});
 export type CoordinationRequest=z.infer<typeof CoordinationRequestSchema>;
-export const CoordinationRunSchema=z.strictObject({id:IdSchema,request:CoordinationRequestSchema,state:z.enum(['reserved','running','waiting_for_review','no_change','needs_evidence','refused','failed','outcome_unknown','completed','cancelled']),sourcePlanId:IdSchema.nullable(),compilationOutcome:z.enum(['published','rejected']).optional(),candidateRefs:List(KnowledgeRefSchema,5),discovery:z.strictObject({epoch:Int(Number.MAX_SAFE_INTEGER).nullable(),evidence:List(AskEvidenceReceiptSchema,5),hasMore:z.boolean()}).nullable().optional(),readAccounting:z.literal('acknowledged_steps').optional(),judgmentIds:List(IdSchema,3),compilationId:IdSchema.nullable(),steps:List(CoordinationStepSchema,8),cost:CostSchema,readBytes:Int(10_000_000),reason:Text(5000),gaps:List(Text(1000),100),createdAt:TimestampSchema,completedAt:TimestampSchema.nullable()});
+export const CoordinationRunSchema=z.strictObject({id:IdSchema,request:CoordinationRequestSchema,state:z.enum(['reserved','running','waiting_for_review','no_change','needs_evidence','refused','failed','outcome_unknown','completed','cancelled']),sourcePlanId:IdSchema.nullable(),compilationOutcome:z.enum(['published','rejected']).optional(),candidateRefs:List(KnowledgeRefSchema,5),discovery:z.strictObject({epoch:Int(Number.MAX_SAFE_INTEGER).nullable(),evidence:List(AskEvidenceReceiptSchema,5),hasMore:z.boolean(),question:Text(2000).optional(),queries:List(Text(500),5).optional()}).nullable().optional(),readAccounting:z.literal('acknowledged_steps').optional(),judgmentIds:List(IdSchema,3),compilationId:IdSchema.nullable(),steps:List(CoordinationStepSchema,8),cost:CostSchema,readBytes:Int(10_000_000),reason:Text(5000),gaps:List(Text(1000),100),createdAt:TimestampSchema,completedAt:TimestampSchema.nullable()});
 export type CoordinationRun=z.infer<typeof CoordinationRunSchema>;
 
 export type Budget=z.infer<typeof BudgetSchema>;

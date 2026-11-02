@@ -20,10 +20,10 @@ import {createKnowledgeApplication,createSourceApplication,createSyntheticResear
 import {createPgKnowledgeReceiptPort,migrateKnowledgeReadReceipts,createPgKnowledgeOperations,migrateKnowledgeOperations,
   createPgSourceRegistry,migrateManagedSources,createHttpSourceOwner,routeSourceOwners,createPgUseFeedbackPort,migrateKnowledgeUses} from '@commerce/knowledge-service-adapter';
 import {createPgReviewPort,migrateKnowledgeReviews,lookupCapabilityOperation,getCapabilityOperation,createPgFeedbackSourcePort,
-  createPgFeedbackResearchPort,createPgKnowledgeAnswers,migrateKnowledgeAnswers,createPgSourceIntake,migrateSourceIntake,createPgWikiCompilations,migrateWikiCompilations,createPgWikiCompileStage,migrateMaintenanceTasks,createPgMaintenanceTasks,migrateWikiLint,createPgWikiLint,migrateRelationJudgments,createPgRelationJudgments,migrateSourcePlans,createPgSourcePlans,migrateCoordinationRuns,createPgCoordinationRuns} from '@commerce/knowledge-service-adapter';
+  createPgFeedbackResearchPort,createPgKnowledgeAnswers,migrateKnowledgeAnswers,createPgSourceIntake,migrateSourceIntake,createPgWikiCompilations,migrateWikiCompilations,createPgWikiCompileStage,migrateMaintenanceTasks,createPgMaintenanceTasks,migrateWikiLint,createPgWikiLint,migrateRelationJudgments,createPgRelationJudgments,migrateSourcePlans,createPgSourcePlans,migrateCoordinationRuns,createPgCoordinationRuns,migrateSemanticSweeps,createPgSemanticSweep} from '@commerce/knowledge-service-adapter';
 import {CONTRACT_VERSION,CatalogRequestSchema,CompareRequestSchema,GraphRequestSchema,HistoryRequestSchema,KnowledgeRefSchema,QueryRequestSchema,ReadReceiptSchema,
   SourceUpsertSchema,ResearchRequestSchema,CancelRequestSchema,OperationLookupSchema,UseInputSchema,FeedbackInputSchema,ChangesRequestSchema,
-  ReviewRequestSchema,ReviewDecisionSchema,FeedbackSourceRequestSchema,AskRequestSchema,SourceEventRequestSchema,EntityMentionExtractionSchema,WikiCompileRequestSchema,MaintenanceCollectRequestSchema,LintRequestSchema,RelationJudgmentRequestSchema,SearchProjectionBuildRequestSchema,SourcePlanRequestSchema} from '@commerce/knowledge-contracts';
+  ReviewRequestSchema,ReviewDecisionSchema,FeedbackSourceRequestSchema,AskRequestSchema,SourceEventRequestSchema,EntityMentionExtractionSchema,WikiCompileRequestSchema,MaintenanceCollectRequestSchema,LintRequestSchema,RelationJudgmentRequestSchema,SearchProjectionBuildRequestSchema,SourcePlanRequestSchema,SemanticSweepApiRequestSchema} from '@commerce/knowledge-contracts';
 
 export interface KnowledgeApiConfig {pool:Pool;token:string;principal:Principal;port?:number;host?:string;
   writerGrant?:KnowledgeWriterGrant;enableSyntheticResearch?:boolean;researchProvider?:SyntheticResearchProvider;capabilities?:CapabilityPrincipal;
@@ -52,7 +52,7 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
   if(config.enableMaintenance){if(!config.writerGrant)throw new Error('Maintenance requires an active writer configuration');await migrateSourceIntake(config.pool);await migrateMaintenanceTasks(config.pool);await migrateWikiLint(config.pool);}
   if(config.decisionProvider){if(!config.writerGrant)throw new Error('Decision judgment requires an active writer configuration');await migrateRelationJudgments(config.pool);}
   if(config.sourcePlanner){if(!config.writerGrant||!config.enableSourceIngest)throw new Error('Source planner requires explicit source intake and writer');await migrateSourcePlans(config.pool);}
-  if(config.coordinationPolicy){if(!config.sourcePlanner||!config.compiler||!config.enableMaintenance)throw new Error('Coordination requires explicit planner, compiler and maintenance');await migrateCoordinationRuns(config.pool);}
+  if(config.coordinationPolicy){if(!config.compiler||!config.enableMaintenance)throw new Error('Coordination requires explicit compiler and maintenance');await migrateCoordinationRuns(config.pool);await migrateSemanticSweeps(config.pool);}
   const app=express();app.disable('x-powered-by');app.use(express.json({limit:'1mb'}));
   const store=createKnowledgeStore(config.pool,{writerGrant:config.writerGrant}),receipts=createPgKnowledgeReceiptPort(config.pool);
   const sourceRegistry=createPgSourceRegistry(config.pool,{writerGrant:config.writerGrant,readerIds:config.sourceReaderIds??[config.principal.id]});
@@ -67,11 +67,11 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
   const sourcePlan=config.sourcePlanner&&config.writerGrant&&sourceIntake?createSourcePlanApplication({reader:service,intake:sourceIntake,operations:createPgSourcePlans(config.pool,config.writerGrant),provider:config.sourcePlanner,authorizeExternalDispatch:config.authorizeSourcePlannerDispatch}):null;
   const wikiCompile=config.compiler&&config.writerGrant&&sourceIntake?createWikiCompileApplication({reader:service,intake:sourceIntake,operations:createPgWikiCompilations(config.pool,config.writerGrant),provider:config.compiler,
     sources:sourceRegistry,stage:createPgWikiCompileStage(config.pool,config.writerGrant,sourceRegistry),judgments:judgment??undefined,authorizeExternalDispatch:config.authorizeCompilerDispatch}):null;
-  const coordination=config.coordinationPolicy&&sourcePlan&&wikiCompile&&sourceIntake&&config.writerGrant?createCoordinationProcessor({reader:service,intake:sourceIntake,planner:sourcePlan,compiler:wikiCompile,judgments:judgment??undefined,operations:createPgCoordinationRuns(config.pool,config.writerGrant),tasks:createPgMaintenanceTasks(config.pool,config.writerGrant),
+  const coordination=config.coordinationPolicy&&wikiCompile&&config.writerGrant?createCoordinationProcessor({reader:service,intake:sourceIntake??undefined,planner:sourcePlan??undefined,compiler:wikiCompile,judgments:judgment??undefined,operations:createPgCoordinationRuns(config.pool,config.writerGrant),tasks:createPgMaintenanceTasks(config.pool,config.writerGrant),
     policy:{...config.coordinationPolicy,providerFingerprint:digest({planner:config.sourcePlanner&&{id:config.sourcePlanner.id,version:config.sourcePlanner.version,model:config.sourcePlanner.model},compiler:config.compiler&&{id:config.compiler.id,version:config.compiler.methodVersion,model:config.compiler.model},judgment:config.decisionProvider&&{id:config.decisionProvider.id,version:config.decisionProvider.version,model:config.decisionProvider.model}})},
     execution:[config.sourcePlanner?.execution,config.compiler?.execution,config.decisionProvider?.execution].includes('external')?'external':'local_deterministic'}):null;
   const projection=config.enableMaintenance&&config.writerGrant?createWikiSearchProjection(config.pool,{writerGrant:config.writerGrant}):null;
-  const maintenance=config.enableMaintenance&&config.writerGrant?createMaintenanceApplication({tasks:createPgMaintenanceTasks(config.pool,config.writerGrant),lint:createPgWikiLint(config.pool,config.writerGrant),processor:coordination??undefined,
+  const maintenance=config.enableMaintenance&&config.writerGrant?createMaintenanceApplication({tasks:createPgMaintenanceTasks(config.pool,config.writerGrant),lint:createPgWikiLint(config.pool,config.writerGrant),processor:coordination??undefined,semanticSweep:coordination?createPgSemanticSweep(config.pool,config.writerGrant):undefined,
     searchProjection:{status:context=>projection!.status(context.scope.projectId,context.scope.spaceId),runBatch:(context,input)=>projection!.runBatch(context.scope.projectId,context.scope.spaceId,input)}}):null;
   const askWiki=config.answerer&&config.writerGrant?createAskWikiService({reader:service,
     operations:createPgKnowledgeAnswers(config.pool,config.writerGrant),provider:config.answerer}):null;
@@ -115,13 +115,13 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
     ...maintenance&&config.capabilities?.actions.includes('maintenance:read')?['maintenanceTasks','maintenanceFindings','searchProjectionStatus']:[],
     ...sourcePlan&&config.capabilities?.actions.includes('source-plans:read')&&config.capabilities.actions.includes('ingest:read')?['sourcePlan']:[],
     ...sourcePlan&&config.capabilities?.actions.includes('source-plans:write')&&config.capabilities.actions.includes('source-plans:read')&&config.capabilities.actions.includes('ingest:read')?['planSource']:[],
-    ...coordination&&config.capabilities?.actions.includes('maintenance:read')?['coordinationRun']:[],
-    ...coordination&&config.capabilities?.actions.includes('maintenance:write')?['processMaintenance']:[],
+    ...coordination&&config.capabilities?.actions.includes('maintenance:read')?['coordinationRun','semanticSweep']:[],
+    ...coordination&&config.capabilities?.actions.includes('maintenance:write')?['processMaintenance','runSemanticSweep']:[],
     ...maintenance&&config.capabilities?.actions.includes('maintenance:write')?['collectMaintenance','lintWiki','cancelMaintenance','rebuildSearchProjection']:[],
     ...judgment&&config.capabilities?.actions.includes('judgments:write')&&config.capabilities.actions.includes('judgments:read')?['judgeRelation']:[],
     ...judgment&&config.capabilities?.actions.includes('judgments:read')?['judgment']:[],
     ...sourceIntake&&config.capabilities?.actions.includes('ingest:read')?['sourceEvent']:[],
-    ...wikiCompile&&config.capabilities?.actions.includes('compile:write')&&config.capabilities.actions.includes('compile:read')&&config.capabilities.actions.includes('ingest:read')?['compileWiki']:[],
+    ...wikiCompile&&config.capabilities?.actions.includes('compile:write')&&config.capabilities.actions.includes('compile:read')?['compileWiki']:[],
     ...wikiCompile&&config.capabilities?.actions.includes('compile:read')?['compilation']:[],
     ...sourceIntake&&config.capabilities?.actions.includes('ingest:mentions')&&config.capabilities.actions.includes('ingest:read')?['recordEntityMentions']:[]],
     purposes:config.principal.purposes,profiles,mode:config.writerGrant?'ready':'read_only',contractVersion:CONTRACT_VERSION,policyVersion:service.policyVersion,
@@ -175,6 +175,8 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
   const maintained=()=>{if(!maintenance)throw new KnowledgeError('MAINTENANCE_DISABLED','Maintenance is not configured',503);return maintenance;};
   app.get(`${base}/maintenance/search-index`,route(async(context)=>({data:await maintained().searchProjectionStatus(capability(context))})));
   app.post(`${base}/maintenance/search-index`,route(async(context,req)=>{const {purpose,...input}=SearchProjectionBuildRequestSchema.parse(req.body);if(purpose!==context.purpose)throw new KnowledgeError('PURPOSE_MISMATCH','Search build purpose differs',403);return {data:await maintained().rebuildSearchProjection(capability(context),input)};}));
+  app.post(`${base}/maintenance/semantic-sweeps`,route(async(context,req)=>{coordinated();const {purpose,...input}=SemanticSweepApiRequestSchema.parse(req.body);if(purpose!==context.purpose)throw new KnowledgeError('PURPOSE_MISMATCH','Sweep purpose differs',403);return {data:await maintained().runSemanticSweep(capability(context),input)};}));
+  app.get(`${base}/maintenance/semantic-sweeps/:passId`,route(async(context,req)=>({data:await maintained().semanticSweep(capability(context),ReadReceiptSchema.shape.id.parse(req.params.passId))})));
   app.post(`${base}/maintenance/process-one`,route(async(context)=>{coordinated();return {data:await maintained().runOne(capability(context))};}));
   app.post(`${base}/maintenance/collect`,route(async(context,req)=>{const input=MaintenanceCollectRequestSchema.parse(req.body);if(input.purpose!==context.purpose)throw new KnowledgeError('PURPOSE_MISMATCH','Maintenance purpose differs',403);return {data:await maintained().collect(capability(context),input)};}));
   app.post(`${base}/maintenance/lint`,route(async(context,req)=>{const {purpose,...input}=LintRequestSchema.parse(req.body);if(purpose!==context.purpose)throw new KnowledgeError('PURPOSE_MISMATCH','Lint purpose differs',403);return {data:await maintained().runLint(capability(context),input)};}));

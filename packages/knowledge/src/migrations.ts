@@ -64,6 +64,10 @@ export async function migrateKnowledge(pool: Pool): Promise<void> {
         ON ccl_knowledge_events(project_id,sequence);
       CREATE INDEX IF NOT EXISTS ccl_knowledge_revisions_search_idx
         ON ccl_knowledge_revisions(project_id,kind,published_at);
+      -- Metadata maintenance orders the revision side of the exact head join by this same key.
+      CREATE INDEX IF NOT EXISTS ccl_knowledge_revisions_project_scope_uuid_idx
+        ON ccl_knowledge_revisions(project_id,((payload->'binding'->>'spaceId')),(object_id::uuid))
+        WHERE kind='wiki_page' AND published_at IS NOT NULL;
     `);
     await migratePublicationAuthority(client);
     await migrateKnowledgeWriterAuthority(client);

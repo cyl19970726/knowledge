@@ -12,13 +12,13 @@ const stamp='2026-10-26T10:30:00.000Z';
 const uuid=(key:string)=>{const h=createHash('sha256').update(`synthetic-knowledge:${key}`).digest('hex');return `${h.slice(0,8)}-${h.slice(8,12)}-4${h.slice(13,16)}-8${h.slice(17,20)}-${h.slice(20,32)}`;};
 const ref=(key:string,version='1')=>({objectId:uuid(key),versionId:uuid(`${key}:version:${version}`)});
 /** Disposable synthetic data only. Never call against a real business schema. */
-export async function seedKnowledgeSyntheticFixture(pool:Pool,projectId='knowledge-synthetic',spaceId='synthetic-research'){
+export async function seedKnowledgeSyntheticFixture(pool:Pool,projectId='knowledge-synthetic',spaceId='synthetic-research',options:{readerIds?:readonly string[]}={}){
  await migrateKnowledge(pool);const writerGrant=await rotateKnowledgeWriterAuthority(pool,projectId,null,{ownerId:'synthetic-local-service',mode:'active'});
  await migrateManagedSources(pool);
  const principal={id:'synthetic-owner',clientInstallationId:'knowledge-demo',projectId,spaceIds:[spaceId],purposes:['exploration_reading']};
  const authorization={actions:['sources:write','sources:revoke','uses:write','feedback:write','feedback:source','research:write','review:request','review:decide'],adapterIds:['document','commerce','manual'],rightsPolicyIds:['synthetic-local-only']};
  const context:CapabilityContext={scope:{projectId,spaceId},principal,purpose:'exploration_reading',authorization};
- const registry=createPgSourceRegistry(pool,{writerGrant}),sourceService=createSourceApplication(registry);
+ const registry=createPgSourceRegistry(pool,{writerGrant,readerIds:options.readerIds}),sourceService=createSourceApplication(registry);
  const sourceText='合成示例：拍摄可见细节，与观众理解或购买效果是不同的观察。\n\n本资料仅用于验证来源、版本和阅读交互，不构成真实经营结论。';
  const source=await sourceService.upsert(context,{externalIdentity:{adapterId:'document',externalObjectId:'synthetic-notes',externalVersion:'1'},expectedSourceHead:null,
  sourceSchemaVersion:'document-text@1',contentDigest:createHash('sha256').update(sourceText).digest('hex'),custody:{mode:'managed_copy',text:sourceText},sourceKind:'document',author:'合成资料作者',publisher:'合成演示',acquirer:'工程测试',publishedAt:null,obtainedAt:stamp,

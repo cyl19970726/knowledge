@@ -1,3 +1,4 @@
+import {discoverFromWiki} from './wiki-discovery.ts';
 import {randomUUID} from 'node:crypto';
 import {CoordinationRunSchema,SourcePlanRequestSchema,WikiCompileRequestSchema,RelationJudgmentRequestSchema,
  type Budget,type Cost,type CoordinationRun,type CoordinationStep,type MaintenanceTask,type MaintenanceOutcome,type KnowledgeRef,type DecisionQuestion} from '@commerce/knowledge-contracts';
@@ -42,8 +43,8 @@ function stateOf(value:string):CoordinationRun['state']{
 function outcome(run:CoordinationRun):MaintenanceOutcome{return {state:run.state==='reserved'||run.state==='running'?'outcome_unknown':run.state==='refused'?'needs_evidence':run.state,
  findingIds:[],compilationId:run.compilationId,judgmentId:run.judgmentIds[0]??null,cost:run.cost,reason:'后台研究已留下可核对记录；具体依据和结论见获授权的协调详情。'};}
 /** A durable coordinator composes existing operations. It has no publication authority. */
-export function createCoordinationProcessor(options:{reader:Pick<KnowledgeApplication,'queryCandidates'|'readCandidate'>;
- intake:Pick<ReturnType<typeof createSourceIntakeApplication>,'get'>;planner:ReturnType<typeof createSourcePlanApplication>;
+export function createCoordinationProcessor(options:{reader:Pick<KnowledgeApplication,'queryCandidates'|'readCandidate'>&Partial<Pick<KnowledgeApplication,'inspectWikiCandidate'|'assertReadEpoch'|'validateFrozenWiki'|'validateHistoricalWiki'>>;
+ intake?:Pick<ReturnType<typeof createSourceIntakeApplication>,'get'>;planner?:ReturnType<typeof createSourcePlanApplication>;
  compiler:ReturnType<typeof createWikiCompileApplication>;judgments?:ReturnType<typeof createRelationJudgmentApplication>;
  operations:CoordinationOperationPort;tasks?:Pick<MaintenanceTaskPort,'get'>;policy:CoordinationPolicy;execution:MaintenanceProcessor['execution'];now?:()=>Date}){
  const policy=structuredClone(options.policy),now=()=>options.now?.()??new Date();
@@ -54,9 +55,14 @@ export function createCoordinationProcessor(options:{reader:Pick<KnowledgeApplic
  const policyDigest=digest(policy);
  async function visible(context:CapabilityContext,run:CoordinationRun){
   authorizeCapability(context,'maintenance:read');
-  if(run.request.sourceEventId)await options.intake.get(context,run.request.sourceEventId);
-  if(run.sourcePlanId)await options.planner.get(context,run.sourcePlanId);
+  if(run.request.sourceEventId){if(!options.intake)throw new KnowledgeError('SOURCE_INTAKE_DISABLED','Source run reader is unavailable',503);await options.intake.get(context,run.request.sourceEventId);}
+  if(run.sourcePlanId){if(!options.planner)throw new KnowledgeError('SOURCE_PLANNER_DISABLED','Source plan reader is unavailable',503);await options.planner.get(context,run.sourcePlanId);}
   if(run.compilationId)await options.compiler.get(context,run.compilationId);
+  for(const item of run.discovery?.evidence??[]){
+   const validate=run.compilationOutcome&&options.reader.validateHistoricalWiki?options.reader.validateHistoricalWiki:options.reader.validateFrozenWiki;
+   if(!validate||!item.storageDigest)throw new KnowledgeError('COORDINATION_READSET_UNAVAILABLE','Discovery evidence cannot be verified',503);
+   await validate(context,item.ref,item.storageDigest);
+  }
   return run;
  }
  async function reconcile(context:CapabilityContext,original:CoordinationRun){
@@ -64,7 +70,7 @@ export function createCoordinationProcessor(options:{reader:Pick<KnowledgeApplic
   let run=structuredClone(original),lastState:string|null=null;
   for(const [index,saved] of run.steps.entries()){
    if(saved.kind==='discovery'||!['running','outcome_unknown'].includes(saved.state)&&saved.kind!=='planning')continue;
-   const found=saved.kind==='planning'?await options.planner.lookup(context,saved.key):saved.kind==='compilation'?
+   const found=saved.kind==='planning'?await options.planner?.lookup(context,saved.key):saved.kind==='compilation'?
     await options.compiler.lookup(context,saved.key):await options.judgments?.lookup(context,saved.key);
    if(!found)continue;
    const pending=['reserved','running','outcome_unknown'].includes(found.state);
@@ -87,11 +93,14 @@ export function createCoordinationProcessor(options:{reader:Pick<KnowledgeApplic
  async function get(context:CapabilityContext,id:string){const run=await options.operations.get(context,id);
   if(!run)throw new KnowledgeError('NOT_FOUND','Coordination run is unavailable',404);await visible(context,run);return visible(context,await reconcile(context,run));}
  async function byTask(context:CapabilityContext,taskId:string){const run=await options.operations.byTask(context,taskId);if(!run)return null;await visible(context,run);return visible(context,await reconcile(context,run));}
- const processor:MaintenanceProcessor={execution:options.execution,kinds:['source_research'],async process(readContext,task,signal){
+ const processor:MaintenanceProcessor={execution:options.execution,kinds:[...options.intake&&options.planner?['source_research' as const]:[],...options.reader.inspectWikiCandidate&&options.reader.assertReadEpoch&&options.reader.validateFrozenWiki?['relation_check' as const]:[]],async process(readContext,task,signal){
   const context=readContext as CapabilityContext;authorizeCapability(context,'maintenance:write');authorizeCapability(context,'maintenance:read');
-  if(task.request.kind!=='source_research'||task.request.sourceEventIds.length!==1)throw new KnowledgeError('COORDINATION_TASK_UNSUPPORTED','This coordinator requires one exact source event',422);
+  const wikiTask=task.request.kind==='relation_check';
+  if(wikiTask?(!task.request.subjectRef||task.request.subjectRef.domain!=='knowledge'||task.request.sourceEventIds.length>0||!options.reader.inspectWikiCandidate||!options.reader.assertReadEpoch||!options.reader.validateFrozenWiki):
+   task.request.kind!=='source_research'||task.request.sourceEventIds.length!==1||!options.intake||!options.planner)
+   throw new KnowledgeError('COORDINATION_TASK_UNSUPPORTED','A source event or exact Wiki relation task is required',422);
   const initial:CoordinationRun={id:randomUUID(),request:{taskId:task.id,taskInputDigest:task.inputDigest,purpose:context.purpose,policyVersion:policy.version,
-   sourceEventId:task.request.sourceEventIds[0],budget:{maxModelCalls:policy.budget.maxModelCalls,maxReadBytes:policy.budget.maxReadBytes,maxMoney:policy.budget.maxMoney,
+   sourceEventId:wikiTask?null:task.request.sourceEventIds[0],...wikiTask?{subjectRef:task.request.subjectRef!}:{},budget:{maxModelCalls:policy.budget.maxModelCalls,maxReadBytes:policy.budget.maxReadBytes,maxMoney:policy.budget.maxMoney,
     deadline:new Date(now().getTime()+policy.budget.timeoutMs).toISOString()}},state:'reserved',sourcePlanId:null,candidateRefs:[],discovery:null,readAccounting:'acknowledged_steps',judgmentIds:[],compilationId:null,steps:[],cost:zero(policy.budget.maxMoney?.currency??'USD'),readBytes:0,reason:'Reserved; no child dispatched',gaps:[],createdAt:now().toISOString(),completedAt:null};
   const reservation=await options.operations.reserve(context,digest({task:task.inputDigest,policyDigest}),initial);
   let run=reservation.result;
@@ -110,10 +119,10 @@ export function createCoordinationProcessor(options:{reader:Pick<KnowledgeApplic
   // Observed spend is persisted even if a provider violated its grant. Stop before another call.
   const checkpoint=async()=>{refresh();run=CoordinationRunSchema.parse({...run,state:'running'});await options.operations.checkpoint(context,run.id,run);checkSpend();};
   const grant=(kind:'planning'|'discovery'|'judgment'|'compilation',index=0):Budget=>{
-   const parent=run.request.budget,pairs=options.judgments?policy.maxPairs:0,total=pairs+2;
-   const readFraction=kind==='planning'?0.2:kind==='discovery'?0.2:kind==='judgment'?0.3/Math.max(1,pairs):pairs?0.3:0.6;
-   const calls=kind==='planning'?Math.min(1,parent.maxModelCalls):kind==='compilation'?Math.min(1,Math.max(0,parent.maxModelCalls-1)):
-     kind==='judgment'?Math.min(1,Math.max(0,parent.maxModelCalls-2-index)):0;
+   const parent=run.request.budget,pairs=options.judgments?policy.maxPairs:0,total=pairs+(wikiTask?1:2);
+   const readFraction=kind==='planning'?0.2:kind==='discovery'?(wikiTask?0.4:0.2):kind==='judgment'?0.3/Math.max(1,pairs):pairs?0.3:0.6;
+   const calls=kind==='planning'?Math.min(1,parent.maxModelCalls):kind==='compilation'?Math.min(1,Math.max(0,parent.maxModelCalls-(wikiTask?0:1))):
+     kind==='judgment'?Math.min(1,Math.max(0,parent.maxModelCalls-(wikiTask?1:2)-index)):0;
    return {maxModelCalls:calls,maxReadBytes:Math.floor(parent.maxReadBytes*readFraction),deadline:parent.deadline,
     maxMoney:parent.maxMoney?{currency:parent.maxMoney.currency,amount:Math.floor(parent.maxMoney.amount/total*1_000_000)/1_000_000}:null};
   };
@@ -127,10 +136,33 @@ export function createCoordinationProcessor(options:{reader:Pick<KnowledgeApplic
   const finish=async(state:CoordinationRun['state'],reason:string)=>{
    refresh();run=CoordinationRunSchema.parse({...run,state,reason,completedAt:now().toISOString()});await options.operations.finish(context,run.id,run);return outcome(await visible(context,run));};
   try{
-   await check();await options.intake.get(context,run.request.sourceEventId!);await checkpoint();
+   await check();await checkpoint();
+   let researchQuestion:string,queries:string[],rightRef:KnowledgeRef;
+   if(wikiTask){
+    let saved=run.steps.find(x=>x.kind==='discovery');
+    if(!saved||saved.state!=='known'){
+     saved=await step('discovery',0,{subjectRef:run.request.subjectRef!,method:'wiki-identity-title-v1',maxCandidates:policy.maxCandidates,budget:grant('discovery')});
+     let acknowledgedReadBytes=0;
+     try{const found=await discoverFromWiki(options.reader as Parameters<typeof discoverFromWiki>[0],context,run.request.subjectRef!,
+       {maxCandidates:policy.maxCandidates,queryLimit:policy.queryLimit,maxReadBytes:grant('discovery').maxReadBytes},check,bytes=>{acknowledgedReadBytes=bytes;});
+      run={...run,candidateRefs:found.candidateRefs,discovery:found.discovery,gaps:[...run.gaps,
+       'Discovery uses frozen Wiki titles and identities; conceptual links without lexical overlap may be missed',
+       ...found.discovery.hasMore?['Candidate discovery is bounded; additional candidates remain unread']:[]]};
+      await saveStep(saved,{state:'known',readBytes:found.readBytes,cost:zero(run.request.budget.maxMoney?.currency??'USD')});
+     }catch(error){if(error&&typeof error==='object'&&'commitStatus'in error&&error.commitStatus==='unknown')throw error;
+      if(acknowledgedReadBytes){run={...run,gaps:[...run.gaps,'Discovery stopped after acknowledged body reads; no provider received those inputs']};await saveStep(saved,{state:'failed',readBytes:acknowledgedReadBytes,cost:zero(run.request.budget.maxMoney?.currency??'USD')});}
+      if(error instanceof KnowledgeError&&['NOT_FOUND','CANDIDATE_NOT_ADMITTED','SOURCE_FORBIDDEN','KNOWLEDGE_READ_BUDGET_EXCEEDED'].includes(error.code))
+       return finish('needs_evidence','The periodic Wiki subject is unavailable or outside the read budget; no model dispatched');throw error;}
+    }
+    if(!run.discovery?.question||!run.discovery.queries?.length||!run.candidateRefs.length)
+     throw new KnowledgeError('WIKI_DISCOVERY_INVALID','Frozen periodic discovery is incomplete',409);
+    researchQuestion=run.discovery.question;queries=run.discovery.queries;rightRef=run.candidateRefs[0];
+    if(run.candidateRefs.length<2)return finish('needs_evidence','Bounded discovery found no second readable Wiki; this is not a claim that no relation exists');
+   }else{
+   await options.intake!.get(context,run.request.sourceEventId!);
    const planning=await step('planning',0,SourcePlanRequestSchema.parse({sourceEventId:run.request.sourceEventId,purpose:context.purpose,methodVersion:policy.version,budget:grant('planning')}));
    if(planning.state==='planned')await saveStep(planning,{state:'running',cost:unknown()});
-   const plan=await options.planner.plan(context,planning.request,planning.key,signal);
+   const plan=await options.planner!.plan(context,planning.request,planning.key,signal);
    run={...run,sourcePlanId:plan.id};await saveStep(planning,{resultId:plan.id,state:['reserved','running','outcome_unknown'].includes(plan.state)?'outcome_unknown':plan.state==='failed'?'failed':'known',cost:plan.cost,readBytes:plan.readUsage.sourceContentBytes+plan.readUsage.wikiPayloadBytes});
    if(plan.state!=='planned'||!plan.proposal)return finish(stateOf(plan.state),`Source planning: ${plan.reason}`);
    await check();
@@ -154,16 +186,19 @@ export function createCoordinationProcessor(options:{reader:Pick<KnowledgeApplic
     run={...run,candidateRefs:candidates,discovery:{epoch,evidence,hasMore},gaps:[...run.gaps,...hasMore?['Candidate discovery is bounded; additional candidates remain unread']:[]]};
     await saveStep(discovery,{state:'known',readBytes,cost:zero(run.request.budget.maxMoney?.currency??'USD')});
    }
-   const pairRefs=options.judgments?run.candidateRefs.slice(0,policy.maxPairs):[];
+   researchQuestion=plan.proposal.question!;queries=plan.proposal.queries;
+   const source=plan.evidence[0]?.ref;if(!source)throw new KnowledgeError('SOURCE_PLAN_READSET_INVALID','Planning has no exact source receipt',409);rightRef=source;
+   }
+   const pairRefs=options.judgments?run.candidateRefs.slice(wikiTask?1:0,(wikiTask?1:0)+policy.maxPairs):[];
    for(const [index,left] of pairRefs.entries()){
-    await check();const right=plan.evidence[0]?.ref;if(!right)throw new KnowledgeError('SOURCE_PLAN_READSET_INVALID','Planning has no exact source receipt',409);
+    await check();const right=rightRef;
     const saved=await step('judgment',index,RelationJudgmentRequestSchema.parse({left,right,purpose:context.purpose,rubricVersion:task.request.rubricVersion,questions,budget:grant('judgment',index)}));
     if(saved.state==='planned')await saveStep(saved,{state:'running',cost:unknown()});
     const judged=await options.judgments!.judge(context,saved.request,saved.key,signal);
     run={...run,judgmentIds:[...new Set([...run.judgmentIds,judged.id])]};await saveStep(saved,{resultId:judged.id,state:['reserved','running','outcome_unknown'].includes(judged.state)?'outcome_unknown':judged.state==='failed'?'failed':'known',cost:judged.cost,readBytes:judged.readUsage.sourceContentBytes+judged.readUsage.wikiPayloadBytes});
     if(['reserved','running','outcome_unknown'].includes(judged.state))return finish('outcome_unknown','An original-key judgment needs reconciliation; compilation was not dispatched');
    }
-   await check();const compilation=await step('compilation',0,WikiCompileRequestSchema.parse({question:plan.proposal.question,purpose:context.purpose,sourceEventIds:[run.request.sourceEventId!],queries:plan.proposal.queries,judgmentIds:run.judgmentIds,limit:policy.queryLimit,maxPages:1,budget:grant('compilation')}));
+   await check();const compilation=await step('compilation',0,WikiCompileRequestSchema.parse({question:researchQuestion,purpose:context.purpose,sourceEventIds:wikiTask?[]:[run.request.sourceEventId!],selectedRefs:run.candidateRefs,queries,judgmentIds:run.judgmentIds,limit:Math.max(policy.queryLimit,run.candidateRefs.length),maxPages:1,budget:grant('compilation')}));
    if(compilation.state==='planned')await saveStep(compilation,{state:'running',cost:unknown()});
    const compiled=await options.compiler.compile(context,compilation.request,compilation.key,signal);run={...run,compilationId:compiled.id};
    await saveStep(compilation,{resultId:compiled.id,state:['reserved','running','outcome_unknown'].includes(compiled.state)?'outcome_unknown':compiled.state==='failed'?'failed':'known',cost:compiled.cost,readBytes:compiled.readUsage.sourceContentBytes+compiled.readUsage.wikiPayloadBytes});

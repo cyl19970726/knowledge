@@ -40,7 +40,7 @@ const receipt=({body:_,...item}:AskEvidence)=>item;
 const unknownGroup=()=>({id:null,status:'unknown' as const,authority:null});
 
 /** Compiles a bounded exact readset into proposals; only the trusted stage port can create a changeset. */
-export function createWikiCompileApplication(options:{reader:Pick<KnowledgeApplication,'queryCandidates'|'readCandidate'|'validateFrozenWiki'|'sourceRecord'|'sourceContentBounded'|'assertReadEpoch'>&Partial<Pick<KnowledgeApplication,'validateHistoricalWiki'>>;
+export function createWikiCompileApplication(options:{reader:Pick<KnowledgeApplication,'queryCandidates'|'readCandidate'|'validateFrozenWiki'|'sourceRecord'|'sourceContentBounded'|'assertReadEpoch'>&Partial<Pick<KnowledgeApplication,'validateHistoricalWiki'|'readWikiExactBounded'>>;
  intake:Pick<ReturnType<typeof createSourceIntakeApplication>,'get'>;operations:WikiCompileOperationPort;provider:WikiCompiler;
  stage?:WikiCompileStagePort;sources?:SourceRegistryPort;judgments?:{get(context:CapabilityContext,id:string):Promise<RelationJudgment>};now?:()=>Date;
  authorizeExternalDispatch?:(context:ReadContext,evidence:readonly AskEvidence[],provider:WikiCompiler)=>Promise<void>}){
@@ -72,8 +72,15 @@ export function createWikiCompileApplication(options:{reader:Pick<KnowledgeAppli
  return {get,async lookup(context:CapabilityContext,key:string){auth(context,'compile:read');const value=await options.operations.lookup(context,key);
    return value?recover(context,value):null;},
   async compile(context:CapabilityContext,raw:unknown,key:string,parentSignal?:AbortSignal):Promise<WikiCompileResult>{
-   auth(context,'compile:write');auth(context,'compile:read');auth(context,'ingest:read');const request=WikiCompileRequestSchema.parse(raw);
+   auth(context,'compile:write');auth(context,'compile:read');const request=WikiCompileRequestSchema.parse(raw);
+   if(request.sourceEventIds.length)auth(context,'ingest:read');
    if(request.purpose!==context.purpose)throw new KnowledgeError('PURPOSE_MISMATCH','Compilation purpose differs',403);
+   if(request.selectedRefs?.some(ref=>ref.projectId!==context.scope.projectId||ref.spaceId!==context.scope.spaceId))
+    throw new KnowledgeError('SELECTED_REF_SCOPE_MISMATCH','Selected Wiki versions must belong to the authenticated scope',403);
+   if((request.selectedRefs?.length??0)>request.limit)
+    throw new KnowledgeError('SELECTED_WIKI_LIMIT_EXCEEDED','Selected Wiki versions exceed the global Wiki read limit',422);
+   if(request.selectedRefs?.length&&!options.reader.readWikiExactBounded)
+    throw new KnowledgeError('BOUNDED_WIKI_READ_UNSUPPORTED','Exact bounded Wiki reading is unavailable for selected versions',503);
    if(!key.trim()||key.length>200)throw new KnowledgeError('IDEMPOTENCY_KEY_REQUIRED','Bounded compilation key required',400);
    if(new Set(request.sourceEventIds).size!==request.sourceEventIds.length)throw new KnowledgeError('DUPLICATE_SOURCE_EVENT','Source event IDs must be distinct',422);
    if(Date.parse(request.budget.deadline)-now().getTime()>300_000)throw new KnowledgeError('DEADLINE_TOO_LARGE','Compilation deadline must be within five minutes',422);
@@ -93,7 +100,7 @@ export function createWikiCompileApplication(options:{reader:Pick<KnowledgeAppli
    const check=()=>{if(Date.parse(request.budget.deadline)<=now().getTime())throw new KnowledgeError('DEADLINE_EXPIRED','Compilation deadline elapsed',422);};
    const update=()=>{result={...result,evidence:evidence.map(receipt),excluded:excluded.slice(0,100),gaps:[...new Set([...gaps,...result.gaps])].slice(0,100),readsetFingerprint:digest(evidence.map(receipt)),
     readUsage:{wikiPayloadBytes:wikiBytes,sourceContentBytes:sourceBytes,preparedInputBytes:preparedBytes,maxReadBytes:request.budget.maxReadBytes},
-    coverage:{scopeDescription:`${context.scope.projectId}/${context.scope.spaceId}: Wiki lexical v2, bounded original reports`,returned:evidence.length,loaded:loaded+evidence.filter(item=>item.kind==='source_content').length,hasMore,nextCursor:null,
+    coverage:{scopeDescription:`${context.scope.projectId}/${context.scope.spaceId}: ${request.selectedRefs?.length?'selected Wiki, lexical v2, bounded sources':'Wiki lexical v2, bounded original reports'}`,returned:evidence.length,loaded:loaded+evidence.filter(item=>item.kind==='source_content').length,hasMore,nextCursor:null,
      completeness:'bounded',omittedReasons:['Lexical candidates do not prove all related knowledge was found',...hasMore?['Additional candidates were not read']:[]],snapshot:{publicationEpoch:epoch,consistency:'single_scope_snapshot'}}};};
    try{
     check();const seenSources=new Set<string>();
@@ -108,7 +115,48 @@ export function createWikiCompileApplication(options:{reader:Pick<KnowledgeAppli
      if(ref.domain==='source'&&options.sources)sourceProofs.push(await options.sources.proof(context,ref));
     }
     const seenWiki=new Set<string>(),cursors=new Map<string,string|undefined>();let readWiki=0;
-    for(let page=0;page<request.maxPages;page++){
+    const addWiki=(pageData:Awaited<ReturnType<KnowledgeApplication['readCandidate']>>,exact=false,accounted=false)=>{
+     if(exact&&(!pageData.admitted||pageData.frozenRevision?.kind!=='wiki_page'))
+      throw new KnowledgeError('SELECTED_WIKI_NOT_ADMITTED','Selected Wiki is not current and reviewed for this purpose',403);
+     if(!accounted){
+      if(pageData.payloadBytes>remaining())throw new KnowledgeError('READ_BUDGET_EXCEEDED','Wiki owner exceeded the remaining input bound',422);
+      wikiBytes+=pageData.payloadBytes;
+     }
+     readWiki++;
+     const base=pageData.frozenRevision,profile=base?.kind==='wiki_page'?getWikiPageProfile(base.content.profile.id,base.content.profile.version):null;
+     const evidenceId=`wiki:${pageData.ref.objectId}:${pageData.ref.versionId}`;
+     evidence.push({id:evidenceId,kind:'wiki_page',ref:pageData.ref,title:pageData.title,body:pageData.body,locator:null,conditions:pageData.conditions,counterexamples:pageData.counterexamples,
+      unknowns:pageData.unknowns,actualReadCoverage:[],storageDigest:pageData.storageDigest,sourceGroups:pageData.sourceGroups.length?pageData.sourceGroups.map(id=>({id,status:'known',authority:'knowledge-revision-lineage'})):[unknownGroup()],
+      ...base?.kind==='wiki_page'&&profile?{wiki:{profile:{id:profile.id,version:profile.version,digest:wikiPageProfileFingerprint(profile)},identity:base.content.identity}}:{}});
+     if(base)bases.set(evidenceId,base);
+    };
+    for(const ref of request.selectedRefs??[]){check();const key=`${ref.objectId}/${ref.versionId}`;seenWiki.add(key);
+     const available=remaining();let pageData:Awaited<ReturnType<KnowledgeApplication['readCandidate']>>;
+     try{pageData=await options.reader.readWikiExactBounded!(context,ref,available);}
+     catch(error){
+      if(error instanceof KnowledgeError&&error.status===409){
+       gaps.push('Selected exact Wiki read conflicted after possible body transfer; byte usage is unknown and further content reads were stopped');
+       excluded.push({ref,reason:`Selected exact Wiki read conflicted (${error.code}); no text was sent to the compiler`});
+      }
+      throw error;
+     }
+     // A returned page has a confirmed physical size even if its ref fails exact verification.
+     wikiBytes+=pageData.payloadBytes;
+     if(pageData.payloadBytes>available)throw new KnowledgeError('READ_BUDGET_EXCEEDED','Wiki owner exceeded the remaining input bound',422);
+     check();
+     if(pageData.ref.projectId!==ref.projectId||pageData.ref.spaceId!==ref.spaceId||pageData.ref.objectId!==ref.objectId||
+      pageData.ref.versionId!==ref.versionId||pageData.ref.contentDigest!==ref.contentDigest)
+      throw new KnowledgeError('EXACT_REF_MISMATCH','Selected Wiki differs from the exact requested version',409);
+     addWiki(pageData,true,true);
+    }
+    if(readWiki>=request.limit){
+     hasMore=true;
+     // Exact selections may fill the limit. Capture the publication epoch without loading another body.
+     const observed=await options.reader.queryCandidates(context,QueryRequestSchema.parse({question:request.queries[0],purpose:request.purpose,
+      kinds:['wiki_page'],limit:1,retrievalMethod:'wiki-lexical-v2'}));
+     epoch=observed.coverage.snapshot.publicationEpoch;
+    }
+    for(let page=0;page<request.maxPages&&readWiki<request.limit;page++){
      for(const query of [...new Set(request.queries)]){if(page&&!cursors.has(query))continue;check();
       const found=await options.reader.queryCandidates(context,QueryRequestSchema.parse({question:query,purpose:request.purpose,kinds:['wiki_page'],limit:request.limit,cursor:cursors.get(query),retrievalMethod:'wiki-lexical-v2'}));
       const nextEpoch=found.coverage.snapshot.publicationEpoch;
@@ -119,13 +167,7 @@ export function createWikiCompileApplication(options:{reader:Pick<KnowledgeAppli
       for(const candidate of found.data.items){const key=`${candidate.ref.objectId}/${candidate.ref.versionId}`;if(seenWiki.has(key))continue;seenWiki.add(key);check();
        if(readWiki>=request.limit||candidate.payloadBytes>remaining()){hasMore=true;excluded.push({ref:fromVersionRef(candidate.ref,context.scope,'knowledge',null),reason:readWiki>=request.limit?'Global Wiki read count reached':'Wiki JSON exceeds remaining content budget'});continue;}
        let pageData;try{pageData=await options.reader.readCandidate(context,candidate,remaining());}catch(error){if(error instanceof KnowledgeError&&error.code==='CANDIDATE_NOT_ADMITTED'){excluded.push({ref:fromVersionRef(candidate.ref,context.scope,'knowledge',null),reason:'Not current/reviewed for this purpose'});continue;}throw error;}
-       wikiBytes+=pageData.payloadBytes;readWiki++;
-       const base=pageData.frozenRevision,profile=base?.kind==='wiki_page'?getWikiPageProfile(base.content.profile.id,base.content.profile.version):null;
-       const evidenceId=`wiki:${pageData.ref.objectId}:${pageData.ref.versionId}`;
-       evidence.push({id:evidenceId,kind:'wiki_page',ref:pageData.ref,title:pageData.title,body:pageData.body,locator:null,conditions:pageData.conditions,counterexamples:pageData.counterexamples,
-        unknowns:pageData.unknowns,actualReadCoverage:[],storageDigest:pageData.storageDigest,sourceGroups:pageData.sourceGroups.length?pageData.sourceGroups.map(id=>({id,status:'known',authority:'knowledge-revision-lineage'})):[unknownGroup()],
-        ...base?.kind==='wiki_page'&&profile?{wiki:{profile:{id:profile.id,version:profile.version,digest:wikiPageProfileFingerprint(profile)},identity:base.content.identity}}:{}});
-       if(base)bases.set(evidenceId,base);
+       addWiki(pageData);
       }
      }
      if(!cursors.size||readWiki>=request.limit)break;
@@ -144,7 +186,8 @@ export function createWikiCompileApplication(options:{reader:Pick<KnowledgeAppli
     }
     // Hints guide research; only evidence IDs can become draft support citations.
     const prepared={question:request.question,purpose:request.purpose,evidence,profiles,gaps,...relationHints.length?{relationHints}:{}};preparedBytes=Buffer.byteLength(JSON.stringify(prepared),'utf8');
-    if(preparedBytes>request.budget.maxReadBytes)throw new KnowledgeError('PREPARED_INPUT_BUDGET_EXCEEDED','Prepared compiler input exceeds its bound',422);
+    if(preparedBytes>request.budget.maxReadBytes)
+     throw new KnowledgeError('PREPARED_INPUT_BUDGET_EXCEEDED','Prepared compiler input exceeds its bound',422);
     update();await validate(context,result);await committed(options.operations.checkpoint(context,id,result),id);
     check();await validate(context,result);await options.reader.assertReadEpoch(context,epoch);check();
     if(providerIdentity.execution==='external'){

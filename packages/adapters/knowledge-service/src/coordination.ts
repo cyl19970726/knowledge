@@ -94,6 +94,8 @@ function assertResult(context:ReadContext,row:Row|undefined,result:CoordinationR
     canonical(result.request)!==canonical(request)||
     row&&(result.createdAt!==row.result.createdAt||result.request.taskId!==row.result.request.taskId))
     throw new KnowledgeError('COORDINATION_BINDING_CHANGED','Coordination identity or task request changed',409);
+  if(result.request.subjectRef&&(result.request.subjectRef.projectId!==context.scope.projectId||result.request.subjectRef.spaceId!==context.scope.spaceId||result.request.subjectRef.domain!=='knowledge'))
+    throw new KnowledgeError('COORDINATION_REF_SCOPE','Wiki subject is outside the task scope',403);
   if(result.candidateRefs.some(ref=>ref.projectId!==context.scope.projectId||ref.spaceId!==context.scope.spaceId))
     throw new KnowledgeError('COORDINATION_REF_SCOPE','Candidate reference is outside the task scope',403);
   if(result.discovery?.evidence.some(item=>item.ref.projectId!==context.scope.projectId||
@@ -180,10 +182,11 @@ export function createPgCoordinationRuns(pool:Pool,grant:KnowledgeWriterGrant):C
         !/^[0-9a-f]{64}$/.test(inputDigest)||Date.parse(initial.request.budget.deadline)-Date.now()>300_000)
         throw new KnowledgeError('COORDINATION_RESERVATION_INVALID','Exact task, zero-cost reserved state and five minute deadline required',422);
       return transaction(context,initial.id,async client=>{
-        const task=(await client.query<{input_digest:string;request:{sourceEventIds:string[]}}>(`SELECT input_digest,request FROM ccl_knowledge_maintenance_tasks
+        const task=(await client.query<{input_digest:string;request:{sourceEventIds:string[];subjectRef?:unknown;kind?:string}}>(`SELECT input_digest,request FROM ccl_knowledge_maintenance_tasks
           WHERE ${scoped} AND id=$6`,[...identity(context),initial.request.taskId])).rows[0];
         if(!task||task.input_digest!==initial.request.taskInputDigest||initial.request.sourceEventId!==null&&
-          !task.request.sourceEventIds.includes(initial.request.sourceEventId))
+          !task.request.sourceEventIds.includes(initial.request.sourceEventId)||initial.request.subjectRef&&
+          (task.request.kind!=='relation_check'||canonical(task.request.subjectRef)!==canonical(initial.request.subjectRef)))
           throw new KnowledgeError('COORDINATION_TASK_MISMATCH','Exact maintenance task and input digest are unavailable',409);
         const inserted=await client.query<Row>(`INSERT INTO ccl_knowledge_coordination_runs
           (project_id,space_id,principal_id,installation_id,purpose,id,task_id,input_digest,request,result,state)

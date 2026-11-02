@@ -1,4 +1,4 @@
-import type {MaintenanceTask,MaintenanceTaskRequest,MaintenanceTrigger,MaintenanceOutcome,MaintenanceFinding,LintPass,LintPassRequest,SearchProjectionStatus} from '@commerce/knowledge-contracts';
+import type {MaintenanceTask,MaintenanceTaskRequest,MaintenanceTrigger,MaintenanceOutcome,MaintenanceFinding,LintPass,LintPassRequest,SearchProjectionStatus,SemanticSweep,SemanticSweepRequest} from '@commerce/knowledge-contracts';
 import type {ReadContext} from './index.ts';
 import {authorizeCapability,type CapabilityContext} from './sources.ts';
 import {KnowledgeError} from '@commerce/knowledge-core/types';
@@ -18,15 +18,21 @@ export interface WikiLintPort {
  runPass(context:ReadContext,request:LintPassRequest):Promise<LintPass>;
  findings(context:ReadContext,input:{limit:number;cursor?:string;status?:MaintenanceFinding['status']}):Promise<{items:MaintenanceFinding[];hasMore:boolean;nextCursor:string|null}>;
 }
+export interface SemanticSweepPort {
+ runPass(context:ReadContext,request:SemanticSweepRequest):Promise<SemanticSweep>;
+ get(context:ReadContext,id:string):Promise<SemanticSweep|null>;
+}
 export interface SearchProjectionPort {
  status(context:ReadContext):Promise<SearchProjectionStatus|null>;
  runBatch(context:ReadContext,input:{limit:number;restart:boolean}):Promise<SearchProjectionStatus>;
 }
 export interface MaintenanceProcessor {execution:'local_deterministic'|'external';kinds:MaintenanceTaskRequest['kind'][];
  process(context:ReadContext,task:MaintenanceTask,signal:AbortSignal):Promise<MaintenanceOutcome>}
-export function createMaintenanceApplication(options:{tasks:MaintenanceTaskPort;lint:WikiLintPort;processor?:MaintenanceProcessor;searchProjection?:SearchProjectionPort}){
+export function createMaintenanceApplication(options:{tasks:MaintenanceTaskPort;lint:WikiLintPort;processor?:MaintenanceProcessor;searchProjection?:SearchProjectionPort;semanticSweep?:SemanticSweepPort}){
  function auth(context:CapabilityContext,action:string){authorizeCapability(context,action);if(!context.principal.clientInstallationId?.trim())throw new KnowledgeError('INSTALLATION_REQUIRED','Maintenance requires an authenticated installation',403);}
  return {
+  async runSemanticSweep(context:CapabilityContext,input:SemanticSweepRequest){auth(context,'maintenance:write');if(!options.semanticSweep)throw new KnowledgeError('SEMANTIC_SWEEP_DISABLED','Periodic semantic discovery is not configured',503);return options.semanticSweep.runPass(context,input);},
+  async semanticSweep(context:CapabilityContext,id:string){auth(context,'maintenance:read');if(!options.semanticSweep)throw new KnowledgeError('SEMANTIC_SWEEP_DISABLED','Periodic semantic discovery is not configured',503);const pass=await options.semanticSweep.get(context,id);if(!pass)throw new KnowledgeError('NOT_FOUND','Periodic discovery pass is unavailable',404);return pass;},
   async searchProjectionStatus(context:CapabilityContext){auth(context,'maintenance:read');if(!options.searchProjection)throw new KnowledgeError('SEARCH_PROJECTION_DISABLED','Search projection is not configured',503);return options.searchProjection.status(context);},
   async rebuildSearchProjection(context:CapabilityContext,input:{limit:number;restart:boolean}){auth(context,'maintenance:write');if(!options.searchProjection)throw new KnowledgeError('SEARCH_PROJECTION_DISABLED','Search projection is not configured',503);return options.searchProjection.runBatch(context,input);},
   async collect(context:CapabilityContext,input:{methodVersion:string;rubricVersion:string;limit:number}){auth(context,'maintenance:write');return options.tasks.collectEvents(context,input);},

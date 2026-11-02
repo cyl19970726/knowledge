@@ -68,3 +68,5 @@ export * from './maintenance-tasks.ts';
 export * from './wiki-lint.ts';
 export * from './source-plan.ts';
 export * from './coordination.ts';
+
+export {migrateSemanticSweeps,createPgSemanticSweep} from './semantic-sweep.ts';
