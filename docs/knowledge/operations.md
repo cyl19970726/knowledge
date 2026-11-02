@@ -41,6 +41,24 @@ PR68 已随 PR69 合入 `main`，保留两个运行边界。业务宿主持有�
 
 这项读取装配与模型、采集、Worker 执行和发表配置分别处理。原报告、帧与知识行不因接入而重写；成功内容读取单独留回执。重启试用前确认端口、进程所有者、隔离数据库和清理责任，结束后停止自己拥有的服务并核对原记录保全。
 
+## 运行周期元数据维护（2026-11-02 本地候选）
+
+Worker 的维护模式须显式开启，并提供确定的项目、空间、用途及 active writer grant；API 也须显式启用维护能力及相应 `maintenance:read` / `maintenance:write` action。默认 Worker 每轮按来源与知识事件流收集任务，并以日期周期、确定分片和页数上限推进当前 Wiki 页头 Lint。完成的分片移到下一片；进程重启从持久 pass 游标恢复。`collect` 的事件游标与 `lint` 的周期游标分别管理，不用同一个 SDK 幂等 header 键重放下一页。
+
+默认模式只做元数据收集与七类结构提示，不执行语义任务。宿主需要实际任务执行时才注入 `MaintenanceProcessor`，并另行验证提供方授权、费用上限、外发、响应与取消恢复。任务账本保存尝试、租约、取消请求、分发准备及响应 checkpoint；外部调用状态不明时按原任务和回执核对，不换键重发。逐对 `DecisionProvider` 的应用与受保护账本可独立接入；Jev/OpenAI codec 仅处理 wire data，不含网络 transport 或凭据。
+
+要运行来源研究协调，API 须同时显式配置 `sourcePlanner`、`compiler`、`enableMaintenance` 和 `coordinationPolicy`，并使执行端使用注入的维护 processor；CLI 默认不内置真实 planner 或模型连接。先按任务 ID 读取 `/coordination-runs/by-task/:taskId`，必要时用 `POST /maintenance/process-one` 推进一项；按运行 ID、各子操作原键及来源权限核对进度。每步预算和请求已冻结，共享总期限至多五分钟；未知结果只按原键 lookup，取消、租约丢失或 ACK 丢失不能用新键重新调用模型。独立审阅通过同一事务关闭编纂、协调运行和任务；批准与拒绝的任务状态均为 completed，应查看 `compilationOutcome` 区分。过期 ACK 以实际发表或拒绝记录为准。旧 Wiki 的 `recompile` 队列任务目前仍待语义发现与执行接线。
+
+检查一个 Lint 周期时，先看 `complete`、`scanned`、`startEpoch`、`observedEpoch` 和 `omittedReasons`，再看累计 `findingCount`。`findingIds` 仅是最近一页、最多 1000 个的预览；完整发现用 `maintenanceFindings` 分页核对。`incremental_current_heads` 不是时间点快照，周期内页头变化可能使旧 key 未覆盖；新周期才重扫。发现是待审提示，不自动改变知识或触发编纂。完整构建和独立审查以[当前状态](current-state.md)所指的对应回执为准。
+
+## 重建当前页检索投影（G5 本地候选）
+
+先确认 API 显式启用维护、当前主体拥有相应 `maintenance:read` / `maintenance:write`，并已配置 active writer grant。用 SDK `searchProjectionStatus(purpose)` 或 `GET /maintenance/search-index?purpose=...` 读取认证项目与空间的状态；`null` 表示尚无该空间状态。`ready=false` 时查询会回退原词项 SQL，服务可继续检索。`ready=true` 也只是预筛可用，不是问答、权限或性能验收。
+
+每次用 `rebuildSearchProjection({purpose,limit,restart:false}, writeOpts)` 或对应 POST 推进有界一批，`limit` 取 1–5000；CLI 维护模式默认 100/批。观察 `lastObjectId`、`scanned`、`blockedRows`、`complete` 和 `ready` 后再决定是否继续。只有明确要重新从头覆盖核验时才传 `restart:true`；后续批次恢复 `false`。每次写调用使用自身的操作 header，不把同一个 header 键当作“下一页”游标或重放保证。状态与异常提交结果按原作用域核对，未知提交不推定该批未执行。Worker 可选 `searchProjection:{limit}`，遇到已 `ready` 或受超大字段阻塞而无进展时不会把它持续当成新工作忙转。
+
+重建在项目锁与受保护表内执行，按当前页头分页，清理仅存于缓存的孤儿项，核对页头版本、空间、格式与阻塞数后才标记 `ready`。标题、正文、身份键及别名规范化后合计超过 200000 UTF-8 字节会使该页不可索引、`blockedRows>0`；反复调用同一批不会修复该内容，应先通过正常修订路径处理再重验。手工改缓存会使空间失去 `ready` 并重置游标；页头或修订触发器在同一事务刷新投影。普通页头变化若不改变覆盖与阻塞状态，不额外重写同一空间状态；同值重建也不重写已有 gram 行。`updatedAt` 表示重建状态变化，不是每个页头的最新刷新时间；准确 head 与项目 epoch 才是对应版本权威。单字 Unicode 词项、格式不符、未就绪或诊断关闭时整次查询走原 SQL，原评分与权限路径不变。源码依据：重建和触发器 (`packages/knowledge/src/wiki-search-projection.ts`)、检索回退 (`packages/knowledge/src/store.ts`)、Worker 进度 (`apps/knowledge-worker/src/index.ts`)。G5 的完整构建、规模数据和最终差异证据仍以[当前状态](current-state.md)所列待回执为准。
+
 ## 修改文档后的检查
 
 ```sh

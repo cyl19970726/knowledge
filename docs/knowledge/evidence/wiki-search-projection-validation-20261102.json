@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "stage": "current-head bigram search projection",
+  "state": "verified-local-uncommitted-search-engineering",
+  "baselines": {
+    "knowledge": "eecf30e90d6700d06b70d09402ab45a1567b28fb",
+    "commerce": "5fbc744b97d63d25111e00443a5d6e963dddfad7"
+  },
+  "checks": {
+    "coreFullTests": {
+      "passed": 330,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/wiki-projection-core-delivery.log"
+    },
+    "businessFullTests": {
+      "status": "passed final serial run",
+      "previousFull": {
+        "passed": 998,
+        "failed": 0,
+        "skipped": 6,
+        "log": "/tmp/wiki-projection-commerce-full.log"
+      },
+      "latestParallel": {
+        "passed": 997,
+        "failed": 1,
+        "skipped": 6,
+        "failure": "isolated transfer: connection terminated due to administrator command",
+        "log": "/tmp/wiki-projection-commerce-delivery.log"
+      },
+      "isolatedFollowup": {
+        "passed": 3,
+        "failed": 0,
+        "log": "/tmp/wiki-projection-transfer-isolated.log"
+      },
+      "passed": 998,
+      "failed": 0,
+      "skipped": 6,
+      "log": "/tmp/wiki-projection-commerce-serial.log",
+      "transientDiagnosis": "Cause of one parallel-run admin-terminated transfer connection remains unproven; isolated3 and final full serial998 passed; no migration/scheduler production code changed"
+    },
+    "coreBuild": {
+      "status": "passed",
+      "log": "/tmp/wiki-projection-delivery-build.log"
+    },
+    "coreTypecheck": {
+      "status": "passed as part of final build",
+      "log": "/tmp/wiki-projection-delivery-build.log"
+    },
+    "businessTypecheck": {
+      "status": "passed",
+      "log": "/tmp/wiki-projection-commerce-typecheck.log"
+    },
+    "boundaries": {
+      "status": "passed",
+      "log": "/tmp/wiki-projection-boundaries.log"
+    },
+    "docs": {
+      "status": "passed",
+      "coreReaders": "make docs / make docs-check",
+      "commerceReaders": "make docs / make docs-check",
+      "docsTests": {
+        "passed": 20,
+        "failed": 0
+      },
+      "logs": [
+        "/tmp/wiki-projection-core-docs-build.log",
+        "/tmp/wiki-projection-core-docs-check.log",
+        "/tmp/wiki-projection-commerce-docs-build.log",
+        "/tmp/wiki-projection-commerce-docs-check.log",
+        "/tmp/wiki-projection-docs-tests.log"
+      ]
+    },
+    "diagram": {
+      "status": "passed",
+      "gates": [
+        "validate",
+        "deliver",
+        "check",
+        "browser-check"
+      ],
+      "visualReview": "not-requested",
+      "receipt": "/Users/hhh0x/电商/知识库设计/20261101-Luna增量维护设计/.archify/architecture-decision-port-20261101-211240/g5-projection-review-1/decision-port.finalize-summary.json"
+    }
+  },
+  "scale": {
+    "firstTenThousand": "wiki-search-projection-scale-10000-first-20261102.json",
+    "hundredThousand": "completed in final run; first construction failure retained",
+    "buildCost": "first 10k seed ~21s, rebuild ~22s; investigating avoidable per-row scope writes",
+    "firstHundredThousand": "wiki-search-projection-scale-100000-first-20261102.json",
+    "firstHundredThousandState": "failed during seeding under 230s cutoff; schema dropped",
+    "writeOptimization": "zero blocked delta no longer rewrites scope; identical cache tuple no longer rewrites GIN; regression9 passed and independent source review clean",
+    "finalTenThousand": {
+      "state": "completed",
+      "seedMs": 3062.83,
+      "rebuildMs": 3548.11,
+      "v2P95Ms": 17.09,
+      "timedQueries": 180,
+      "exactOrderScoreParity": {
+        "matched": 60,
+        "mismatched": 0
+      },
+      "artifact": "wiki-search-projection-scale-10000-20261102.json"
+    },
+    "finalHundredThousand": {
+      "state": "completed",
+      "seedMs": 32991.82,
+      "rebuildMs": 22260.74,
+      "v2TimedP95Ms": 30.64,
+      "timedQueries": 180,
+      "exactOrderScoreParity": {
+        "matched": 60,
+        "mismatched": 0
+      },
+      "pairedOriginalV2P95Ms": 3157.92,
+      "pairedProjectedV2P95Ms": 30.93,
+      "projectionTableAndIndexesBytes": 88522752,
+      "artifact": "wiki-search-projection-scale-100000-20261102.json"
+    },
+    "explain": "Both methods use their GIN index in 10k/100k EXPLAIN ANALYZE evidence"
+  },
+  "limitations": [
+    "synthetic store.search only; no real-model or semantic-quality acceptance",
+    "automatic semantic discovery/compiler coordination and external publication assurance remain unfinished",
+    "no business env/DB, paid calls, commits, deployment or vendor pin change"
+  ],
+  "remainingValidation": [
+    "real business/human semantic gold and actual model transports",
+    "automatic semantic discovery/plan and task-to-judgment/compiler coordination",
+    "external source publication assurance, no_change review, unstaged-draft retry and full inbox"
+  ],
+  "sourceSha256": {
+    "packages/knowledge/src/wiki-search-projection.ts": "6070878b56776f6c25934196054409dd55d74ef85ee6da415331c18cf3894e12",
+    "packages/knowledge/src/store.ts": "18262603444401fc4679176bee686c926c7d1ca1a91380a0851e795e2c932e82",
+    "packages/knowledge/src/migrations.ts": "bab024ba94ce169fb967fcd293f6a9aee8d5b363b8797fa172a957e3ea7c93cc",
+    "packages/knowledge/package.json": "a5ea4869620fb94cb12f0f5504fae5409c64c2f0a8786a49b9f2e281a193bd7e",
+    "packages/knowledge-contracts/src/index.ts": "f3559efbbb43de83d2b4d306f200013f4755c315548297d898a2f4ae402a1798",
+    "packages/knowledge-application/src/maintenance.ts": "a0e871b34a42714640611ba6c7d7297dca7b7804f38adfd6dd5cb3a9ac319814",
+    "packages/knowledge-client/src/index.ts": "bc29586b43a33e1adf574ce69ab981ab8c4dac1e3343e6eb5cb7342d44a73fdf",
+    "apps/knowledge-api/src/index.ts": "3d609e421a3d3b5f5dbb29a2e0e0a896083be3cd145bd60a19411623e96b31c5",
+    "apps/knowledge-worker/src/index.ts": "e5aba74217d16b90b9d26809b895be55d5da86734a11746c42c94e561f31d997",
+    "apps/knowledge-api/test/maintenance.integration.test.ts": "692bd23e7a773cb28a85265f8c6893761902abf6312d8390848072f607cae7d1",
+    "packages/knowledge/test/wiki-search-projection.integration.test.ts": "c61a2537e90a77d098861635665f14d6aba6f3710660533c0cb16d3db822c78d",
+    "scripts/runtime/wiki-scale-baseline.ts": "d6748b57180cef1816744e28dc441a11554f301a00591b75633e5ed3898571dc",
+    "packages/knowledge-application/test/fixtures/wiki-query-corpus.json": "6238006197e927276ebf18a2dcea01e9b35a63d8feaa59f2e6bfa3290b7c1926"
+  },
+  "review": {
+    "scopeInvalidation": "manual cache mutation resets cursor and forces complete rebuild",
+    "workerIdle": "meaningful progress signature and terminal/blocked no-op keep idle stable",
+    "orphanCache": "failing recovery regression before pruning; fixed without authority mutation",
+    "singleRefresh": "same identity revision UPDATE refreshes once",
+    "writeAmplification": "zero-delta scope and same-tuple cache writes skipped; final readonly review no remaining P1/P2",
+    "coverage": "source reviewer did not rerun full suites"
+  },
+  "recordedAt": "2026-11-01T23:40:47.875259+00:00",
+  "canonicalLivingPage": {
+    "id": "page_35e0d83c4f14819180a5b50a5995a1d4",
+    "sequence": 291,
+    "updated": true
+  },
+  "runtimeCleanup": {
+    "testContainer": "knowledge-wiki-loop-test-20261102",
+    "stoppedAndRemoved": true,
+    "scaleSchemas": "dropped in finally",
+    "browserService": "none introduced in this phase"
+  }
+}

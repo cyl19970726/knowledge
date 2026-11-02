@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 1,
+  "stage": "Independent compilation candidate review/publication and local two-round engineering loop",
+  "state": "local-uncommitted-candidate",
+  "recordedAt": "2026-11-01T22:06:53.813322+00:00",
+  "baselines": {
+    "knowledge": "eecf30e90d6700d06b70d09402ab45a1567b28fb",
+    "commerce": "5fbc744b97d63d25111e00443a5d6e963dddfad7",
+    "commerceKnowledgePin": "f8ab747a86016fe06bb798e5bd0af324b0329981"
+  },
+  "environment": {
+    "node": "24.21.0",
+    "postgres": "17.11-alpine",
+    "isolation": "dedicated disposable local PostgreSQL, synthetic data and per-test schema",
+    "realModelCalls": 0,
+    "paidModelCalls": 0,
+    "businessEnvLoaded": false,
+    "businessDatabaseUsed": false
+  },
+  "checks": {
+    "coreBuild": {
+      "status": "passed",
+      "log": "/tmp/wiki-review-build-delivery.log"
+    },
+    "coreFullTests": {
+      "status": "passed",
+      "passed": 294,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/wiki-review-core-delivery.log",
+      "note": "tsx candidate UI tests now included in default core runner"
+    },
+    "businessFullTests": {
+      "status": "passed",
+      "total": 1004,
+      "passed": 998,
+      "failed": 0,
+      "skipped": 6,
+      "log": "/tmp/wiki-review-commerce-full-final.log",
+      "skips": [
+        "optional local S3/API",
+        "3 private captured model cases unavailable",
+        "private validation receipt unavailable",
+        "real Caddy not configured"
+      ]
+    },
+    "reviewTargeted": {
+      "passed": 16,
+      "failed": 0,
+      "log": "/tmp/wiki-review-targeted-final.log",
+      "note": "early subset; included in final full suite with terminal UI additions"
+    },
+    "claimRegression": {
+      "observedFailing": true,
+      "finalPassed": true,
+      "beforeLog": "/tmp/wiki-review-claim-before.log",
+      "afterLog": "/tmp/wiki-review-claim-after.log"
+    },
+    "schedulerRegression": {
+      "passed": 6,
+      "failed": 0,
+      "log": "/tmp/wiki-review-scheduler-after.log",
+      "productionSchedulerChanged": false
+    },
+    "typecheck": {
+      "status": "passed",
+      "log": "/tmp/wiki-review-commerce-typecheck.log"
+    },
+    "boundaries": {
+      "status": "passed",
+      "log": "/tmp/wiki-review-boundaries.log"
+    },
+    "docs": {
+      "status": "passed",
+      "coreReaders": "make docs / make docs-check passed",
+      "commerceReaders": "make docs / make docs-check passed; pinned core mirror retained",
+      "coreDocsTests": {
+        "passed": 20,
+        "failed": 0
+      },
+      "logs": [
+        "/tmp/wiki-review-core-docs-build.log",
+        "/tmp/wiki-review-core-docs-check.log",
+        "/tmp/wiki-review-commerce-docs-build.log",
+        "/tmp/wiki-review-commerce-docs-check.log",
+        "/tmp/wiki-review-docs-tests.log"
+      ]
+    },
+    "diagram": {
+      "status": "passed",
+      "gates": [
+        "validate",
+        "deliver",
+        "check",
+        "browser-check"
+      ],
+      "visualReview": "not-requested; updated statuses and one route variant"
+    }
+  },
+  "review": {
+    "claimRace": "return awaited persistence before finally releases claim; success/failure fencing unchanged",
+    "concurrentReceiptSuspicion": "disproved: existing assertKnowledgeWriterAuthority project FOR UPDATE already serializes receipt lookup and insert",
+    "controlExperiment": {
+      "before": {
+        "fulfilled": 2,
+        "effects": 1
+      },
+      "after": {
+        "fulfilled": 2,
+        "effects": 1
+      },
+      "log": "/tmp/wiki-review-race-control.log",
+      "redundantKeyLockRetained": false
+    },
+    "readOnlyReview": "no remaining reproducible high/medium in reviewed scope; reviewer read logs, did not independently rerun full suite"
+  },
+  "observations": [
+    "A and fine A-prime share one original group; no independent evidence inflation",
+    "independent actor and source access both required",
+    "new compilation origin distinguished from synthetic research",
+    "exact before base, no substitution of latest page",
+    "review/publication/head/ticket/compilation final state atomic; injected late failure rolls back all",
+    "same-key concurrent decisions replay one receipt/publication",
+    "C1 published, D inherits C1, counterexample B corrects same object to C2",
+    "query exposes current C2; D invalid due to exact old C1 and never reaches Ask provider",
+    "published compilation history remains accessible after ordinary head changes, original-source revocation still denies",
+    "review UI explicit approval, terminal state historical only, no automatic retry on unknown"
+  ],
+  "browser": {
+    "tool": "Ego Lite existing install",
+    "taskSpace": 81,
+    "previousTaskSpace79": "not found; current inventory had no corresponding agent-owned space",
+    "approvalClickObservedViewport": 1159,
+    "mobileLayouts": [
+      390
+    ],
+    "horizontalOverflow": false,
+    "uiOutcome": "published with read-only terminal, decision form absent",
+    "mobileTouchApprovalVerified": false,
+    "perceptualReview": "desktop and mobile screenshots inspected",
+    "scope": "purely synthetic loopback fixture; no business account or real model",
+    "toolNotice": "update available, not upgraded",
+    "screenshotsSha256": {
+      "review-desktop.png": "7ff77002e42b22e41cf58c7b7d0e8f158c8d5fb7e8e79efd06ee901463a12bb6",
+      "review-mobile-pending.png": "e657a9e342ca36312994eaac94ac08d8289322e85a5e18d9f0e9101f8cb77d0b",
+      "review-mobile-published.png": "0e56d1e257682a248c21daeea6a66efa98056437da636428359b221a983dd632"
+    }
+  },
+  "limits": [
+    "external business report read_time_only still cannot publish through this local proof path",
+    "independent no_change review and unstaged-draft separate stage retry remain incomplete",
+    "periodic lint/core outbox maintenance/pairwise DecisionProvider ledger/automatic query-mention planning remain incomplete",
+    "manual candidate ID entry is a debugging minimum, not complete task inbox",
+    "no real model semantics, human semantic acceptance, 10k/100k scale or business-effect acceptance",
+    "no commits/deployment/vendor pin advancement; project-local candidate dependency links still required"
+  ],
+  "sourceSha256": {
+    "knowledge": {
+      "packages/knowledge-contracts/src/index.ts": "ef07bfe143bd4dcdb32e83680b2c1c908a42e1dd48e3ed550e385fc76d38a8f8",
+      "packages/knowledge-application/src/index.ts": "e233dbd4da916ee6f851954382892ba207704e87815e5fe460ad2139c91420ae",
+      "packages/knowledge-application/src/wiki-compile.ts": "8b5feb5ccb68527e00025c8870a1c4944b64549de877befebc329373a2c8d25c",
+      "packages/knowledge-application/src/source-intake.ts": "3b94f9c0aa5ff2f9c55f9eeba66e7f555f5d8dc80392cff45840b7839e1df768",
+      "packages/knowledge-application/test/source-intake-claim.test.ts": "5473d7554800c847bf4327c1ba67ad160e086809dd7df4a5c057eee0dd44ea12",
+      "packages/adapters/knowledge-service/src/reviews.ts": "2c871df8c45f62889efaba0bab1dc8a211aa1918cfdde93c1e491e678255b93c",
+      "packages/adapters/knowledge-service/src/compilation-review.ts": "93bc4ac010fd74bb7570a4fe191560fb8aa904cffa62765113931f877707781e",
+      "apps/knowledge-api/src/index.ts": "6cd9e5d207401882da18922eeb011cf6015d7a3c6ff443cba02d7336aac8407f",
+      "apps/knowledge-api/test/compilation-review.integration.test.ts": "96ab5f601be388c9eb657dadfd27eb6782ee4126a5c501e5467ff49ce2f186bf",
+      "apps/knowledge-api/test/compilation-review-port.integration.test.ts": "5dd4b455225113151c751b6bb3fa9028fc9630d714a62258892691b093c00d14",
+      "apps/knowledge-web/src/App.tsx": "fda8edb27d9f352a49fe1208dc7c58e148ed7374a6414de93a25a66b29db0700",
+      "apps/knowledge-web/src/styles.css": "57842d088a5b1f95bc9091e6e5f23cf00583079c2aae2f4d8e24dc577977a811",
+      "apps/knowledge-web/src/candidate-review.tsx": "3f840a478cde9553936aac1ad7a2fc733a24250683d9faa9b3ce71ffe45deac7",
+      "apps/knowledge-web/src/candidate-review-state.ts": "96550ba36d607e14caa102ca9f41a649e6d26e7edcb8868fa0b5a499516ea810",
+      "apps/knowledge-web/test/candidate-review.test.tsx": "f7bf9db7c83380db2184c575d73143c3142eeba347df11f4afa1dd24925e5fa6",
+      "apps/knowledge-web/test/candidate-view.test.tsx": "c19fcea3afd851cb7c4229a39195d7cdc598ccbc4aaa134ece1cc4f514e9d324",
+      "scripts/runtime/test-core.mjs": "704413f455f316b112e34d5b1b5993e05fd9db6b2bf450a2118f1cc35360517d"
+    },
+    "commerce": {
+      "packages/runtime/test/scheduler.integration.test.ts": "84993d17561e4bfe05b086cc1bd9ad4361cae5d5a745969422d544a76139733a"
+    }
+  },
+  "runtimeCleanup": {
+    "syntheticBrowserServerStopped": true,
+    "syntheticBrowserSchemaDropped": true,
+    "egoTaskSpace": 81,
+    "page": "p1 about:blank; goal still active"
+  },
+  "canonicalLivingPage": {
+    "id": "page_35e0d83c4f14819180a5b50a5995a1d4",
+    "sequence": 289,
+    "updated": true
+  }
+}

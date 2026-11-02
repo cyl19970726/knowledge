@@ -1,0 +1,61 @@
+{
+  "label": "synthetic real store.search v1/v2 scale baseline; not Ask, Lint, semantic quality, or production capacity",
+  "projectionMode": "current-head-bigram",
+  "targetCurrentWiki": 100000,
+  "fixturePages": 119,
+  "neutralPages": 99881,
+  "questions": 30,
+  "repetitions": 3,
+  "statementTimeoutMs": 5000,
+  "seedStatementTimeoutMs": 30000,
+  "runLimitMs": 300000,
+  "fixtureAssurance": "Direct SQL published_at; no review/publication receipts. Neutral bulk payloads reuse a template binding fingerprint after SQL text substitution, so they are not canonical approved revisions.",
+  "schemaCleanup": "dropped",
+  "environment": {
+    "nodeVersion": "v24.21.0",
+    "cpuModel": "Apple M4 Max",
+    "logicalCpuCount": 16,
+    "hostTotalMemoryBytes": 51539607552,
+    "hostFreeMemoryBytesAtStart": 278953984
+  },
+  "cpuMeasurementScope": "Node process CPU only; PostgreSQL server CPU is not attributed to this process",
+  "resources": {
+    "start": {
+      "nodeCpuUserMs": 178.32,
+      "nodeCpuSystemMs": 32.62,
+      "nodeRssBytes": 99729408,
+      "nodeHeapUsedBytes": 16888832,
+      "nodeExternalBytes": 4783145,
+      "nodeMaxRssKiB": 97408
+    },
+    "finish": {
+      "nodeCpuUserMs": 273.62,
+      "nodeCpuSystemMs": 47.62,
+      "nodeRssBytes": 92913664,
+      "nodeHeapUsedBytes": 17026848,
+      "nodeExternalBytes": 4982553,
+      "nodeMaxRssKiB": 102688
+    }
+  },
+  "queries": [],
+  "migrationMs": 36.57,
+  "database": {
+    "postgresVersion": "17.11",
+    "databaseName": "ccl_test_wiki",
+    "connection": "explicit loopback dedicated TEST_DATABASE_URL",
+    "maxConnections": 2
+  },
+  "state": "failed",
+  "failure": {
+    "errorCode": "UNKNOWN",
+    "errorMessage": "Run budget exceeded; no further seed or queries will start"
+  },
+  "durationMs": 233472.75,
+  "hostFreeMemoryBytesAtFinish": 262078464,
+  "sourceHashes": {
+    "script": "d3a48170c73dfaaf35c71d7a28b983cf147d94f60ff3e7a73c46ebc4ed0d9004",
+    "corpus": "6238006197e927276ebf18a2dcea01e9b35a63d8feaa59f2e6bfa3290b7c1926",
+    "projection": "40b5efe206f44497ba71d1a4d61e50646e56578909062b054d6ce9f1d414f981",
+    "store": "18262603444401fc4679176bee686c926c7d1ca1a91380a0851e795e2c932e82"
+  }
+}

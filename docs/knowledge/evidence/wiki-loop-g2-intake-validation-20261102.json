@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "stage": "G2 second slice: reliable source event registration and caller-proposed entity mention ledger",
+  "recordedAt": "2026-11-01T20:15:22.581580+00:00",
+  "state": "local-uncommitted-candidate",
+  "baselines": {
+    "knowledge": "eecf30e90d6700d06b70d09402ab45a1567b28fb",
+    "commerce": "5fbc744b97d63d25111e00443a5d6e963dddfad7",
+    "commerceKnowledgePin": "f8ab747a86016fe06bb798e5bd0af324b0329981"
+  },
+  "environment": {
+    "node": "24.21.0",
+    "postgres": "17.11-alpine",
+    "isolation": "dedicated disposable PostgreSQL; separate per-test business/core schemas, not physical DB isolation evidence",
+    "fixtures": "synthetic only; loopback HTTP",
+    "realModelCalls": 0,
+    "paidModelCalls": 0,
+    "businessEnvLoaded": false,
+    "businessDatabaseUsed": false
+  },
+  "checks": {
+    "coreBuild": {
+      "status": "passed",
+      "log": "/tmp/wiki-g2-intake-core-build-final.log"
+    },
+    "coreFullTests": {
+      "status": "passed",
+      "total": 263,
+      "passed": 263,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/wiki-g2-intake-core-full-final.log"
+    },
+    "businessFullTests": {
+      "status": "passed",
+      "total": 1004,
+      "passed": 998,
+      "failed": 0,
+      "skipped": 6,
+      "log": "/tmp/wiki-g2-intake-business-all-final.log",
+      "skips": [
+        "optional local S3/API",
+        "3 unavailable private captured model tests",
+        "unavailable private validation receipt",
+        "real Caddy binary not configured"
+      ]
+    },
+    "businessTargeted": {
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/wiki-g2-intake-business-targeted.log",
+      "note": "overlaps full suite; includes 9 PG/fake SDK dispatcher cases, 2 config, 8 scheduler, 1 real dual HTTP integration"
+    },
+    "producerAtomicity": {
+      "status": "passed-in-full-and-targeted",
+      "passed": 1,
+      "note": "real registerResult/fencing with event-trigger failure: result/evidence/event roll back, retry and replay produce one of each"
+    },
+    "typecheck": {
+      "status": "passed",
+      "log": "/tmp/wiki-g2-intake-business-typecheck-complete.log"
+    },
+    "businessBoundaries": {
+      "status": "passed",
+      "log": "/tmp/wiki-g2-intake-business-boundaries.log"
+    },
+    "diagram": {
+      "status": "passed",
+      "gates": [
+        "validate",
+        "deliver",
+        "check",
+        "browser-check"
+      ],
+      "visualReview": "not-requested"
+    },
+    "docs": {
+      "status": "passed",
+      "coreReaders": "make docs / make docs-check",
+      "businessReaders": "make docs / make docs-check; vendor mirror remains pinned",
+      "coreDocsTests": {
+        "passed": 20,
+        "failed": 0
+      },
+      "logs": [
+        "/tmp/wiki-g2-intake-core-docs-build.log",
+        "/tmp/wiki-g2-intake-core-docs-check.log",
+        "/tmp/wiki-g2-intake-business-docs-build.log",
+        "/tmp/wiki-g2-intake-business-docs-check.log",
+        "/tmp/wiki-g2-intake-core-docs-tests.log"
+      ]
+    }
+  },
+  "review": {
+    "initialFindings": [
+      "P2 mentions-only capability advertised without required read action",
+      "P2 concurrent same extraction read source body twice"
+    ],
+    "regressionsObservedFailing": true,
+    "fixes": [
+      "capability requires both actions",
+      "durable 60s mention claim before body IO; token/digest/lease commit fence; no transaction held across HTTP"
+    ],
+    "readOnlyRereview": "no remaining reproducible high/medium for those findings"
+  },
+  "observations": [
+    "producer result plus event atomicity reused and fault-injected",
+    "arrival stores owner exact ref/digest metadata, no original body materialization",
+    "event plus core outbox atomic",
+    "remote commit ACK loss: local cursor remains0; original-key lookup moves to1; one core event/outbox",
+    "target/recoveryScope bind independent cursors; same subject token rotation preserves progress",
+    "caller-proposed mention UTF8 span verified against bounded complete text",
+    "stored excerpts remain unresolved with unknown semantic coverage",
+    "source revocation blocks event/mention reads and replay",
+    "normal concurrent same method receives busy409, one body IO, one batch/outbox"
+  ],
+  "limits": [
+    "automatic semantic extraction, disambiguation, old-page compilation, decisions ledger and periodic lint still incomplete",
+    "registration read_time_only confers no external publication or model-disclosure lease",
+    "expired claims may repeat bounded body IO; not exactly-once storage reads",
+    "dispatcher stops at first unconfirmed event; per-event parallel/retry queue not yet implemented",
+    "no real model semantics, real business effect, 10k/100k scale or deployment acceptance",
+    "project-local candidate dependency links remain required; vendor source and pin unchanged"
+  ],
+  "sourceSha256": {
+    "knowledge": {
+      "packages/knowledge-contracts/src/index.ts": "8f4ac678004199bb83a7bc6b741be9798261d4de1b90cce7f38f68e4e86a4a3e",
+      "packages/knowledge-application/src/source-intake.ts": "2affdfbb4eada50d67ee5a0337cfc3ce03250c91da6efe147c68b6cfc889bb53",
+      "packages/knowledge-application/src/entity-mentions.ts": "d1e0a85146265c786d0ce23536f5178237178da8e352dd77a0856b4c2d674f6f",
+      "packages/knowledge-application/src/index.ts": "cfd074e0171949200a5e2bbfb4d6f653e72b0b0fbb38488f2562c3f11663da37",
+      "packages/knowledge-application/test/entity-mentions.test.ts": "f54c0d1bbdee630fd2b2cfd5e1cfbcf668dffbddcb8706ed51bcb8fcfdfb5739",
+      "packages/adapters/knowledge-service/src/source-intake.ts": "1656dd2b3316a63518aaaace5b73104e2270c8554970d0714419148b382d0df0",
+      "packages/adapters/knowledge-service/src/index.ts": "5dca2c97fb0fb0e668c923c802a8809c6cf140826d87f77c88eb5bc03e9a9186",
+      "apps/knowledge-api/src/index.ts": "92f7a55791adec468361aea2496292e4dd1561122179957e724159b5a7de58eb",
+      "apps/knowledge-api/test/source-intake.integration.test.ts": "700a1edf69f9270bf122361f3aae33c2486b97935d96429386a26fae54823a62",
+      "packages/knowledge-client/src/index.ts": "1095497405c52eeb6ea97bbf26271ddaef366e026c39bc521481184ffc8a463c"
+    },
+    "commerce": {
+      "apps/shared/src/knowledge-source-intake.ts": "ce4ba8ed52cadaacbbd4f0454fd762405236ef9bab230d7625260f7e4232dda2",
+      "apps/shared/test/knowledge-source-intake.integration.test.ts": "61aac2248f95912d4fa23b27651612b46b188e1f177faa61198eeaa8fb8988fe",
+      "apps/shared/src/knowledge-source-intake-config.ts": "5376817381fbd8793ea9b58fa7c510fbbf1c1fd35dc816720ebe37a530f3fe37",
+      "apps/shared/test/knowledge-source-intake-config.test.ts": "4baa892c117817b4fdabf5036d68602f5d1db7ab4f2f6a54f58483ca1c39ecdf",
+      "apps/shared/src/connections.ts": "53d832fbcb3fcd715ff6e4a8e089621b2f54f660e209bf5f573757760ddcf5c6",
+      "apps/worker/src/scheduler.ts": "288c2400eb0e87af07228821b95487a14e079c41a3abdb0153c009b45fd57631",
+      "apps/worker/test/scheduler.test.ts": "788d2d9c6e7e0e7b8ac20d54cd51849f69b77c09cee22ac8d73b48e800ff16f2",
+      "packages/analysis/src/index.ts": "6fbc6a0bfe36d683b38aa8408443302e578e1a3ede8226480bbdb18c3477ac8e",
+      "packages/analysis/test/source-event-atomicity.integration.test.ts": "65a108a56a4628ba10f978af46fef5944039af5b1750be65babbdd4d6001a26a",
+      "apps/api/test/knowledge-owner-ingest.integration.test.ts": "28ffa45e492bbe76f13ef6d1b64abfff2771135ce5b9ca8e92c40cb33a037065"
+    }
+  },
+  "canonicalLivingPage": {
+    "id": "page_35e0d83c4f14819180a5b50a5995a1d4",
+    "sequence": 287,
+    "updated": true
+  }
+}

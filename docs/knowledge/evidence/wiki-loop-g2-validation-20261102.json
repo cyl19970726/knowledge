@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-11-01T19:34:00.833303+00:00",
+  "stage": "G2 first slice: bounded owner reads and provenance; not automatic ingest",
+  "state": "local-uncommitted-candidate",
+  "baselines": {
+    "knowledge": "eecf30e90d6700d06b70d09402ab45a1567b28fb",
+    "commerce": "5fbc744b97d63d25111e00443a5d6e963dddfad7",
+    "commerceKnowledgePin": "f8ab747a86016fe06bb798e5bd0af324b0329981",
+    "commerceWorkflowPin": "54e611b075e86345f56358e3c95ae211c1fbc636"
+  },
+  "staging": {
+    "type": "9 ignored project-local node_modules links to owning core checkout",
+    "vendorSourceOrPinChanged": false,
+    "freshPinnedInstallIncludesCandidate": false,
+    "restoreCommand": "node scripts/runtime/link-knowledge-candidate.mjs --restore",
+    "releaseDependencyAdvanceRequired": true
+  },
+  "environment": {
+    "node": "24.21.0",
+    "postgres": "17.11-alpine",
+    "fixtures": "synthetic only; dedicated disposable local DB",
+    "realModelCalls": 0,
+    "paidModelCalls": 0,
+    "businessEnvLoaded": false,
+    "businessDatabaseUsed": false
+  },
+  "checks": {
+    "coreBuild": {
+      "status": "passed",
+      "log": "/tmp/knowledge-g2-build-final.log"
+    },
+    "coreFullTests": {
+      "status": "passed",
+      "passed": 257,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/knowledge-g2-tests-final.log"
+    },
+    "businessFullTests": {
+      "status": "passed",
+      "total": 990,
+      "passed": 984,
+      "failed": 0,
+      "skipped": 6,
+      "log": "/tmp/commerce-g2-tests-final.log",
+      "skips": [
+        "opt-in local S3/API integration",
+        "3 private captured model-call tests unavailable",
+        "private validation receipt unavailable",
+        "real Caddy binary not configured"
+      ]
+    },
+    "businessTargetedTests": {
+      "status": "passed",
+      "passed": 19,
+      "log": "/tmp/commerce-g2-targeted.log",
+      "note": "overlaps full suite; do not add counts"
+    },
+    "transitiveCriticalSourceRegression": {
+      "status": "passed",
+      "passed": 1,
+      "log": "/tmp/knowledge-g2-transitive.log"
+    },
+    "businessTypecheck": {
+      "status": "passed",
+      "log": "/tmp/commerce-g2-typecheck-final.log"
+    },
+    "businessBoundaries": {
+      "status": "passed",
+      "log": "/tmp/commerce-g2-boundaries-final.log"
+    },
+    "diagram": {
+      "status": "passed",
+      "gates": [
+        "validate",
+        "deliver",
+        "check",
+        "browser-check"
+      ],
+      "visualReview": "not requested; text-only update, geometry retained"
+    },
+    "docs": {
+      "status": "passed",
+      "coreReaders": "make docs and make docs-check passed",
+      "businessReaders": "make docs and make docs-check passed; pinned core mirror retained",
+      "coreDocumentationTests": {
+        "passed": 20,
+        "failed": 0
+      },
+      "logs": [
+        "/tmp/knowledge-g2-docs-build.log",
+        "/tmp/knowledge-g2-docs-check.log",
+        "/tmp/knowledge-g2-docs-tests.log",
+        "/tmp/commerce-g2-docs-build.log",
+        "/tmp/commerce-g2-docs-check.log"
+      ]
+    }
+  },
+  "regressionHistory": [
+    "Reproduced Wiki-only use after owner revocation; fixed critical-source metadata authorization at read/dispatch/replay",
+    "Mixed vendor source and canonical candidate classes in legacy test helper; fixed public imports; full suite passed"
+  ],
+  "observations": [
+    "two synthetic report texts share one original asset group",
+    "original business records unchanged",
+    "no new managed-source copy",
+    "replay metadata-only, no rematerialization",
+    "revoked fresh Wiki-only Ask: failed, empty claims, zero provider calls",
+    "transitive critical raw source checked without downloading dependency body"
+  ],
+  "limits": [
+    "Wiki pages are trusted reviewed synthetic seeds, not automatic ingest output",
+    "critical-source gate conservatively requires contentReadable and complete coverage; cap100",
+    "no external publication admission or lease; no third-party disclosure permission",
+    "no report completion outbox/entity mention/compiler write bridge yet",
+    "no universal old query/adoption lifecycle invalidation claim",
+    "no real semantic/cost/business-value or 10k/100k-scale acceptance"
+  ],
+  "sourceSha256": {
+    "knowledge": {
+      "packages/contracts/src/knowledge.ts": "25f228f8ef688490af12004c8d46f50f69b66561597961574e95515d34d1188f",
+      "packages/knowledge-contracts/src/index.ts": "c27f8217f813f1d01ac9654b9b254b75a1d9d3eaf66fcb7a28490a11af78812e",
+      "packages/adapters/knowledge-service/src/source-owner.ts": "f3f0d2e78d56ec39f4c602f0d7f3c93abdbb14483ae20763f61c379859bece7a",
+      "packages/adapters/knowledge-service/src/sources.ts": "45caf2994804afe043d85fb70185482071cc80533328036f7463a369620e57b0",
+      "apps/knowledge-api/test/source-use.integration.test.ts": "97ea0f751e510f595a1c4c5557da54bb701d9675fcba048d6f89df0155c18d90",
+      "packages/knowledge-application/src/index.ts": "eeaf1d781df2856604a8a7b632a3618351cd272a6f87d758c61b0125f4ecb21b",
+      "packages/knowledge-application/src/ask.ts": "7b1356a73e601fee211bcde96d5d7e9ce6a6e7813b48fd933b834c8c97bb2071",
+      "packages/knowledge/src/store.ts": "54c333602ab4d7e2455ebc172ae2982131f59250398d453e071a4d5f412ce960",
+      "packages/knowledge/src/service.ts": "ba44ab1e8fbce9188b5c97421728f01ea9fd9d259f900e85ed6ad2134c8d6655",
+      "packages/knowledge/src/wiki-page.ts": "6d8f09c4edc97f18e5cd82316dd3d5e27d440e689f185089bb8d8e132e02210f",
+      "packages/knowledge/src/types.ts": "e8e3454dc6f0c3c57049ab8793573d63ffbb227c80f93daaec46552d307b5bf2",
+      "packages/adapters/knowledge-document/src/index.ts": "09213158df6fe27041f29b61221233d840a1ea2e58339c7aee37a967032397d4",
+      "apps/knowledge-api/src/index.ts": "5ad6821a4e07826999a997b6de99c7231b17e2119ebb933fbf7badc4e4df50ed",
+      "apps/knowledge-api/test/source-http-bounded.test.ts": "4cac1683430d071bf820affc874d1b811a31d230c8bc9200e72117cd4cdaf669",
+      "packages/knowledge/test/wiki-citation-domain.test.ts": "691b3e655657a62f1ad9a70aac20f33b24fd39164f783e785b2370b12925d01d",
+      "packages/knowledge/test/wiki-bounded-read.integration.test.ts": "bd307782aff4266691cea3e57907f406b97b0fbcbdda0d2c8cbd57af264c4246"
+    },
+    "commerce": {
+      "apps/api/src/knowledge-source-owner.ts": "4f5e28c4d37e2d2e8879323f6e5ed33a512085e3e0eee5e7b4e9f2abaee902ad",
+      "apps/api/test/knowledge-source-owner.test.ts": "9dc3c7d71d8e69f31712c2da94d9c2d9cccf3e81f8624960f01bfe9b8eec9b76",
+      "apps/api/test/knowledge-owner-ask.integration.test.ts": "9692b60072e686eeb6378ed75984286e46b84648b3f202524eca691a873f213f",
+      "packages/adapters/knowledge-commerce/src/source-owner.ts": "dfa937005983c47e5d472b96b2bedfc8a7b0575189b10d58979d5275f9f0bfeb",
+      "packages/adapters/knowledge-commerce/src/index.ts": "800669e4abe6778275ff9b14889e2bc3fe280df84a7c350ecb02bf8d724f0a83",
+      "packages/adapters/knowledge-commerce/test/source-owner-bounded.test.ts": "55e629818e95da57b82c8fcfcc3bbeee693dc3a5a192ef2bef4a3658fd93dd23",
+      "packages/adapters/knowledge-commerce/test/core-api-with-business-owner.ts": "3b883d6a526f6d162d38dc2759e4824ff066a2c104067c726c43a99c76208b1a",
+      "packages/adapters/knowledge-commerce/test/source-use.integration.test.ts": "b7d5499da527cadcab7a32fecd75690ef401570fc505cbfad9c04dfba322a958",
+      "scripts/runtime/link-knowledge-candidate.mjs": "c63f95b91e3d3c82ba55dac5f3cc5b72a1fe170d85ef8adee9e9c3b09bb6211e"
+    }
+  },
+  "canonicalLivingPage": {
+    "pageId": "page_35e0d83c4f14819180a5b50a5995a1d4",
+    "sequence": 286,
+    "updated": true
+  }
+}

@@ -75,6 +75,16 @@
       "lifecycle": "current"
     },
     {
+      "id": "knowledge-frontend-wiki-loop-adaptation",
+      "path": "frontend/wiki-loop-adaptation.md",
+      "title": "Ingest / Query / Lint 工作台功能适配",
+      "group": "产品与交互",
+      "status": "功能适配合同 · 实现与验收分别见状态页",
+      "summary": "知识对象、三种操作、共同上下文、状态表达与体验验收",
+      "date": "2026-11-02",
+      "lifecycle": "current"
+    },
+    {
       "id": "knowledge-visual-acceptance-r1",
       "path": "frontend/visual-acceptance-r1.md",
       "title": "视觉重构 R1：Graph-first 验收标准",
@@ -232,6 +242,16 @@
       "status": "源码PR66已合main · 合并前固定实施回执 · 未部署",
       "summary": "公共合同、独立服务和网页、来源证明、使用反馈及隔离合成验证；明确真实业务与 M4/M5 边界。",
       "date": "2026-10-26",
+      "lifecycle": "record"
+    },
+    {
+      "id": "knowledge-wiki-loop-20261102",
+      "path": "evidence/wiki-loop-implementation-20261102.md",
+      "title": "Ingest / Query / Lint 实施回执",
+      "group": "当前实现回执",
+      "status": "PR8 后本地候选 · 合成工程回执 · 未部署",
+      "date": "2026-11-02",
+      "summary": "Ask、来源登记、编纂、维护与协调的分期工程证据；实际验收以对应基线和回执为准。",
       "lifecycle": "record"
     },
     {
@@ -508,6 +528,12 @@
     "../assets/knowledge-workbench/r1/reduced-motion-1440.jpg",
     "../assets/knowledge-graph-space-20261031/02-fitted-overview.png",
     "../assets/knowledge-graph-space-20261031/03-challenge-context.png",
-    "../assets/knowledge-graph-space-20261031/current-graph-metrics.json"
+    "../assets/knowledge-graph-space-20261031/current-graph-metrics.json",
+    "../assets/wiki-loop-20261102/ask-desktop.png",
+    "../assets/wiki-loop-20261102/ask-mobile.png",
+    "../assets/wiki-loop-20261102/ask-recovered-mobile.png",
+    "../assets/wiki-loop-20261102/review-desktop.png",
+    "../assets/wiki-loop-20261102/review-mobile-pending.png",
+    "../assets/wiki-loop-20261102/review-mobile-published.png"
   ]
 }

@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "stage": "G2 third slice: bounded registered source and current Wiki compilation into drafts or locally assured candidates",
+  "state": "local-uncommitted-candidate",
+  "recordedAt": "2026-11-01T21:10:17.003877+00:00",
+  "baselines": {
+    "knowledge": "eecf30e90d6700d06b70d09402ab45a1567b28fb",
+    "commerce": "5fbc744b97d63d25111e00443a5d6e963dddfad7",
+    "commerceKnowledgePin": "f8ab747a86016fe06bb798e5bd0af324b0329981"
+  },
+  "environment": {
+    "node": "24.21.0",
+    "postgres": "17.11-alpine",
+    "data": "synthetic only; dedicated disposable local PostgreSQL with per-test schemas",
+    "realModelCalls": 0,
+    "paidModelCalls": 0,
+    "businessEnvLoaded": false,
+    "businessDatabaseUsed": false
+  },
+  "checks": {
+    "coreBuild": {
+      "status": "passed",
+      "log": "/tmp/wiki-compile-build-verified.log",
+      "note": "initial aggregate build caught an incomplete test fixture type; fixed complete metadata fixture and verified aggregate build"
+    },
+    "coreFullTests": {
+      "status": "passed",
+      "passed": 274,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/wiki-compile-core-full.log",
+      "note": "final fixture type completion separately rerun: checkpoint2 pass, no production change"
+    },
+    "businessFullTests": {
+      "status": "passed",
+      "total": 1004,
+      "passed": 998,
+      "failed": 0,
+      "skipped": 6,
+      "log": "/tmp/wiki-compile-commerce-full.log",
+      "note": "same optional S3/private captures/private receipt/Caddy skips; final saved-draft revocation assertion separately passed"
+    },
+    "compilerTargeted": {
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/wiki-compile-targeted-final.log",
+      "note": "overlaps full suite, do not add totals"
+    },
+    "checkpointTypedFixture": {
+      "passed": 2,
+      "log": "/tmp/wiki-compile-checkpoint-typed.log"
+    },
+    "businessDualHttp": {
+      "passed": 1,
+      "log": "/tmp/wiki-compile-commerce-http-final.log"
+    },
+    "businessTypecheck": {
+      "status": "passed",
+      "log": "/tmp/wiki-compile-commerce-typecheck-verified.log"
+    },
+    "businessBoundaries": {
+      "status": "passed",
+      "log": "/tmp/wiki-compile-boundaries.log"
+    },
+    "docs": {
+      "status": "passed",
+      "coreReaders": "make docs / make docs-check passed",
+      "businessReaders": "make docs / make docs-check passed; core mirror remains pinned",
+      "coreDocsTests": {
+        "passed": 20,
+        "failed": 0
+      },
+      "logs": [
+        "/tmp/wiki-compile-core-docs-build.log",
+        "/tmp/wiki-compile-core-docs-check.log",
+        "/tmp/wiki-compile-commerce-docs-build.log",
+        "/tmp/wiki-compile-commerce-docs-check.log",
+        "/tmp/wiki-compile-docs-tests.log"
+      ]
+    },
+    "diagram": {
+      "status": "passed",
+      "gates": [
+        "validate",
+        "deliver",
+        "check",
+        "browser-check"
+      ],
+      "visualReview": "not-requested"
+    }
+  },
+  "review": {
+    "initialP2": [
+      "local source proof expires during provider execution",
+      "staged candidate orphaned when compilation finish fails"
+    ],
+    "fixes": [
+      "refresh only proof expiry under identical source/digest/owner/generation/subject/purpose/audience",
+      "checkpoint shared stageIntent hash; lookup exact existing changeset; CAS local ledger association without provider or stage calls"
+    ],
+    "additionalRegression": "proposal checkpoint revocation reproduced stage execution; added currentness/permission/epoch/deadline checks after checkpoint",
+    "readOnlyRereview": "no remaining reproducible high/medium in reviewed scope"
+  },
+  "observations": [
+    "bounded source text plus current old Wiki evidence delivered to local synthetic compiler",
+    "new and correct candidate staged, original Wiki head and publication count unchanged",
+    "unread citations and exact identity conflict rejected",
+    "unknown provider response or billing remains outcome_unknown without automatic model retry",
+    "provider input/budget mutation cannot alter frozen readset",
+    "lost finish after candidate commit reconciles original candidate through lookup with no provider call",
+    "external business report yields draft_ready blocked_source_assurance, no formal Wiki revision",
+    "revoked original blocks saved compilation draft reads"
+  ],
+  "limits": [
+    "queries currently supplied by caller/business context; no automatic query/entity planning yet",
+    "new compilation candidate origin not yet accepted by existing synthetic-only review API",
+    "no external owner publication assurance; read-time metadata/content is insufficient",
+    "no independent no-model stage retry for a saved draft with no existing candidate",
+    "no background core-outbox compiler coordinator, periodic lint or pairwise DecisionProvider ledger yet",
+    "real provider request identity/raw response/billing reconciliation requires actual adapter and authorized account",
+    "no real semantic/business-value or 10k/100k-scale acceptance",
+    "candidate package links remain project-local and ignored; vendor source/pin unchanged; no commit or deployment"
+  ],
+  "sourceSha256": {
+    "knowledge": {
+      "packages/knowledge-contracts/src/index.ts": "62fd18302f96d11dc0c7c6adcf41141d5f8bcb7c756afd65438488860a542f24",
+      "packages/knowledge-application/src/wiki-compile.ts": "624ceef228ad3b355a4e90f75ec9cf420c3454d329785b06df1d8c28277ef179",
+      "packages/knowledge-application/src/index.ts": "573978282e170aa0f499cd7f3b7de3e03094036545fe7f2f2f74e6d4c09dd2d3",
+      "packages/knowledge-application/test/wiki-compile-checkpoint.test.ts": "4ab06a66de9c068aaf8b5ea9f05875ea52440de12374d726b2e6521c522341bd",
+      "packages/adapters/knowledge-service/src/wiki-compile.ts": "8f1de2cd582d91a8c8f04528762366af01f6af6c3cdec7fbaa6733316fc32947",
+      "packages/adapters/knowledge-service/src/wiki-compile-stage.ts": "40cf464d3c6d827609dc19bb05d954cbeca1523bf7ec013cdb4bf98a7c1b3a53",
+      "packages/adapters/knowledge-service/src/index.ts": "93bd3bf350622ff7e7a49d772880909c2babe04c99a3325a14057ec45f6b80ab",
+      "packages/knowledge/src/store.ts": "964771c57987497b7a115c7a0dc0bf2283a21acffb65d075f66e75ad3c949441",
+      "apps/knowledge-api/src/index.ts": "91ecd341812e105dd6c51d10d559fa307f9423c7c0c9866061a25ceea2be041f",
+      "packages/knowledge-client/src/index.ts": "2000523b984e49f202377b8996c780b565f918be7cab97dbe82fb137e7cdb485",
+      "apps/knowledge-api/test/wiki-compile.integration.test.ts": "ee5fdaebf9e0235a839abf2e70e354697d06f01499f0fc20e619d1c3f2b887fe",
+      "apps/knowledge-api/test/wiki-compile-ledger.integration.test.ts": "baff4780d46dd677e1a633eef3a7a8d71b24582f1588482ba153750925a542ad",
+      "apps/knowledge-api/test/wiki-compile-stage.integration.test.ts": "45ffffea44bc4e7323651b2ad95725201da0d85dad462dddcc7040a327e0cf90"
+    },
+    "commerce": {
+      "apps/api/test/knowledge-owner-ingest.integration.test.ts": "104c9e76520accc1207dfa4a3abf40055dc464b184de157254d358bd363e88cb"
+    }
+  },
+  "canonicalLivingPage": {
+    "id": "page_35e0d83c4f14819180a5b50a5995a1d4",
+    "sequence": 288,
+    "updated": true
+  }
+}
