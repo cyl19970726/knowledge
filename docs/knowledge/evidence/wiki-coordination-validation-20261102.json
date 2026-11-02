@@ -101,7 +101,7 @@
     "queries and mentions are provider-proposed; real semantics, entity disambiguation and human gold unverified",
     "no_change is a proposal, independent no_change review remains incomplete",
     "unstaged draft retry, query-answer return to research and external owner publication assurance remain incomplete",
-    "no real provider transports/accounts/disclosure/billing comparison; no deployments, commits or vendor pin advancement"
+    "no real provider transports/accounts/disclosure/billing comparison; no deployments or vendor pin advancement; the pre-PR8 phase had no commits"
   ],
   "historicalEvidenceScope": "Existing baselines, 383 core and 998 business checks, and browser space 88 are pre-PR8 local candidate evidence; they are not acceptance on PR8 main.",
   "pr8Integration": {
@@ -264,5 +264,21 @@
       "apps/knowledge-web/src/styles.css": "91a878b39bea2437808ac9b74e3190d343b84b07ac4fbdeb5a8eb260161ea60f",
       "scripts/runtime/knowledge-coordination-demo.ts": "ed21ffcbb1d003bc903206bed1cabd5963f74b79872b59d130f93fad71966fd6"
     }
+  },
+  "delivery": {
+    "status": "draft_pull_request",
+    "url": "https://github.com/cyl19970726/knowledge/pull/9",
+    "base": "main",
+    "baseContainsPr8": "2f66ba174bbd47be92d0bbdc238159d33c5a74f8",
+    "implementationHead": "dde59fcfae3bee3310784e3f2d918ebe599c6a90",
+    "ci": {
+      "status": "success",
+      "url": "https://github.com/cyl19970726/knowledge/actions/runs/41374946836/job/125053041464",
+      "scope": "tested implementation head; later delivery metadata changes are documentation only"
+    },
+    "merged": false,
+    "deployed": false,
+    "goal": "active",
+    "testContainerStoppedAndRemoved": true
   }
 }
