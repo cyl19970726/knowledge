@@ -79,3 +79,14 @@ test('published candidate presents reviewability as history without a new reject
   assert.match(html,/修改后 · 候选版本/);
   assert.doesNotMatch(html,/当前候选不可批准|来源权限已撤回|role="alert"/);
 });
+
+test('repair candidate marks the old version comparison-only and lists every dependency disposition',()=>{
+  const data=candidate();
+  data.changes[0].repair={comparisonOnly:true,invalidityReasons:['source_superseded'],reviewDueAt:'2026-10-01T00:00:00.000Z',
+    dependencies:[{domain:'source',ref:{objectId:beforeRef.objectId,versionId:beforeRef.versionId},action:'replace',replacementEvidenceId:'source:new',reason:'由当前版本替换'},
+      {domain:'knowledge',ref:{objectId:afterRef.objectId,versionId:afterRef.versionId},action:'remove',replacementEvidenceId:null,reason:'上游已撤回 <b>x</b>'}],
+    reviewDue:{action:'set',until:'2026-12-01T00:00:00.000Z',reason:'重新设定复核期'}};
+  const html=renderToStaticMarkup(createElement(CandidatePreview,{candidate:data,onRead:()=>{}}));
+  for(const text of ['修改前版本只供对照，不可采用','来源已有新版','替换来源','由当前版本替换','移除 Wiki','改为 2026-12-01T00:00:00.000Z'])assert.ok(html.includes(text),text);
+  assert.match(html,/上游已撤回 &lt;b&gt;x&lt;\/b&gt;/);
+});

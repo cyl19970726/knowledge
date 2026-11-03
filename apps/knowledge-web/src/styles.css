@@ -345,6 +345,8 @@ body{background:#0b1119;color:#e9edf5}
 .candidate-body .research-reason,.candidate-change h3{overflow-wrap:anywhere}
 .candidate-review-block{border:1px solid #d9a46d;border-left:4px solid #bd7143;border-radius:5px;background:#fff7ed;padding:10px 13px;margin:13px 0;color:#75442b;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
 .candidate-review-block ul{margin:7px 0 0;padding-left:20px}.candidate-review-block li{margin:4px 0}
+.candidate-repair{border:1px solid #9fb3cf;border-left:4px solid #5f7fa8;border-radius:5px;background:#f2f6fb;padding:10px 13px;margin:13px 0;color:#2f4664;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+.candidate-repair ul{margin:7px 0;padding-left:20px}.candidate-repair li{margin:4px 0}.candidate-repair code{font-size:12px}
 .candidate-compare{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
 .candidate-version{border:1px solid #e9e4ef;border-radius:5px;background:#fcfbfe;padding:12px;overflow-wrap:anywhere}
 .candidate-version-before{background:#f8f8fa}.candidate-version h4{font-size:13px;color:#504467;margin:0 0 10px}.candidate-version>strong{display:block;font-size:13px;color:#333c54}
@@ -412,6 +414,7 @@ body{background:#0b1119;color:#e9edf5}
 .ask-claim p,.ask-evidence p,.ask-meta p{color:#dce6f6}
 .ask-citations button{background:#29223d;border-color:#7659a2;color:#e0cafa}
 .candidate-review-block,.candidate-review-caution,.candidate-review-pending{background:#302519;border-color:#ac7940;color:#f1d4a8}
+.candidate-repair{background:#16233a;border-color:#4d6a93;color:#cfdcf1}
 .candidate-version,.candidate-version-before,.candidate-review-panel,.candidate-lookup{background:#141e2b;border-color:#314057;color:#d9e4f5}
 .candidate-version h4,.candidate-version>strong,.candidate-lookup h2,.candidate-version .info-list h3,.candidate-groups h5{color:#e9d6fb}
 .candidate-version .prose,.candidate-decision-form label,.candidate-lookup-form label{color:#dce6f4}

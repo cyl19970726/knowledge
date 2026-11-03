@@ -879,6 +879,21 @@ function ResearchTriptych({ documents, coReadingDocuments = [], selectedDocument
   </div>;
 }
 
+const invalidityName:Record<string,string>={source_superseded:'来源已有新版',source_revoked:'来源已撤回',superseded:'依赖的 Wiki 已有新版',
+  review_due:'已到复核期',withdrawn:'依赖已撤回',missing_or_unpublished:'依赖不可用'};
+const dispositionName={keep:'保留',replace:'替换',remove:'移除'} as const;
+/** Repair candidates keep the old version comparable but never admitted; each prior dependency is disposed explicitly. */
+export function RepairDisposition({repair}:{repair:NonNullable<CandidateView['changes'][number]['repair']>}){
+  const due=repair.reviewDue;
+  return <div className="candidate-repair" role="note">
+    <strong>修复候选：修改前版本只供对照，不可采用</strong>
+    {repair.invalidityReasons.length>0&&<p className="minor-note">旧版失效原因：{repair.invalidityReasons.map(reason=>invalidityName[reason]??reason).join('、')}</p>}
+    <ul>{repair.dependencies.map(item=><li key={`${item.domain}:${item.ref.objectId}/${item.ref.versionId}`}>
+      {dispositionName[item.action]}{item.domain==='source'?'来源':' Wiki'} <code>{item.ref.versionId.slice(0,8)}</code>：{item.reason}</li>)}</ul>
+    <p className="minor-note">复核期：{due.action==='keep'?(repair.reviewDueAt?`保留 ${repair.reviewDueAt}`:'无'):due.action==='set'?`改为 ${due.until}（${due.reason}）`:`清除（${due.reason}）`}</p>
+  </div>;
+}
+
 export function CandidatePreview({ candidate, onRead }: { candidate: CandidateView; onRead: (ref: KnowledgeRef) => void }) {
   const terminalMessage=candidateTerminalMessage(candidate.state);
   const stateLabel:Record<CandidateView['state'],string>={waiting_for_review:'等待独立审阅',cancelled:'已取消',published:'曾发表，需核对当前版本',rejected:'已被拒绝',outcome_unknown:'状态待核对'};
@@ -897,6 +912,7 @@ export function CandidatePreview({ candidate, onRead }: { candidate: CandidateVi
     {candidate.changes.map(change => <article className="candidate-change" key={refKey(change.ref)}>
       <h3>{change.title}</h3>
       {change.effect && <p className="candidate-meta">变更类型：{change.effect}</p>}
+      {change.repair && <RepairDisposition repair={change.repair} />}
       <div className="candidate-compare">
         <section className="candidate-version candidate-version-before">
           <h4>修改前 · 准确版本</h4>
