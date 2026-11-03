@@ -17,3 +17,5 @@ node_modules/
 dist/
 coverage/
 *.tsbuildinfo
+# Diagram delivery receipts contain local paths; publish the curated validation instead.
+docs/knowledge/diagrams/*.delivery.json

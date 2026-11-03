@@ -3,7 +3,7 @@
   "updated": "2026-11-03",
   "documents": 44,
   "diagrams": 0,
-  "output_sha256": "1812998817f774aff2cc59c6c7759cbf645f984fd772101ca581bc9bf842cac4",
+  "output_sha256": "477b6551b9f7798994a0c3eb71e1c57e1719694fde6ba327767ec842118ba251",
   "source_sha256": {
     "../_site/mermaid.bundle.js": "ace4ee4658ac7ecdb9a53096dfa379ad76a921228ea143f5e994389af76b662f",
     "../_site/reader.js": "6330c20c6fb9d6b41ab26e0c27027d80764aa15da90eca75be632a6e8b3d106a",
@@ -102,7 +102,7 @@
     "../assets/wiki-loop-20261102/review-mobile-pending.png": "e657a9e342ca36312994eaac94ac08d8289322e85a5e18d9f0e9101f8cb77d0b",
     "../assets/wiki-loop-20261102/review-mobile-published.png": "0e56d1e257682a248c21daeea6a66efa98056437da636428359b221a983dd632",
     "README.md": "8f658cd21f62f6e6694af9fcafb9584c6e595602f10cdca1872b2a3e375fdf34",
-    "architecture.md": "e9428d58194361c5dce5610b516932ada29589357f3b05d9c2e70ed3049bef56",
+    "architecture.md": "df3a6bd9e3fc80eed90f138ed032d233fcd8cff186974186b4a3b65489a7b731",
     "capabilities.md": "a30cd007f2200fbfb37c671964ce1a332455f8c0acc2b599603c06e62ce853b4",
     "catalog.json": "a773c53d33c630cc8d09fd1a3c0f1cc191a04cb34bd070d2acd210a43853fad0",
     "current-state.md": "812b649aae4cd24cc1741c451dc09cb65b16211195eda48b5b0fa021c61ad9e5",

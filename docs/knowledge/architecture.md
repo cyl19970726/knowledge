@@ -4,6 +4,10 @@
 
 本页解释知识怎样被保存、改变和使用，再说明各层的责任。当前主线实现与正式部署见[当前状态](current-state.md)；认识与关系的细则见[通用认知模型](model.md)；新业务落地顺序见[技术接入手册](integration.md)。以下是目标架构，不以图上的模块宣称真实语义研究已经完成。
 
+[打开知识资产与 Ingest / Query / Lint 交互式分层图](diagrams/wiki-assets-operations.html) · [可编辑图源](diagrams/wiki-assets-operations.json)。它把原始资产、准确来源、实体提及、Wiki 页、关系与账本放到资产层，分别聚焦三种操作怎样读写这些对象，以及现有 LLM 与判断端口的位置。
+
+这张图收录此前讨论过的 **PR9 开发期设计快照**，保留当时的实现标记和 PR8 源码锚点，不能把其中“本地候选”当成今天的发布状态。PR9 现已合并；当前实现和未完成项以[状态页](current-state.md)及 [Issue10](https://github.com/cyl19970726/knowledge/issues/10)为准。HTML 可单独打开，源代码链接指向固定 GitHub 提交。
+
 ## 保存什么：同一网络中的四种内容
 
 ```mermaid

@@ -1,0 +1,644 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "知识资产与三种操作｜Ingest · Query · Lint",
+    "subtitle": "PR9开发期设计快照：PR8源码锚点与当时实现标记；当前进度见架构文档",
+    "output": "docs/knowledge/diagrams/wiki-assets-operations.html",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1180,
+      760
+    ],
+    "repository": {
+      "url": "https://github.com/cyl19970726/knowledge.git",
+      "revision": "2f66ba174bbd47be92d0bbdc238159d33c5a74f8"
+    },
+    "views": [
+      {
+        "id": "all",
+        "label": "总览",
+        "focus": [
+          "new",
+          "ask",
+          "timer",
+          "ingest",
+          "query",
+          "lint",
+          "draft",
+          "gate",
+          "answer",
+          "finding",
+          "raw",
+          "source",
+          "entity",
+          "wiki",
+          "relations",
+          "ledger",
+          "index",
+          "business-llm",
+          "decision"
+        ],
+        "note": "PR8保留R1 3D/2D/列表与A/B共读；PR9本地显式问答回流已验工程链路，仍待追加提交。"
+      },
+      {
+        "id": "ingest-view",
+        "label": "Ingest 读写",
+        "focus": [
+          "new",
+          "ingest",
+          "raw",
+          "source",
+          "entity",
+          "index",
+          "wiki",
+          "draft",
+          "gate",
+          "relations",
+          "ledger",
+          "business-llm"
+        ],
+        "note": "单来源事件可规划→有界发现→≤3判断→待审候选；另有纯Wiki当前页核查，旧版修复未接。"
+      },
+      {
+        "id": "query-view",
+        "label": "Query 读写",
+        "focus": [
+          "ask",
+          "query",
+          "index",
+          "wiki",
+          "source",
+          "relations",
+          "answer",
+          "ledger",
+          "draft",
+          "gate"
+        ],
+        "note": "选区服务回执才算实读；用户可选结论＋后续问题，经完整原读集重读进入待审编纂。"
+      },
+      {
+        "id": "lint-view",
+        "label": "Lint 读写",
+        "focus": [
+          "timer",
+          "lint",
+          "source",
+          "wiki",
+          "relations",
+          "ledger",
+          "finding",
+          "draft",
+          "decision"
+        ],
+        "note": "结构Lint与PR9当前页元数据扫描已接；relation_check经有界读/判断可形成待审候选。失效旧版recompile仍排队，判断不发表。"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "new",
+      "type": "external",
+      "label": "新来源／拉片报告",
+      "sublabel": "业务原件准确版本",
+      "tag": "现有",
+      "pos": [
+        40,
+        40
+      ],
+      "size": [
+        190,
+        78
+      ]
+    },
+    {
+      "id": "ask",
+      "type": "external",
+      "label": "用户问题／A-B选区",
+      "sublabel": "选中拟读；服务回执才算读",
+      "tag": "现有＋PR9候选",
+      "pos": [
+        700,
+        40
+      ],
+      "size": [
+        190,
+        78
+      ]
+    },
+    {
+      "id": "timer",
+      "type": "external",
+      "label": "来源变化／周期触发",
+      "sublabel": "结构Lint＋当前页核查",
+      "tag": "PR9候选",
+      "pos": [
+        920,
+        40
+      ],
+      "size": [
+        190,
+        78
+      ]
+    },
+    {
+      "id": "ingest",
+      "type": "backend",
+      "label": "Ingest｜来源驱动",
+      "sublabel": "单事件计划／发现／编纂",
+      "tag": "PR9候选",
+      "pos": [
+        40,
+        165
+      ],
+      "size": [
+        190,
+        78
+      ],
+      "sources": [
+        {
+          "path": "packages/knowledge-application/src/research.ts",
+          "line": 24,
+          "end_line": 38
+        }
+      ]
+    },
+    {
+      "id": "business-llm",
+      "type": "backend",
+      "label": "业务旧 Luna 链",
+      "sublabel": "独立业务仓；非新协调器",
+      "tag": "业务仓独立",
+      "pos": [
+        260,
+        165
+      ],
+      "size": [
+        190,
+        78
+      ]
+    },
+    {
+      "id": "query",
+      "type": "backend",
+      "label": "Query｜有据问答",
+      "sublabel": "选区优先有界读；旧服务兼容",
+      "tag": "PR9候选",
+      "pos": [
+        700,
+        165
+      ],
+      "size": [
+        190,
+        78
+      ],
+      "sources": [
+        {
+          "path": "packages/knowledge-application/src/index.ts",
+          "line": 112,
+          "end_line": 128
+        }
+      ]
+    },
+    {
+      "id": "lint",
+      "type": "backend",
+      "label": "Lint｜任务协调",
+      "sublabel": "结构发现；当前页关系任务",
+      "tag": "PR9候选",
+      "pos": [
+        920,
+        165
+      ],
+      "size": [
+        190,
+        78
+      ]
+    },
+    {
+      "id": "draft",
+      "type": "messagebus",
+      "label": "变化候选",
+      "sublabel": "原答仅作建议；待独立审阅",
+      "tag": "PR9候选",
+      "pos": [
+        260,
+        295
+      ],
+      "size": [
+        190,
+        78
+      ],
+      "sources": [
+        {
+          "path": "packages/knowledge/src/types.ts",
+          "line": 125,
+          "end_line": 133
+        }
+      ]
+    },
+    {
+      "id": "gate",
+      "type": "security",
+      "label": "独立审阅与发表",
+      "sublabel": "本地双方来源权限／准确head",
+      "tag": "现有",
+      "pos": [
+        40,
+        295
+      ],
+      "size": [
+        190,
+        78
+      ],
+      "sources": [
+        {
+          "path": "packages/knowledge/src/store.ts",
+          "line": 284,
+          "end_line": 318
+        }
+      ]
+    },
+    {
+      "id": "answer",
+      "type": "frontend",
+      "label": "带出处的临时答案",
+      "sublabel": "实读/排除分列；可显式回流",
+      "tag": "PR9候选",
+      "pos": [
+        480,
+        295
+      ],
+      "size": [
+        190,
+        78
+      ]
+    },
+    {
+      "id": "finding",
+      "type": "messagebus",
+      "label": "Lint 发现与任务",
+      "sublabel": "持久任务；非发表决定",
+      "tag": "PR9候选",
+      "pos": [
+        920,
+        295
+      ],
+      "size": [
+        190,
+        78
+      ]
+    },
+    {
+      "id": "raw",
+      "type": "external",
+      "label": "原件／报告版本",
+      "sublabel": "原片、报告、文档；业务 owner",
+      "tag": "现有",
+      "pos": [
+        40,
+        455
+      ],
+      "size": [
+        190,
+        78
+      ]
+    },
+    {
+      "id": "source",
+      "type": "database",
+      "label": "来源与证据锚点",
+      "sublabel": "准确域／原片组；有界报告读桥",
+      "tag": "部分",
+      "pos": [
+        260,
+        455
+      ],
+      "size": [
+        190,
+        78
+      ],
+      "sources": [
+        {
+          "path": "packages/knowledge/src/types.ts",
+          "line": 192,
+          "end_line": 215
+        }
+      ]
+    },
+    {
+      "id": "entity",
+      "type": "database",
+      "label": "提及与实体身份",
+      "sublabel": "span提案未消歧；页身份独立",
+      "tag": "部分",
+      "pos": [
+        260,
+        600
+      ],
+      "size": [
+        190,
+        78
+      ],
+      "sources": [
+        {
+          "path": "packages/knowledge/src/wiki-page.ts",
+          "line": 42,
+          "end_line": 56
+        }
+      ]
+    },
+    {
+      "id": "wiki",
+      "type": "database",
+      "label": "正式 Wiki 页／版本",
+      "sublabel": "正文、条件、反例、引文、head",
+      "tag": "现有",
+      "pos": [
+        480,
+        455
+      ],
+      "size": [
+        190,
+        78
+      ],
+      "sources": [
+        {
+          "path": "packages/knowledge/src/wiki-page.ts",
+          "line": 42,
+          "end_line": 60
+        }
+      ]
+    },
+    {
+      "id": "relations",
+      "type": "database",
+      "label": "导航／关系／依赖",
+      "sublabel": "正式依赖 ≠ 未审阅语义判断",
+      "tag": "部分",
+      "pos": [
+        700,
+        600
+      ],
+      "size": [
+        190,
+        78
+      ],
+      "sources": [
+        {
+          "path": "packages/knowledge/src/types.ts",
+          "line": 9,
+          "end_line": 13
+        }
+      ]
+    },
+    {
+      "id": "ledger",
+      "type": "database",
+      "label": "事件／候选／审阅／任务",
+      "sublabel": "run／step／判断／已知未知费用",
+      "tag": "部分",
+      "pos": [
+        920,
+        455
+      ],
+      "size": [
+        190,
+        78
+      ],
+      "sources": [
+        {
+          "path": "packages/knowledge/src/types.ts",
+          "line": 125,
+          "end_line": 133
+        }
+      ]
+    },
+    {
+      "id": "index",
+      "type": "database",
+      "label": "当前页搜索投影",
+      "sublabel": "二字gram预筛／原评分；覆盖可查",
+      "tag": "PR9候选",
+      "pos": [
+        700,
+        455
+      ],
+      "size": [
+        190,
+        78
+      ],
+      "sources": [
+        {
+          "path": "packages/knowledge/src/store.ts",
+          "line": 385,
+          "end_line": 415
+        }
+      ]
+    },
+    {
+      "id": "decision",
+      "type": "backend",
+      "label": "DecisionProvider 端口",
+      "sublabel": "≤3双端判断；仅编纂提示",
+      "tag": "PR9候选",
+      "pos": [
+        700,
+        295
+      ],
+      "size": [
+        190,
+        78
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "操作层｜作用于同一知识网",
+      "wraps": [
+        "ingest",
+        "query",
+        "lint",
+        "draft",
+        "gate",
+        "answer",
+        "finding",
+        "business-llm",
+        "decision"
+      ],
+      "pad": 24
+    },
+    {
+      "kind": "region",
+      "label": "资产层｜原件归业务 owner；Wiki 正文归知识服务",
+      "wraps": [
+        "raw",
+        "source",
+        "entity",
+        "wiki",
+        "relations",
+        "ledger",
+        "index"
+      ],
+      "pad": 22
+    }
+  ],
+  "connections": [
+    {
+      "id": "new-ingest",
+      "from": "new",
+      "to": "ingest",
+      "label": "触发",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ask-query",
+      "from": "ask",
+      "to": "query",
+      "label": "触发",
+      "variant": "emphasis"
+    },
+    {
+      "id": "timer-lint",
+      "from": "timer",
+      "to": "lint",
+      "label": "触发",
+      "variant": "dashed"
+    },
+    {
+      "id": "raw-source",
+      "from": "raw",
+      "to": "source",
+      "label": "准确登记",
+      "variant": "default"
+    },
+    {
+      "id": "ingest-business-llm",
+      "from": "ingest",
+      "to": "business-llm",
+      "label": "业务仓旧流程",
+      "variant": "default"
+    },
+    {
+      "id": "business-llm-draft",
+      "from": "business-llm",
+      "to": "draft",
+      "label": "旧链草案",
+      "variant": "default"
+    },
+    {
+      "id": "draft-gate",
+      "from": "draft",
+      "to": "gate",
+      "label": "独立审阅／来源重验"
+    },
+    {
+      "id": "gate-wiki",
+      "from": "gate",
+      "to": "wiki",
+      "label": "发表版本",
+      "variant": "emphasis"
+    },
+    {
+      "id": "wiki-index",
+      "from": "wiki",
+      "to": "index",
+      "label": "建索引",
+      "variant": "default"
+    },
+    {
+      "id": "index-query",
+      "from": "index",
+      "to": "query",
+      "label": "召回",
+      "variant": "default"
+    },
+    {
+      "id": "query-answer",
+      "from": "query",
+      "to": "answer",
+      "label": "有据临时回答",
+      "variant": "default"
+    },
+    {
+      "id": "answer-draft",
+      "from": "answer",
+      "to": "draft",
+      "label": "选结论→有界编纂",
+      "variant": "emphasis"
+    },
+    {
+      "id": "lint-finding",
+      "from": "lint",
+      "to": "finding",
+      "label": "发现",
+      "variant": "default"
+    },
+    {
+      "id": "finding-ledger",
+      "from": "finding",
+      "to": "ledger",
+      "label": "留痕",
+      "variant": "default"
+    },
+    {
+      "id": "wiki-entity",
+      "from": "wiki",
+      "to": "entity",
+      "label": "身份／别名",
+      "variant": "default"
+    },
+    {
+      "id": "wiki-relations",
+      "from": "wiki",
+      "to": "relations",
+      "label": "导航／依赖",
+      "variant": "default"
+    },
+    {
+      "id": "lint-decision",
+      "from": "lint",
+      "to": "decision",
+      "label": "单来源≤3判断",
+      "variant": "default"
+    },
+    {
+      "id": "decision-ledger",
+      "from": "decision",
+      "to": "ledger",
+      "label": "逐题／费用留账",
+      "variant": "default"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "正式 Wiki 页是资产",
+      "items": [
+        "PR8 已提交基线的页身份、不可变版本、当前 head、条件/反例/引文与导航仍是正式权威。",
+        "来源/业务原件归 owner；检索投影、临时答案、判断提案与任务不改写正式页。"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "三种操作的当前边界",
+      "items": [
+        "Ingest PR9候选：单准确来源事件→SourcePlanner→有界旧页发现→≤3逐对判断→WikiCompiler 待审候选。",
+        "Query主路径：围绕问题查知识、A/B联读并核对依据；答复可由用户选结论＋新问题，完整重读原证据后送待审编纂。",
+        "Lint PR9：当前页元数据sweep→relation_check→有界双Wiki判断→待审编纂；部分revision索引加速，旧版recompile仍排队。"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "证据与未完成项",
+      "items": [
+        "源码锚点PR8@2f66ba；PR9已推送至9d677e7，本轮显式问答回流仍是本地候选，未合并或部署。",
+        "本轮合成工程：build成功、core468/0/0、业务定向14；Ego92 Q2已HTTP200但客户端暂留15秒后刷新，原键GET恢复且0新POST。",
+        "100k合成每档5页×10头；SQL P95 1.41ms/整页19.91ms。16分片可检查1207才返11，非完整周期/Ask/Lint。",
+        "答复仅advisory、不自动挑选高价值答案；真实模型/费用/金标未验。旧版recompile、实体消歧、no_change/未stage重试与外部保证待做。"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "recordedDate": "2026-11-03",
+  "scope": "Original PR9-development architecture snapshot; not a new runtime implementation or current deployment claim",
+  "originalSpecificationSha256": "68124e015eef0fd6afd13a8ad81da872fcebf9724f3accb2c41015dddeebc41a",
+  "repository": {
+    "url": "https://github.com/cyl19970726/knowledge.git",
+    "revision": "2f66ba174bbd47be92d0bbdc238159d33c5a74f8"
+  },
+  "archifyVersion": "3.2.0",
+  "components": 19,
+  "connections": 18,
+  "views": [
+    "all",
+    "ingest-view",
+    "query-view",
+    "lint-view"
+  ],
+  "preserved": [
+    "component identities, labels, source references and sizes",
+    "boundaries, directed relationships, cards and focus views"
+  ],
+  "handoffChanges": [
+    "Explicit snapshot subtitle and portable output path",
+    "Fixed GitHub source links",
+    "Reposition draft and gate within the same operation layer to remove a resolved crossover"
+  ],
+  "sha256": {
+    "wiki-assets-operations.json": "48eafdea6192024787032f74a4a38b7b4102e6a272ed76ec4614925304bfb0cc",
+    "wiki-assets-operations.html": "973895711e52cb68c4ec5e9e05cc4bf028c3360181e4cb40f134bf938150567f",
+    "wiki-assets-operations-preview.png": "683ed2d9a96a668058286f54206dfd1bd7c65374400772bc6c94887eb19e4e11"
+  },
+  "automatedGates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "visualReview": {
+    "result": "passed desktop inspection",
+    "inspected": [
+      "1440x900 light",
+      "1440x900 dark"
+    ],
+    "checks": [
+      "Layer boundaries, all 19 nodes and labels visible",
+      "Ingest to old LLM and candidate/review paths distinguishable",
+      "Asset ownership and Query/Lint branches retained"
+    ],
+    "notClaimed": [
+      "Mobile or human task comprehension acceptance"
+    ]
+  },
+  "documentation": {
+    "readers": "both build and check passed",
+    "testsPassed": 20,
+    "retainedCoreSources": 17,
+    "retainedHeadings": 195
+  }
+}
