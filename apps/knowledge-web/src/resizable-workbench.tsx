@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEve
 export type SplitConfig = { id: string; defaultRatio: number; label: string; paneIds: readonly [string, string] };
 export const WORKBENCH_SPLITS = {
   answer: { id: 'answer', defaultRatio: 0.52, label: '调整回答与星图宽度', paneIds: ['workbench-reading', 'workbench-graph'] },
+  library: { id: 'wiki-library', defaultRatio: 0.52, label: '调整 Wiki 页与星图宽度', paneIds: ['workbench-wiki', 'workbench-graph'] },
   notes: { id: 'notes', defaultRatio: 0.72, label: '调整星图与研究笔记宽度', paneIds: ['workbench-graph', 'workbench-notes'] },
 } as const satisfies Record<string, SplitConfig>;
 const KEY = 'knowledge:workbench:split:v1:';

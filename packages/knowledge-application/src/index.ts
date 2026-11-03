@@ -240,10 +240,10 @@ export function createKnowledgeApplication(options:KnowledgeApplicationOptions){
     assertContext(context);if(request.profileIds?.length)throw new KnowledgeError('CATALOG_FILTER_UNSUPPORTED','Profile filtering is not supported by the current bounded catalog',422);if(request.purpose!==context.purpose)throw new KnowledgeError('PURPOSE_MISMATCH','Purpose mismatch',403);
     const epoch=await options.store.epoch(context.scope.projectId);
     const binding={scope:context.scope,principalId:context.principal.id,purpose:context.purpose,query:request.query??'',limit:request.limit,
-      profileIds:request.profileIds??[]};
+      profileIds:request.profileIds??[],...(request.kinds?{kinds:request.kinds}:{})};
     const offset=cursorOffset(request.cursor,binding,epoch);
     // Existing catalog has no space filter; authoritative search does, and is bounded here.
-    const views=await options.store.search(context.scope.projectId,{query:request.query??'',spaceId:context.scope.spaceId,limit:request.limit+1,offset});
+    const views=await options.store.search(context.scope.projectId,{query:request.query??'',spaceId:context.scope.spaceId,kinds:request.kinds,limit:request.limit+1,offset});
     const items=await Promise.all(views.slice(0,request.limit).map(view=>document(context,view)));
     const hasMore=views.length>request.limit;
     const coverage=pageCoverage(context.scope,epoch,items.length,hasMore,hasMore?nextCursor(binding,epoch,offset+items.length):null,

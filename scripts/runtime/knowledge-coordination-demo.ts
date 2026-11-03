@@ -19,6 +19,8 @@ import type {KnowledgeRef,MaintenanceTask} from '@commerce/knowledge-contracts';
 
 const MAX_LIFETIME_MS=Number(process.env.KNOWLEDGE_QA_LIFETIME_MS??5*60_000);
 if(!Number.isInteger(MAX_LIFETIME_MS)||MAX_LIFETIME_MS<1000||MAX_LIFETIME_MS>120*60_000)throw new Error('QA lifetime must be bounded by two hours');
+const QA_PORT=Number(process.env.KNOWLEDGE_QA_PORT??0);
+if(!Number.isInteger(QA_PORT)||QA_PORT<0||QA_PORT>65535)throw new Error('QA port must be a valid loopback port');
 const scenario=process.env.KNOWLEDGE_QA_SCENARIO;
 if(scenario&&scenario!=='starmap-research')throw new Error('Unsupported synthetic QA scenario');
 const starmap=scenario==='starmap-research';
@@ -142,7 +144,7 @@ async function main(){
         budget:{maxModelCalls:0,maxReadBytes:10_000_000,maxMoney:{amount:0,currency:'USD'},timeoutMs:120_000}}});
     const outer=express();outer.disable('x-powered-by');outer.use(express.static(dist));outer.use(api.app);
     server=createServer(outer);
-    await new Promise<void>((resolve,reject)=>{server!.once('error',reject);server!.listen(0,'127.0.0.1',()=>resolve());});
+    await new Promise<void>((resolve,reject)=>{server!.once('error',reject);server!.listen(QA_PORT,'127.0.0.1',()=>resolve());});
     const address=server.address();assert.ok(address&&typeof address!=='string');
     const baseUrl=`http://127.0.0.1:${address.port}`;
     const client=createKnowledgeClient({baseUrl,scope,headers:{Authorization:`Bearer ${token}`}});

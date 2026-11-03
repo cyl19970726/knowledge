@@ -24,13 +24,14 @@ test('separator keys move in both directions and expose bounded home/end targets
   assert.equal(splitFromKey('Enter', 0.52), null);
 });
 
-test('both workbench modes expose one keyboard focusable separator with separate default proportions', () => {
-  function Fixture({ mode }: { mode: 'answer' | 'notes' }) {
+test('all workbench modes expose one keyboard focusable separator with separate default proportions', () => {
+  function Fixture({ mode }: { mode: 'answer' | 'notes' | 'library' }) {
     const split = useResizableWorkbench(WORKBENCH_SPLITS[mode]);
     return createElement('div', { style: split.style }, createElement('div', split.separatorProps));
   }
   const answer = renderToStaticMarkup(createElement(Fixture, { mode: 'answer' }));
   const notes = renderToStaticMarkup(createElement(Fixture, { mode: 'notes' }));
+  const library = renderToStaticMarkup(createElement(Fixture, { mode: 'library' }));
   assert.match(answer, /--split-left:52%/);
   assert.match(notes, /--split-left:72%/);
   assert.match(answer, /role="separator"[^>]*tabindex="0"/);
@@ -38,6 +39,8 @@ test('both workbench modes expose one keyboard focusable separator with separate
   assert.match(notes, /aria-controls="workbench-graph workbench-notes"/);
   assert.match(answer, /aria-label="调整回答与星图宽度"/);
   assert.match(notes, /aria-label="调整星图与研究笔记宽度"/);
+  assert.match(library, /aria-controls="workbench-wiki workbench-graph"/);
+  assert.match(library, /--split-left:52%/);
 });
 
 test('a new detail pair can reuse the same split behavior by supplying configuration', () => {

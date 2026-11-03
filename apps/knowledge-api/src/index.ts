@@ -104,7 +104,7 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
         commitStatus:typeof error==='object'&&error&&'commitStatus' in error?error.commitStatus:'not_committed',
         ...(typeof error==='object'&&error&&'operationId' in error?{operationId:error.operationId}:{})});
     }};
-  app.get(`${base}/capabilities`,route(async(context,req)=>({data:{permittedActions:['query','catalog','exact','history','compare','graph','read_receipt',
+  app.get(`${base}/capabilities`,route(async(context,req)=>({data:{permittedActions:['query','catalog','wikiCatalog','exact','history','compare','graph','read_receipt',
     ...config.writerGrant&&config.capabilities?.actions.includes('sources:write')?['registerSource']:[],
     ...config.writerGrant&&config.capabilities?.actions.includes('uses:write')?['recordUse']:[],
     ...config.writerGrant&&config.capabilities?.actions.includes('feedback:write')?['recordFeedback']:[],
@@ -134,7 +134,7 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
   app.get(`${base}/profiles`,route(async()=>({data:profiles})));
   app.post(`${base}/query`,route((context,req)=>service.query(context,QueryRequestSchema.parse(req.body))));
   app.get(`${base}/catalog`,route((context,req)=>service.catalog(context,CatalogRequestSchema.parse({
-    purpose:req.query.purpose,query:req.query.query,limit:Number(req.query.limit??50),cursor:req.query.cursor}))));
+    purpose:req.query.purpose,query:req.query.query,kinds:req.query.kinds===undefined?undefined:Array.isArray(req.query.kinds)?req.query.kinds:[req.query.kinds],limit:Number(req.query.limit??50),cursor:req.query.cursor}))));
   app.get(`${base}/objects/:objectId/versions/:versionId`,route((context,req)=>service.exact(context,KnowledgeRefSchema.parse({
     ...context.scope,domain:'knowledge',objectId:req.params.objectId,versionId:req.params.versionId,contentDigest:req.query.digest}))));
   app.get(`${base}/objects/:objectId/history`,route((context,req)=>service.history(context,HistoryRequestSchema.parse({
