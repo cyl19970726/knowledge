@@ -25,10 +25,19 @@ dbTest('explicit periodic worker resumes bounded shards and becomes idle without
   const worker=await createKnowledgeWorker(config);let idle=false;
   for(let i=0;i<40;i++){if(!await worker.runOne()){idle=true;break;}}
   assert.equal(idle,true,'complete or limited shards must not busy-loop');assert.equal(calls.length,4);
-  assert.equal(new Set(calls).size,4,'one processor invocation per task');
+  assert.equal(new Set(calls).size,4,'one processor invocation per sweep task');
   const passes=(await pool.query<{limit_reached:boolean;complete:boolean;task_count:number;updated_at:Date}>(
    'SELECT limit_reached,complete,task_count,updated_at FROM ccl_knowledge_semantic_sweeps ORDER BY shard')).rows;
   assert.equal(passes.length,2);assert.ok(passes.every(p=>p.limit_reached&&!p.complete&&p.task_count===2));
+  assert.equal((await pool.query<{n:number}>(`SELECT count(*)::int n FROM ccl_knowledge_maintenance_tasks
+    WHERE trigger->>'stream'='knowledge' AND request->>'kind'='relation_check'`)).rows[0].n,0,
+  'publication creates no duplicate relation checks');
+  const publishedRefs=(await pool.query<{n:number}>(`SELECT COALESCE(sum(jsonb_array_length(data->'refs')),0)::int n
+    FROM ccl_knowledge_events WHERE project_id=$1 AND kind='KnowledgePublished'`,[seed.projectId])).rows[0].n;
+  assert.equal(publishedRefs,33,'32 original revisions plus one replacement are published events');
+  assert.equal((await pool.query<{n:number}>(`SELECT count(*)::int n FROM ccl_knowledge_maintenance_event_receipts
+    WHERE stream='knowledge' AND skip_reason='published_ref_deferred_to_semantic_sweep'`)).rows[0].n,publishedRefs,
+  'every published version has a skip receipt, including the superseded historical version');
   const restarted=await createKnowledgeWorker(config);
   for(let i=0;i<8;i++)await restarted.runOne();assert.equal(await restarted.runOne(),false);
   assert.equal(calls.length,4,'restart reads persistent progress instead of creating or executing duplicate tasks');

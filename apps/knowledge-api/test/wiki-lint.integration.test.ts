@@ -6,6 +6,7 @@ import {readTestDatabase} from '../../../scripts/runtime/test-database.mjs';
 import {seedKnowledgeSyntheticFixture} from '../../../scripts/runtime/knowledge-synthetic-fixture.ts';
 import {assertKnowledgeWriterAuthority} from '../../../packages/knowledge/src/writer-authority.ts';
 import {createPgWikiLint,migrateWikiLint} from '../../../packages/adapters/knowledge-service/src/wiki-lint.ts';
+import {createPgMaintenanceTasks} from '../../../packages/adapters/knowledge-service/src/maintenance-tasks.ts';
 
 const databaseUrl=readTestDatabase(),dbTest=databaseUrl?test:test.skip;
 async function schemaPool(){
@@ -79,6 +80,16 @@ dbTest('Wiki lint scans metadata by shard and cycle, finds seeded defects, and i
       }});
     },query:pool.query.bind(pool)} as unknown as pg.Pool;
     const lint=createPgWikiLint(spy,seed.writerGrant);
+    await pool.query(`CREATE FUNCTION fail_linked_lint_finding() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN IF NEW.payload->>'taskId' IS NOT NULL THEN
+        RAISE EXCEPTION 'synthetic linked finding failure'; END IF; RETURN NEW; END $$;
+      CREATE TRIGGER fail_linked_lint_finding BEFORE INSERT ON ccl_knowledge_lint_findings
+      FOR EACH ROW EXECUTE FUNCTION fail_linked_lint_finding()`);
+    await assert.rejects(lint.runPass(context,request('defects')),/synthetic linked finding failure/);
+    assert.equal((await pool.query<{n:number}>(`SELECT count(*)::int n FROM ccl_knowledge_maintenance_tasks`)).rows[0].n,0,
+      'a linked repair task cannot commit without its finding');
+    assert.equal((await pool.query<{n:number}>(`SELECT count(*)::int n FROM ccl_knowledge_lint_passes`)).rows[0].n,0);
+    await pool.query('DROP TRIGGER fail_linked_lint_finding ON ccl_knowledge_lint_findings; DROP FUNCTION fail_linked_lint_finding()');
     const pass=await lint.runPass(context,request('defects'));
     assert.equal(pass.complete,true);
     assert.equal(pass.consistency,'incremental_current_heads');
@@ -92,7 +103,16 @@ dbTest('Wiki lint scans metadata by shard and cycle, finds seeded defects, and i
     for(const kind of ['review_due','broken_link','invalid_critical_basis','missing_citation',
       'duplicate_source_group','suspected_duplicate'])assert.ok(rootKinds.has(kind as never),kind);
     assert.ok(findings.items.some(item=>item.kind==='orphan'));
-    assert.ok(findings.items.every(item=>item.subjectRef.contentDigest===null&&item.status==='open'&&item.taskId===null));
+    assert.ok(findings.items.every(item=>item.subjectRef.contentDigest===null&&item.status==='open'));
+    assert.ok(findings.items.filter(item=>item.kind==='review_due'||item.kind==='invalid_critical_basis').every(item=>item.taskId),
+      'review due and invalid critical basis findings link an atomic recompile task');
+    assert.ok(findings.items.filter(item=>item.kind==='orphan'||item.kind==='missing_citation').every(item=>item.taskId===null));
+    const tasks=createPgMaintenanceTasks(pool,seed.writerGrant);
+    for(const finding of findings.items.filter(item=>item.taskId)){
+      const linked=await tasks.get(context,finding.taskId!);
+      assert.equal(linked?.request.kind,'recompile');
+      assert.deepEqual(linked?.request.subjectRef,finding.subjectRef);
+    }
     const broken=findings.items.find(item=>item.subjectRef.objectId===root.objectId&&item.kind==='broken_link');
     assert.ok(broken?.reason.includes(`${missingId}/${missingVersion}`));
     assert.ok(broken?.relatedRefs.every(item=>item.contentDigest===null));
@@ -155,6 +175,7 @@ dbTest('Wiki lint fault rolls back findings and cursor; lost COMMIT preserves pa
     assert.equal(beforeFailure.scanned,1);
     const findingsBefore=(await pool.query<{count:string}>(`SELECT count(*) FROM ccl_knowledge_lint_findings
       WHERE pass_id=$1`,[beforeFailure.id])).rows[0].count;
+    const tasksBefore=(await pool.query<{count:string}>(`SELECT count(*) FROM ccl_knowledge_maintenance_tasks`)).rows[0].count;
     await pool.query(`CREATE FUNCTION lint_fail() RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN RAISE EXCEPTION 'synthetic lint finding failure'; END $$;
       CREATE TRIGGER lint_failure BEFORE INSERT ON ccl_knowledge_lint_findings
@@ -166,6 +187,8 @@ dbTest('Wiki lint fault rolls back findings and cursor; lost COMMIT preserves pa
     assert.equal(unchanged.last_object_id,beforeFailure.lastObjectId);
     assert.equal((await pool.query<{count:string}>(`SELECT count(*) FROM ccl_knowledge_lint_findings
       WHERE pass_id=$1`,[beforeFailure.id])).rows[0].count,findingsBefore);
+    assert.equal((await pool.query<{count:string}>(`SELECT count(*) FROM ccl_knowledge_maintenance_tasks`)).rows[0].count,tasksBefore,
+      'failed finding insertion also rolls back its linked repair task');
     await assert.rejects(lint.runPass(context,request('fault')),/synthetic lint finding failure/);
     assert.equal((await pool.query<{count:string}>(`SELECT count(*) FROM ccl_knowledge_lint_passes
       WHERE cycle_key='fault'`)).rows[0].count,'0');

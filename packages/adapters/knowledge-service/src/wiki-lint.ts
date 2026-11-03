@@ -6,6 +6,7 @@ import type {ReadContext} from '@commerce/knowledge-application';
 import {KnowledgeError} from '@commerce/knowledge-core/types';
 import {createKnowledgeStore} from '@commerce/knowledge-core/store';
 import {assertKnowledgeWriterAuthority,type KnowledgeWriterGrant} from '@commerce/knowledge-core/writer-authority';
+import {insertMaintenanceTask,migrateMaintenanceTasks} from './maintenance-tasks.ts';
 
 type PassRow={id:string;scanned:number;last_object_id:string|null;complete:boolean;finding_ids:string[];
   finding_count:string;start_epoch:string;observed_epoch:string;omitted_reasons:string[];updated_at:Date};
@@ -37,6 +38,7 @@ export class WikiLintCommitUnknownError extends KnowledgeError{
 }
 
 export async function migrateWikiLint(pool:Pool):Promise<void>{
+  await migrateMaintenanceTasks(pool);
   await pool.query(`CREATE TABLE IF NOT EXISTS ccl_knowledge_lint_passes (
     id uuid PRIMARY KEY,project_id text NOT NULL,space_id text NOT NULL,principal_id text NOT NULL,
     installation_id text NOT NULL,purpose text NOT NULL,cycle_key text NOT NULL,shard_count int NOT NULL,
@@ -146,11 +148,16 @@ export function createPgWikiLint(pool:Pool,grant:KnowledgeWriterGrant){
           throw new KnowledgeError('WIKI_LINT_SCAN_LIMIT','This cycle exceeds the bounded scan limit; use more shards or a new cycle',422);
         const omitted=[...row.omitted_reasons,'current_heads_can_change_between_pages'];
         if(epoch!==Number(row.start_epoch))omitted.push('publication_epoch_changed; earlier_keys_or_versions_may_be_missed');
-        const add=async(head:Head,kind:FindingKind,reason:string,relatedRefs:KnowledgeRef[]=[])=>{
+        const add=async(head:Head,kind:FindingKind,reason:string,relatedRefs:KnowledgeRef[]=[],repair=false)=>{
           const findingKey=`${head.object_id}/${head.version_id}/${kind}`;
           const exactRelated=[...new Map(relatedRefs.map(item=>[`${item.domain}/${item.objectId}/${item.versionId}`,item])).values()];
+          const subjectRef=ref(context,head.object_id,head.version_id);
+          const linked=repair?await insertMaintenanceTask(client,context,{kind:'recompile',subjectRef,
+            sourceEventIds:[],relatedRefs:exactRelated.filter(item=>item.spaceId===context.scope.spaceId).slice(0,50),
+            reason:`Wiki lint ${kind}: ${reason}`,methodVersion:request.methodVersion,rubricVersion:'wiki-lint/1'},
+            {stream:'periodic',eventKey:`lint:${row.id}:${findingKey}`,sequence:0,ref:subjectRef,sourceEventId:null}):null;
           const findingId=stableId(`${row.id}/${findingKey}`),found:MaintenanceFinding=MaintenanceFindingSchema.parse({
-            id:findingId,taskId:null,kind,subjectRef:ref(context,head.object_id,head.version_id),
+            id:findingId,taskId:linked?.value.id??null,kind,subjectRef,
             relatedRefs:exactRelated.slice(0,50),reason,methodVersion:request.methodVersion,status:'open',
             createdAt:new Date().toISOString()});
           const inserted=await client.query<{id:string}>(`INSERT INTO ccl_knowledge_lint_findings
@@ -163,7 +170,7 @@ export function createPgWikiLint(pool:Pool,grant:KnowledgeWriterGrant){
         for(const head of page){
           if(!head.review_admitted){omitted.push('head_not_reviewed_for_requested_purpose');continue;}
           if(head.due_at&&Number.isFinite(Date.parse(head.due_at))&&Date.parse(head.due_at)<=Date.now())
-            await add(head,'review_due','Current Wiki reviewDueAt has elapsed.');
+            await add(head,'review_due','Current Wiki reviewDueAt has elapsed.',[],true);
           const deps=(await client.query<Dep>(`SELECT d.domain,d.dep_object_id,d.dep_version_id,d.critical,
             r.published_at,r.payload->'binding'->>'spaceId' AS target_space,(r.object_id IS NOT NULL) AS exists
             FROM ccl_knowledge_deps d LEFT JOIN ccl_knowledge_revisions r
@@ -176,7 +183,7 @@ export function createPgWikiLint(pool:Pool,grant:KnowledgeWriterGrant){
             `Knowledge dependency points to a missing or unpublished exact version: ${broken.slice(0,10).map(dep=>
               `${dep.dep_object_id}/${dep.dep_version_id}`).join(', ')}${broken.length>10?' (more omitted)':''}.`,
             broken.filter(dep=>dep.exists&&dep.target_space).map(dep=>
-              ref(context,dep.dep_object_id,dep.dep_version_id,dep.target_space!)));
+              ref(context,dep.dep_object_id,dep.dep_version_id,dep.target_space!)),broken.some(dep=>dep.critical));
           const invalid:KnowledgeRef[]=[];
           for(const dep of deps.filter(item=>item.critical&&!broken.includes(item))){
             const frozen=await store.inspectFrozen?.(context.scope.projectId,
@@ -189,7 +196,7 @@ export function createPgWikiLint(pool:Pool,grant:KnowledgeWriterGrant){
           const sourceIssues=subjectFrozen?.validity.issues.filter(issue=>issue.domain!=='knowledge')??[];
           if(invalid.length||sourceIssues.length)await add(head,'invalid_critical_basis',
             `Critical frozen basis has invalid metadata${sourceIssues.length?`: ${sourceIssues.slice(0,5).map(issue=>
-              `${issue.domain}:${issue.ref.objectId}/${issue.ref.versionId} (${issue.reason})`).join(', ')}`:''}.`,invalid);
+              `${issue.domain}:${issue.ref.objectId}/${issue.ref.versionId} (${issue.reason})`).join(', ')}`:''}.`,invalid,true);
           if(head.citation_shape!=='array'||head.citation_count===0)
             await add(head,'missing_citation','No structured Wiki citation is recorded; this is a review prompt, not proof of an incorrect claim.');
           if(head.citation_shape&&head.citation_shape!=='array')omitted.push('malformed_citation_metadata');

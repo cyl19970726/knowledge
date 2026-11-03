@@ -46,6 +46,11 @@ for(const expireWorker of [false,true])dbTest(`durable background source plannin
   async function source(text:string){const registered=(await owner.client.registerSource({externalIdentity:{adapterId:'coord-fixture',externalObjectId:randomUUID(),externalVersion:'1'},expectedSourceHead:null,sourceSchemaVersion:'synthetic-note/1',contentDigest:createHash('sha256').update(text).digest('hex'),custody:{mode:'managed_copy',text},sourceKind:'document',author:null,publisher:null,acquirer:'synthetic-fixture',publishedAt:null,obtainedAt:new Date().toISOString(),assertionKind:'source_claim',sourceGroups:[{id:randomUUID(),status:'known',authority:'synthetic-original'}],anchors:[],actualCoverage:[],limitations:['Synthetic only'],rightsPolicyRef:'synthetic-local-only'},{idempotencyKey:randomUUID(),purpose})).data;
    const eventKey=randomUUID();return (await owner.client.registerSourceEvent({adapterId:'coord-fixture',eventKey,producerSequence:1,occurredAt:new Date().toISOString(),purpose,sourceRef:{...registered.ref,domain:'source',contentDigest:registered.ref.contentDigest!}},{idempotencyKey:eventKey,purpose})).data;}
   async function taskFor(eventId:string){let cursor:string|undefined;for(let page=0;page<10;page++){const result=(await owner.client.maintenanceTasks(purpose,{limit:100,cursor})).data,found=result.items.find(x=>x.request.sourceEventIds.includes(eventId));if(found)return found;if(!result.hasMore)break;cursor=result.nextCursor!;}assert.fail('Expected source task');}
+  async function publicationRelationTasks(ref:KnowledgeRef){return Number((await pool.query<{n:string}>(`
+   SELECT count(*) AS n FROM ccl_knowledge_maintenance_tasks WHERE project_id=$1
+     AND trigger->>'stream'='knowledge' AND request->>'kind'='relation_check'
+     AND request->'subjectRef'->>'objectId'=$2 AND request->'subjectRef'->>'versionId'=$3`,
+   [seed.projectId,ref.objectId,ref.versionId])).rows[0].n);}
   async function publish(compilation:WikiCompileResult,key:string){assert.equal(compilation.state,'waiting_for_review');const c=compilation.candidate!,ticket=(await owner.client.requestReview({target:{kind:'candidate',candidateId:c.candidateId,contentHash:c.contentHash},purpose},{idempotencyKey:`ticket-${key}`,purpose})).data;
    return (await reviewer.decideReview(ticket.id,{expectedDigest:c.contentHash,decision:'exploration_only',reason:'Synthetic independent engineering approval',conditions:[],gaps:[]},{idempotencyKey:`approve-${key}`,purpose})).data.publication!.refs[0];}
   const a=await source('合成观察：靛青灯箱在固定拍摄条件下可能帮助识别，但还没有真实观众验证。');
@@ -68,7 +73,9 @@ for(const expireWorker of [false,true])dbTest(`durable background source plannin
   releaseWorker();assert.equal(await heldWork,true);heldWork=null;
   assert.equal((await owner.client.maintenanceTask(firstTask.id,purpose)).data.state,'completed','worker acknowledges the already published result');
   assert.equal((await owner.client.coordinationForTask(firstTask.id,purpose)).data!.compilationOutcome,'published');
-  assert.equal(await worker.runOne(),true,'new publication metadata may queue a separate recompile task');assert.equal(plans,1);assert.equal(compiles,1);
+  assert.equal(await worker.runOne(),false,'initial publication adds no immediate relation study');
+  assert.equal(await publicationRelationTasks(firstRef),0);
+  assert.equal(plans,1);assert.equal(compiles,1);
   phase='counterexample';const b=await source('合成反例：靛青灯箱改变了亮度，其他条件不同，不能证明商品识别真的改善。');
   await owner.client.collectMaintenance({purpose,methodVersion:'coord-fixture/1',rubricVersion:'relations-fixture/1',limit:500},{idempotencyKey:'collect-b',purpose});
   const processed=(await owner.client.processMaintenance(purpose,{idempotencyKey:'process-b',purpose})).data!;assert.equal(processed.state,'waiting_for_review');
@@ -78,7 +85,11 @@ for(const expireWorker of [false,true])dbTest(`durable background source plannin
   const queried=(await owner.client.query({question:title,purpose,limit:3,retrievalMethod:'wiki-lexical-v2'})).data;assert.ok(queried.items.some(x=>x.ref.versionId===secondRef.versionId));assert.ok(queried.items.every(x=>x.ref.versionId!==firstRef!.versionId));
   const answer=(await owner.client.ask({question:title,purpose,limit:1,maxPages:1,includeSourceContent:false,budget:{maxModelCalls:1,maxReadBytes:500_000,maxMoney:{amount:0,currency:'USD'},deadline:new Date(Date.now()+30_000).toISOString()}},{idempotencyKey:'after-c2',purpose})).data;assert.equal(answer.state,'answered',JSON.stringify(answer));assert.equal(answer.evidence[0].ref.versionId,secondRef.versionId);
   await owner.client.coordinationForTask(secondTask.id,purpose);assert.equal(plans,2);assert.equal(pairs,1);assert.equal(compiles,2);assert.equal(answers,1);
-  assert.equal((await owner.client.processMaintenance(purpose,{idempotencyKey:'empty-work',purpose})).data,null,'unsupported queued recompile tasks do not trigger another source plan');
+  await owner.client.collectMaintenance({purpose,methodVersion:'coord-fixture/1',rubricVersion:'relations-fixture/1',limit:500},
+   {idempotencyKey:'collect-publication-c2',purpose});
+  assert.equal(await publicationRelationTasks(secondRef),0);
+  assert.equal((await owner.client.processMaintenance(purpose,{idempotencyKey:'empty-work',purpose})).data,null,
+   'new publication is left to the periodic sweep, so source processing is idle');
   const c=await source('合成反例补充：靛青灯箱的这一份提案并未满足独立审阅要求。');
   await owner.client.collectMaintenance({purpose,methodVersion:'coord-fixture/1',rubricVersion:'relations-fixture/1',limit:500},{idempotencyKey:'collect-c',purpose});
   await owner.client.processMaintenance(purpose,{idempotencyKey:'process-c',purpose});const thirdTask=await taskFor(c.id),run3=(await owner.client.coordinationForTask(thirdTask.id,purpose)).data!;

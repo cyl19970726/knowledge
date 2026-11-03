@@ -46,6 +46,9 @@ dbTest('maintenance ledger atomically consumes events, fences leases and preserv
     const first=await tasks.collectEvents(context,{methodVersion:'maint-v1',rubricVersion:'rubric-v1',limit:100});
     assert.ok(first.sourceThrough>0&&first.knowledgeThrough>0);
     assert.ok(first.skipped>0);
+    const initialTasks=await Promise.all(first.taskIds.map(id=>tasks.get(context,id)));
+    assert.equal(initialTasks.filter(item=>item?.trigger.stream==='knowledge').length,0,
+      'new Wiki heads are left for the periodic semantic sweep');
     const skippedReasons=async(spaceId=seed.spaceId)=>
       (await pool.query<{skip_reason:string}>(`SELECT skip_reason FROM ccl_knowledge_maintenance_event_receipts
         WHERE project_id=$1 AND space_id=$2 AND skip_reason IS NOT NULL`,[seed.projectId,spaceId])).rows.map(row=>row.skip_reason);
@@ -61,6 +64,11 @@ dbTest('maintenance ledger atomically consumes events, fences leases and preserv
       [seed.projectId,seed.spaceId,seed.principal.id,seed.principal.clientInstallationId,
         context.purpose,publishedEvent.sequence])).rows[0].n;
     assert.equal(publishedReceipts,publishedEvent.n,'every published ref has a task or explicit skip receipt');
+    assert.equal((await pool.query<{n:number}>(`SELECT count(*)::int n
+      FROM ccl_knowledge_maintenance_event_receipts WHERE project_id=$1 AND sequence=$2
+        AND ref_key LIKE 'item:%' AND skip_reason='published_ref_deferred_to_semantic_sweep'`,
+      [seed.projectId,publishedEvent.sequence])).rows[0].n,publishedEvent.n);
+    assert.ok((await skippedReasons()).includes('publication_without_superseded_deferred_to_semantic_sweep'));
     const otherSpace={...context,scope:{...context.scope,spaceId:'other-space'},
       principal:{...context.principal,spaceIds:[...context.principal.spaceIds,'other-space']}};
     const outside=await tasks.collectEvents(otherSpace,{methodVersion:'maint-v1',rubricVersion:'rubric-v1',limit:100});
@@ -72,6 +80,44 @@ dbTest('maintenance ledger atomically consumes events, fences leases and preserv
     assert.equal(firstSource.trigger.sourceEventId,event1.id);
     const noNew=await tasks.collectEvents(context,{methodVersion:'maint-v1',rubricVersion:'rubric-v1',limit:100});
     assert.deepEqual(noNew.taskIds,[],'advanced cursors do not recreate old tasks');
+    const feature=(await pool.query<{object_id:string;version_id:string}>(`SELECT h.object_id,h.version_id
+      FROM ccl_knowledge_heads h JOIN ccl_knowledge_revisions r ON r.project_id=h.project_id
+        AND r.object_id=h.object_id AND r.version_id=h.version_id
+      WHERE h.project_id=$1 AND r.payload->'content'->'identity'->>'key'='features'`,
+      [seed.projectId])).rows[0];assert.ok(feature);
+    const emitKnowledge=async(kind:string,data:unknown)=>{
+      const writer=await pool.connect();try{await writer.query('BEGIN');await assertKnowledgeWriterAuthority(writer,seed.projectId,seed.writerGrant);
+        const seq=Number((await writer.query<{sequence:string}>(`INSERT INTO ccl_knowledge_events(project_id,kind,data)
+          VALUES($1,$2,$3) RETURNING sequence`,[seed.projectId,kind,data])).rows[0].sequence);
+        await writer.query('COMMIT');return seq;
+      }catch(error){await writer.query('ROLLBACK');throw error;}finally{writer.release();}};
+    const superseded={objectId:feature.object_id,versionId:feature.version_id};
+    const publishedSeq=await emitKnowledge('KnowledgePublished',{refs:[seed.root],superseded:[superseded]});
+    const publicationTasks=await tasks.collectEvents(context,{methodVersion:'maint-v1',rubricVersion:'rubric-v1',limit:100});
+    const publicationPage=await Promise.all(publicationTasks.taskIds.map(id=>tasks.get(context,id)));
+    assert.ok(!publicationPage.some(item=>item?.trigger.sequence===publishedSeq&&item.request.kind==='relation_check'),
+      'the new ref itself never starts another relation study');
+    assert.equal((await pool.query<{skip_reason:string}>(`SELECT skip_reason
+      FROM ccl_knowledge_maintenance_event_receipts WHERE project_id=$1 AND sequence=$2 AND ref_key='item:1'`,
+      [seed.projectId,publishedSeq])).rows[0].skip_reason,'published_ref_deferred_to_semantic_sweep');
+    const repair=publicationPage.find(item=>item?.trigger.sequence===publishedSeq&&item.request.kind==='recompile'&&
+      item.request.subjectRef?.objectId===seed.root.objectId);
+    assert.ok(repair,'superseded feature must fan out to its current critical dependent');
+    assert.equal(repair.request.sourceEventIds.length,0);
+    assert.ok(repair.request.relatedRefs.some(ref=>ref.objectId===feature.object_id&&ref.versionId===feature.version_id));
+    const oldSource={...context.scope,domain:'source',objectId:seed.source.ref.objectId,
+      versionId:seed.source.ref.versionId,contentDigest:null};
+    const sourceSeq=await emitKnowledge('SourceRegistered',{sourceRef:{objectId:randomUUID(),versionId:randomUUID()},supersedes:oldSource});
+    const sourcePage=await tasks.collectEvents(context,{methodVersion:'maint-v1',rubricVersion:'rubric-v1',limit:100});
+    const sourceRepairs=await Promise.all(sourcePage.taskIds.map(id=>tasks.get(context,id)));
+    assert.ok(sourceRepairs.some(item=>item?.trigger.sequence===sourceSeq&&item.request.kind==='recompile'&&
+      item.request.relatedRefs.some(ref=>ref.domain==='source'&&ref.objectId===oldSource.objectId)));
+    assert.equal((await tasks.collectEvents(context,{methodVersion:'maint-v1',rubricVersion:'rubric-v1',limit:100})).createdCount,0,
+      'the same policy does not queue an event twice');
+    const nextSeq=await emitKnowledge('SourceRegistered',{sourceRef:{objectId:randomUUID(),versionId:randomUUID()},supersedes:oldSource});
+    const nextSource=await tasks.collectEvents(context,{methodVersion:'maint-v1',rubricVersion:'rubric-v1',limit:100});
+    assert.ok(nextSource.taskIds.length>0&&nextSource.taskIds.every(id=>!sourcePage.taskIds.includes(id)),
+      `a later source replacement event ${nextSeq} has separate repair receipts`);
     const claimed=await tasks.claim(context,['source_research'],1000);
     assert.equal(claimed?.id,firstSource.id);
     assert.equal(claimed?.attempts,1);
@@ -163,8 +209,12 @@ dbTest('maintenance ledger atomically consumes events, fences leases and preserv
       'response_recorded',{...acknowledged,findingIds:[]}),hasCode('MAINTENANCE_OUTCOME_CONFLICT'));
     assert.equal((await tasks.cancel(context,responseClaim!.id)).cancelRequested,true);
     await expire(responseClaim!.id);
-    const listed=await tasks.list(context,{limit:100});
-    const afterCrash=listed.items.find(item=>item.id===responseClaim!.id);
+    let listed=await tasks.list(context,{limit:100});
+    let afterCrash=listed.items.find(item=>item.id===responseClaim!.id);
+    for(let page=0;!afterCrash&&listed.hasMore&&page<20;page++){
+      listed=await tasks.list(context,{limit:100,cursor:listed.nextCursor!});
+      afterCrash=listed.items.find(item=>item.id===responseClaim!.id);
+    }
     assert.equal(afterCrash?.state,'outcome_unknown',
       'LIST reconciles response_recorded expiry without re-execution');
     assert.deepEqual(afterCrash?.outcome?.findingIds,acknowledged.findingIds);
@@ -236,6 +286,10 @@ dbTest('maintenance ledger atomically consumes events, fences leases and preserv
     const policyReceipts=await pool.query<{n:number}>(`SELECT count(DISTINCT policy_fingerprint)::int n
       FROM ccl_knowledge_maintenance_event_receipts WHERE task_id IN ($1,$2)`,[firstSource.id,replayedSource.id]);
     assert.equal(policyReceipts.rows[0].n,2,'original event receipts remain separate by policy');
+    let rubricPage=newRubric;
+    for(let page=0;rubricPage.hasMore&&page<20;page++)
+      rubricPage=await tasks.collectEvents(context,{methodVersion:'maint-v1',rubricVersion:'rubric-v2',limit:100});
+    assert.equal(rubricPage.hasMore,false,'the new rubric consumes every bounded event page');
     const sameRubric=await tasks.collectEvents(context,{methodVersion:'maint-v1',rubricVersion:'rubric-v2',limit:100});
     assert.equal(sameRubric.createdCount,0);assert.deepEqual(sameRubric.taskIds,[]);
     const periodic={...manualTrigger,stream:'periodic' as const,eventKey:'same-periodic-event'};
@@ -406,3 +460,152 @@ dbTest('maintenance ledger atomically consumes events, fences leases and preserv
       hasCode('KNOWLEDGE_WRITER_REVOKED'));
   }finally{await pool.end();await admin.query(`DROP SCHEMA "${schema}" CASCADE`);await admin.end();}
 });
+
+dbTest('publication fanout is materialized once, paged without losing offsets and isolated by space',
+  {timeout:90_000},async()=>{
+    const admin=new pg.Pool({connectionString:databaseUrl!,max:2}),schema=`maint_fanout_${randomUUID().replaceAll('-','')}`;
+    await admin.query(`CREATE SCHEMA "${schema}"`);
+    const pool=new pg.Pool({connectionString:databaseUrl!,max:8,options:`-c search_path=${schema}`});
+    try{
+      const seed=await seedKnowledgeSyntheticFixture(pool,`synthetic-${randomUUID()}`,'maintenance-fanout');
+      await migrateSourceIntake(pool);await migrateMaintenanceTasks(pool);
+      const context={scope:{projectId:seed.projectId,spaceId:seed.spaceId},principal:seed.principal,purpose:'exploration_reading'};
+      const tasks=createPgMaintenanceTasks(pool,seed.writerGrant);
+      const policy={methodVersion:'fanout-v1',rubricVersion:'fanout-r1',limit:500};
+      await tasks.collectEvents(context,policy);
+      const heads=(await pool.query<{object_id:string;version_id:string;identity_key:string}>(`
+        SELECT h.object_id,h.version_id,r.payload->'content'->'identity'->>'key' AS identity_key
+        FROM ccl_knowledge_heads h JOIN ccl_knowledge_revisions r
+          ON r.project_id=h.project_id AND r.object_id=h.object_id AND r.version_id=h.version_id
+        WHERE h.project_id=$1 AND r.kind='wiki_page' ORDER BY h.object_id`,[seed.projectId])).rows;
+      assert.equal(heads.length,32);
+      const feature=heads.find(row=>row.identity_key==='features');assert.ok(feature);
+      const writer=await pool.connect();let sequence:number;
+      try{await writer.query('BEGIN');await assertKnowledgeWriterAuthority(writer,seed.projectId,seed.writerGrant);
+        sequence=Number((await writer.query<{sequence:string}>(`
+          INSERT INTO ccl_knowledge_events(project_id,kind,data) VALUES($1,'KnowledgePublished',$2)
+          RETURNING sequence`,[seed.projectId,{refs:heads.map(row=>({objectId:row.object_id,versionId:row.version_id})),
+          superseded:[{objectId:feature.object_id,versionId:feature.version_id},
+            {objectId:feature.object_id,versionId:feature.version_id}]}])).rows[0].sequence);
+        await writer.query('COMMIT');
+      }catch(error){await writer.query('ROLLBACK');throw error;}finally{writer.release();}
+      const fingerprint=digest({methodVersion:policy.methodVersion,rubricVersion:policy.rubricVersion});
+      const set=async()=>(await pool.query<{ref_count:string}>(`
+        SELECT ref_count FROM ccl_knowledge_maintenance_fanout_sets
+        WHERE project_id=$1 AND space_id=$2 AND principal_id=$3 AND installation_id=$4
+          AND purpose=$5 AND policy_fingerprint=$6 AND sequence=$7`,[seed.projectId,seed.spaceId,
+          seed.principal.id,seed.principal.clientInstallationId,context.purpose,fingerprint,sequence])).rows[0];
+      await pool.query(`CREATE FUNCTION fail_fanout_first() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN IF NEW.sequence=${sequence} THEN RAISE EXCEPTION 'synthetic first fanout page failure'; END IF;
+        RETURN NEW; END $$;
+        CREATE TRIGGER fail_fanout_first BEFORE INSERT ON ccl_knowledge_maintenance_event_receipts
+        FOR EACH ROW EXECUTE FUNCTION fail_fanout_first()`);
+      await assert.rejects(tasks.collectEvents(context,{...policy,limit:7}),/synthetic first fanout page failure/);
+      assert.equal(await set(),undefined,'first page rollback removes its materialized closure marker');
+      await pool.query('DROP TRIGGER fail_fanout_first ON ccl_knowledge_maintenance_event_receipts; DROP FUNCTION fail_fanout_first()');
+      const first=await tasks.collectEvents(context,{...policy,limit:7});
+      assert.ok(first.knowledgeThrough<sequence);
+      const total=Number((await set()).ref_count);assert.ok(total>32,'new refs and the affected closure have separate slots');
+      const position=async()=>(await pool.query<{pending_sequence:string;pending_offset:number}>(`
+        SELECT pending_sequence,pending_offset FROM ccl_knowledge_maintenance_cursors
+        WHERE project_id=$1 AND space_id=$2 AND principal_id=$3 AND installation_id=$4
+          AND purpose=$5 AND policy_fingerprint=$6 AND stream='knowledge'`,[seed.projectId,seed.spaceId,
+          seed.principal.id,seed.principal.clientInstallationId,context.purpose,fingerprint])).rows[0];
+      assert.equal(Number((await position()).pending_sequence),sequence);
+      assert.equal(Number((await position()).pending_offset),7);
+      const legacy=await pool.connect();
+      try{await legacy.query('BEGIN');await assertKnowledgeWriterAuthority(legacy,seed.projectId,seed.writerGrant);
+        await legacy.query(`DELETE FROM ccl_knowledge_maintenance_fanout_refs
+          WHERE project_id=$1 AND space_id=$2 AND sequence=$3`,[seed.projectId,seed.spaceId,sequence]);
+        await legacy.query(`DELETE FROM ccl_knowledge_maintenance_fanout_sets
+          WHERE project_id=$1 AND space_id=$2 AND sequence=$3`,[seed.projectId,seed.spaceId,sequence]);
+        await legacy.query('COMMIT');
+      }catch(error){await legacy.query('ROLLBACK');throw error;}finally{legacy.release();}
+      assert.equal(await set(),undefined,'a legacy pending cursor may predate the new fanout table');
+      await pool.query(`CREATE FUNCTION fail_fanout_resume() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN IF NEW.sequence=${sequence} AND NEW.ref_key='item:8' THEN
+          RAISE EXCEPTION 'synthetic resumed fanout page failure'; END IF; RETURN NEW; END $$;
+        CREATE TRIGGER fail_fanout_resume BEFORE INSERT ON ccl_knowledge_maintenance_event_receipts
+        FOR EACH ROW EXECUTE FUNCTION fail_fanout_resume()`);
+      await assert.rejects(tasks.collectEvents(context,{...policy,limit:7}),/synthetic resumed fanout page failure/);
+      assert.equal(Number((await position()).pending_offset),7);
+      assert.equal(await set(),undefined,'failed legacy resume rolls back its new materialization');
+      await pool.query('DROP TRIGGER fail_fanout_resume ON ccl_knowledge_maintenance_event_receipts; DROP FUNCTION fail_fanout_resume()');
+      const restarted=createPgMaintenanceTasks(pool,seed.writerGrant);
+      const seen=new Set(first.taskIds);let through=first.knowledgeThrough;
+      const resumed=await restarted.collectEvents(context,{...policy,limit:7});
+      assert.equal(Number((await set()).ref_count),total);
+      assert.equal(Number((await position()).pending_offset),14,'legacy offset resumes from the original refs ordinals');
+      for(const id of resumed.taskIds){assert.ok(!seen.has(id));seen.add(id);}
+      through=resumed.knowledgeThrough;
+      await pool.query(`CREATE FUNCTION fail_fanout_later() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN IF NEW.sequence=${sequence} AND NEW.ref_key='item:15' THEN
+          RAISE EXCEPTION 'synthetic later fanout page failure'; END IF; RETURN NEW; END $$;
+        CREATE TRIGGER fail_fanout_later BEFORE INSERT ON ccl_knowledge_maintenance_event_receipts
+        FOR EACH ROW EXECUTE FUNCTION fail_fanout_later()`);
+      await assert.rejects(restarted.collectEvents(context,{...policy,limit:7}),/synthetic later fanout page failure/);
+      assert.equal(Number((await position()).pending_offset),14);
+      assert.equal(Number((await set()).ref_count),total,'later rollback retains committed materialization');
+      await pool.query('DROP TRIGGER fail_fanout_later ON ccl_knowledge_maintenance_event_receipts; DROP FUNCTION fail_fanout_later()');
+      for(let round=0;round<20&&through<sequence;round++){
+        const page=await restarted.collectEvents(context,{...policy,limit:7});
+        for(const id of page.taskIds){assert.ok(!seen.has(id));seen.add(id);}
+        through=page.knowledgeThrough;
+      }
+      assert.equal(through,sequence);
+      assert.equal((await pool.query<{n:number}>(`SELECT count(*)::int n FROM ccl_knowledge_maintenance_event_receipts
+        WHERE project_id=$1 AND space_id=$2 AND sequence=$3 AND ref_key LIKE 'item:%'`,
+        [seed.projectId,seed.spaceId,sequence])).rows[0].n,total);
+      assert.equal((await pool.query<{n:number}>(`SELECT count(*)::int n FROM (
+        SELECT object_id,version_id FROM ccl_knowledge_maintenance_fanout_refs
+        WHERE project_id=$1 AND space_id=$2 AND sequence=$3 AND action='recompile'
+        GROUP BY object_id,version_id HAVING count(*)>1) duplicate`,
+        [seed.projectId,seed.spaceId,sequence])).rows[0].n,0,'repeated superseded roots do not duplicate repair targets');
+      const items=(await Promise.all([...seen].map(id=>restarted.get(context,id)))).filter(item=>item?.trigger.sequence===sequence);
+      assert.ok(items.length>0&&items.every(item=>item?.request.kind==='recompile'),
+        'only current dependents of the superseded revision become repair tasks');
+      assert.equal((await pool.query<{n:number}>(`SELECT count(*)::int n
+        FROM ccl_knowledge_maintenance_event_receipts WHERE project_id=$1 AND sequence=$2
+          AND skip_reason='published_ref_deferred_to_semantic_sweep'`,
+        [seed.projectId,sequence])).rows[0].n,32,'all new refs retain explicit skip receipts');
+      assert.equal((await restarted.collectEvents(context,{...policy,limit:7})).createdCount,0);
+      const otherSpace={...context,scope:{...context.scope,spaceId:'other-space'},
+        principal:{...context.principal,spaceIds:[...context.principal.spaceIds,'other-space']}};
+      const outside=await restarted.collectEvents(otherSpace,{...policy,limit:500});
+      assert.equal(outside.createdCount,0,'cross-space event fanout does not create repair or relation tasks');
+      assert.ok(outside.skipped>0);
+      const emptyWriter=await pool.connect();let emptySequence:number;
+      try{await emptyWriter.query('BEGIN');await assertKnowledgeWriterAuthority(emptyWriter,seed.projectId,seed.writerGrant);
+        emptySequence=Number((await emptyWriter.query<{sequence:string}>(`
+          INSERT INTO ccl_knowledge_events(project_id,kind,data) VALUES($1,'SourceRegistered',$2)
+          RETURNING sequence`,[seed.projectId,{sourceRef:{objectId:randomUUID(),versionId:randomUUID()},
+          supersedes:{...context.scope,domain:'source',objectId:randomUUID(),versionId:randomUUID()}}])).rows[0].sequence);
+        await emptyWriter.query('COMMIT');
+      }catch(error){await emptyWriter.query('ROLLBACK');throw error;}finally{emptyWriter.release();}
+      const empty=await restarted.collectEvents(context,{...policy,limit:7});
+      assert.equal(empty.knowledgeThrough,emptySequence);
+      assert.equal((await pool.query<{ref_count:string}>(`SELECT ref_count FROM ccl_knowledge_maintenance_fanout_sets
+        WHERE project_id=$1 AND space_id=$2 AND sequence=$3`,[seed.projectId,seed.spaceId,emptySequence])).rows[0].ref_count,'0',
+      'empty source replacement closure has a durable marker');
+      assert.equal(empty.createdCount,0);
+      const sourceWriter=await pool.connect();let sourceSequence:number;
+      try{await sourceWriter.query('BEGIN');await assertKnowledgeWriterAuthority(sourceWriter,seed.projectId,seed.writerGrant);
+        sourceSequence=Number((await sourceWriter.query<{sequence:string}>(`
+          INSERT INTO ccl_knowledge_events(project_id,kind,data) VALUES($1,'SourceRegistered',$2)
+          RETURNING sequence`,[seed.projectId,{sourceRef:{objectId:seed.source.ref.objectId,versionId:randomUUID()},
+          supersedes:{...context.scope,domain:'source',objectId:seed.source.ref.objectId,
+            versionId:seed.source.ref.versionId}}])).rows[0].sequence);
+        await sourceWriter.query('COMMIT');
+      }catch(error){await sourceWriter.query('ROLLBACK');throw error;}finally{sourceWriter.release();}
+      let sourceThrough=empty.knowledgeThrough,sourceCreated=0;
+      for(let round=0;round<20&&sourceThrough<sourceSequence;round++){
+        const page=await restarted.collectEvents(context,{...policy,limit:7});
+        assert.ok(page.taskIds.length<=7);
+        const queued=await Promise.all(page.taskIds.map(id=>restarted.get(context,id)));
+        assert.ok(queued.every(item=>item?.request.kind==='recompile'&&item.trigger.sequence===sourceSequence));
+        sourceCreated+=page.createdCount??page.taskIds.length;sourceThrough=page.knowledgeThrough;
+      }
+      assert.equal(sourceThrough,sourceSequence);
+      assert.ok(sourceCreated>7,'source replacement critical closure is also paged and durable');
+    }finally{await pool.end();await admin.query(`DROP SCHEMA "${schema}" CASCADE`);await admin.end();}
+  });

@@ -132,6 +132,17 @@ export async function migrateMaintenanceTasks(pool:Pool):Promise<void>{
       project_id text NOT NULL,space_id text NOT NULL,principal_id text NOT NULL,installation_id text NOT NULL,
       purpose text NOT NULL,policy_fingerprint text NOT NULL,sequence bigint NOT NULL,
       ordinal bigint NOT NULL,object_id text NOT NULL,version_id text NOT NULL,
+      PRIMARY KEY(project_id,space_id,principal_id,installation_id,purpose,policy_fingerprint,sequence,ordinal));
+    CREATE TABLE IF NOT EXISTS ccl_knowledge_maintenance_fanout_sets(
+      project_id text NOT NULL,space_id text NOT NULL,principal_id text NOT NULL,installation_id text NOT NULL,
+      purpose text NOT NULL,policy_fingerprint text NOT NULL,sequence bigint NOT NULL,
+      event_kind text NOT NULL,ref_count bigint NOT NULL,created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+      PRIMARY KEY(project_id,space_id,principal_id,installation_id,purpose,policy_fingerprint,sequence));
+    CREATE TABLE IF NOT EXISTS ccl_knowledge_maintenance_fanout_refs(
+      project_id text NOT NULL,space_id text NOT NULL,principal_id text NOT NULL,installation_id text NOT NULL,
+      purpose text NOT NULL,policy_fingerprint text NOT NULL,sequence bigint NOT NULL,
+      ordinal bigint NOT NULL,object_id text NOT NULL,version_id text NOT NULL,
+      action text NOT NULL,cause_domain text,cause_object_id text,cause_version_id text,
       PRIMARY KEY(project_id,space_id,principal_id,installation_id,purpose,policy_fingerprint,sequence,ordinal));`);
   // Existing receipts and cursors belong to an unknown historical policy. Keep them intact
   // while allowing every explicit method/rubric pair to replay the original event stream.
@@ -159,7 +170,8 @@ export async function migrateMaintenanceTasks(pool:Pool):Promise<void>{
     END $$;`);
   await installCapabilityWriterGuards(pool,['ccl_knowledge_maintenance_tasks','ccl_knowledge_maintenance_attempts',
     'ccl_knowledge_maintenance_cursors','ccl_knowledge_maintenance_event_receipts',
-    'ccl_knowledge_maintenance_revocation_sets','ccl_knowledge_maintenance_revocation_refs']);
+    'ccl_knowledge_maintenance_revocation_sets','ccl_knowledge_maintenance_revocation_refs',
+    'ccl_knowledge_maintenance_fanout_sets','ccl_knowledge_maintenance_fanout_refs']);
 }
 
 export function createPgMaintenanceTasks(pool:Pool,grant:KnowledgeWriterGrant):MaintenanceTaskPort{
@@ -224,12 +236,19 @@ export function createPgMaintenanceTasks(pool:Pool,grant:KnowledgeWriterGrant):M
       DO NOTHING`,[...identity(context),policy,seq]);
   }
   async function wikiMetadata(client:PoolClient,context:ReadContext,ref:{objectId:string;versionId:string}){
-    return (await client.query<{kind:string;space_id:string|null;published:boolean;current:boolean}>(`SELECT r.kind,
+    return (await client.query<{kind:string;space_id:string|null;published:boolean;current:boolean;
+      review_admitted:boolean}>(`SELECT r.kind,
       r.payload->'binding'->>'spaceId' AS space_id,r.published_at IS NOT NULL AS published,
-      h.version_id=r.version_id AS current FROM ccl_knowledge_revisions r
+      h.version_id=r.version_id AS current,
+      EXISTS(SELECT 1 FROM ccl_knowledge_publications p JOIN ccl_knowledge_reviews v
+        ON v.project_id=p.project_id AND v.id=p.review_id
+        WHERE p.project_id=r.project_id AND p.changeset_id=r.changeset_id
+          AND v.payload->>'purpose'=$4 AND v.payload->>'decision' IN ('approved_for_purpose','exploration_only'))
+        AS review_admitted
+      FROM ccl_knowledge_revisions r
       LEFT JOIN ccl_knowledge_heads h ON h.project_id=r.project_id AND h.object_id=r.object_id
       WHERE r.project_id=$1 AND r.object_id=$2 AND r.version_id=$3`,
-      [context.scope.projectId,ref.objectId,ref.versionId])).rows[0]??null;
+      [context.scope.projectId,ref.objectId,ref.versionId,context.purpose])).rows[0]??null;
   }
   const version=(value:unknown):{objectId:string;versionId:string}|null=>{
     if(!value||typeof value!=='object')return null;
@@ -277,6 +296,69 @@ export function createPgMaintenanceTasks(pool:Pool,grant:KnowledgeWriterGrant):M
       ORDER BY ordinal LIMIT $9`,[...key,offset,limit]);
     return rows.rows.map(row=>({value:{objectId:row.object_id,versionId:row.version_id},
       ordinal:sequence(row.ordinal)}));
+  }
+  async function eventFanoutPage(client:PoolClient,context:ReadContext,policy:string,seq:number,
+    kind:'KnowledgePublished'|'SourceRegistered',offset:number,limit:number){
+    const key=[...identity(context),policy,seq];
+    const marker=(await client.query<{event_kind:string}>(`SELECT event_kind FROM ccl_knowledge_maintenance_fanout_sets
+      WHERE ${where} AND policy_fingerprint=$6 AND sequence=$7`,key)).rows[0];
+    if(!marker){
+      // Keep published refs as skip slots before the closure. A pending offset from an
+      // older collector still identifies the same next ref after this policy change.
+      if(kind==='KnowledgePublished')await client.query(`INSERT INTO ccl_knowledge_maintenance_fanout_refs
+        (project_id,space_id,principal_id,installation_id,purpose,policy_fingerprint,sequence,
+         ordinal,object_id,version_id,action)
+        SELECT $1,$2,$3,$4,$5,$6,$7,x.ordinality::bigint,
+          COALESCE(left(x.item->>'objectId',200),''),COALESCE(left(x.item->>'versionId',200),''),'skip'
+        FROM ccl_knowledge_events e CROSS JOIN LATERAL
+          jsonb_array_elements(CASE WHEN jsonb_typeof(e.data->'refs')='array'
+            THEN e.data->'refs' ELSE '[]'::jsonb END) WITH ORDINALITY AS x(item,ordinality)
+        WHERE e.project_id=$1 AND e.sequence=$7`,key);
+      const base=Number((await client.query<{count:string}>(`SELECT count(*) AS count
+        FROM ccl_knowledge_maintenance_fanout_refs WHERE ${where} AND policy_fingerprint=$6
+          AND sequence=$7 AND action='skip'`,key)).rows[0].count);
+      const roots=kind==='KnowledgePublished'?`SELECT x.item->>'objectId' AS object_id,
+          x.item->>'versionId' AS version_id FROM ccl_knowledge_events e CROSS JOIN LATERAL
+          jsonb_array_elements(CASE WHEN jsonb_typeof(e.data->'superseded')='array'
+            THEN e.data->'superseded' ELSE '[]'::jsonb END) AS x(item)
+          WHERE e.project_id=$1 AND e.sequence=$7`:
+        `SELECT e.data->'supersedes'->>'objectId' AS object_id,
+          e.data->'supersedes'->>'versionId' AS version_id FROM ccl_knowledge_events e
+          WHERE e.project_id=$1 AND e.sequence=$7 AND e.data->'supersedes'->>'projectId'=$1
+            AND e.data->'supersedes'->>'spaceId'=$2`;
+      // The complete critical closure is materialized once in SQL; no body or full ref set reaches Node.
+      await client.query(`INSERT INTO ccl_knowledge_maintenance_fanout_refs
+        (project_id,space_id,principal_id,installation_id,purpose,policy_fingerprint,sequence,
+         ordinal,object_id,version_id,action,cause_domain,cause_object_id,cause_version_id)
+        WITH RECURSIVE roots AS (${roots}),
+        affected(object_id,version_id,cause_object_id,cause_version_id) AS (
+          SELECT d.object_id,d.version_id,roots.object_id,roots.version_id
+          FROM roots JOIN ccl_knowledge_deps d ON d.project_id=$1 AND d.domain=$8
+            AND d.dep_object_id=roots.object_id AND d.dep_version_id=roots.version_id AND d.critical=true
+          UNION
+          SELECT d.object_id,d.version_id,a.cause_object_id,a.cause_version_id
+          FROM affected a JOIN ccl_knowledge_deps d ON d.project_id=$1 AND d.domain='knowledge'
+            AND d.dep_object_id=a.object_id AND d.dep_version_id=a.version_id AND d.critical=true
+        ), chosen AS (SELECT DISTINCT ON (object_id,version_id) object_id,version_id,
+          cause_object_id,cause_version_id FROM affected
+          ORDER BY object_id,version_id,cause_object_id,cause_version_id)
+        SELECT $1,$2,$3,$4,$5,$6,$7,$9::bigint+row_number() OVER (ORDER BY object_id,version_id),
+          object_id,version_id,'recompile',$8,cause_object_id,cause_version_id FROM chosen`,
+        [...key,kind==='KnowledgePublished'?'knowledge':'source',base]);
+      await client.query(`INSERT INTO ccl_knowledge_maintenance_fanout_sets
+        (project_id,space_id,principal_id,installation_id,purpose,policy_fingerprint,sequence,event_kind,ref_count)
+        SELECT $1,$2,$3,$4,$5,$6,$7,$8,count(*) FROM ccl_knowledge_maintenance_fanout_refs
+        WHERE ${where} AND policy_fingerprint=$6 AND sequence=$7`,[...key,kind]);
+    }else if(marker.event_kind!==kind)throw new KnowledgeError('MAINTENANCE_FANOUT_CONFLICT',
+      'Materialized event kind differs from the original event',409);
+    const rows=await client.query<{object_id:string;version_id:string;ordinal:string;action:'skip'|'relation_check'|'recompile';
+      cause_domain:'knowledge'|'source'|null;cause_object_id:string|null;cause_version_id:string|null}>(`
+      SELECT object_id,version_id,ordinal,action,cause_domain,cause_object_id,cause_version_id
+      FROM ccl_knowledge_maintenance_fanout_refs WHERE ${where} AND policy_fingerprint=$6
+        AND sequence=$7 AND ordinal>$8 ORDER BY ordinal LIMIT $9`,[...key,offset,limit]);
+    return rows.rows.map(row=>({value:{objectId:row.object_id,versionId:row.version_id},
+      ordinal:sequence(row.ordinal),action:row.action,cause:row.cause_domain&&row.cause_object_id&&row.cause_version_id?
+        {domain:row.cause_domain,objectId:row.cause_object_id,versionId:row.cause_version_id}:null}));
   }
   async function collectSource(client:PoolClient,context:ReadContext,limit:number,methodVersion:string,rubricVersion:string,
     skipped:Skipped,collected:Collected):Promise<{through:number;more:boolean}>{
@@ -331,10 +413,23 @@ export function createPgMaintenanceTasks(pool:Pool,grant:KnowledgeWriterGrant):M
     let offset=sequence(position.pending_offset),remaining=limit,events=0;
     while(remaining>0&&events<limit){
       const row=(await client.query<{sequence:string;kind:string;refs_type:string|null;affected_type:string|null;
-        source_object_id:string|null;source_version_id:string|null}>(`SELECT sequence,left(kind,200) AS kind,
+        source_object_id:string|null;source_version_id:string|null;source_space_id:string|null;
+        superseded_type:string|null;superseded_count:number|null;
+        supersedes_type:string|null;supersedes_domain:string|null;supersedes_project_id:string|null;supersedes_space_id:string|null;
+        supersedes_object_id:string|null;supersedes_version_id:string|null}>(`SELECT sequence,left(kind,200) AS kind,
         jsonb_typeof(data->'refs') AS refs_type,jsonb_typeof(data->'affected') AS affected_type,
         left(data->'ref'->>'objectId',200) AS source_object_id,
-        left(data->'ref'->>'versionId',200) AS source_version_id
+        left(data->'ref'->>'versionId',200) AS source_version_id,
+        left(data->'ref'->>'spaceId',200) AS source_space_id,
+        jsonb_typeof(data->'superseded') AS superseded_type,
+        CASE WHEN jsonb_typeof(data->'superseded')='array'
+          THEN jsonb_array_length(data->'superseded') ELSE NULL END AS superseded_count,
+        jsonb_typeof(data->'supersedes') AS supersedes_type,
+        left(data->'supersedes'->>'domain',200) AS supersedes_domain,
+        left(data->'supersedes'->>'projectId',200) AS supersedes_project_id,
+        left(data->'supersedes'->>'spaceId',200) AS supersedes_space_id,
+        left(data->'supersedes'->>'objectId',200) AS supersedes_object_id,
+        left(data->'supersedes'->>'versionId',200) AS supersedes_version_id
         FROM ccl_knowledge_events WHERE project_id=$1 AND
           (($2::bigint IS NOT NULL AND sequence=$2) OR ($2::bigint IS NULL AND sequence>$3))
         ORDER BY sequence LIMIT 1`,[context.scope.projectId,pending,through])).rows[0];
@@ -345,11 +440,25 @@ export function createPgMaintenanceTasks(pool:Pool,grant:KnowledgeWriterGrant):M
       const seq=sequence(row.sequence);
       await originalKnowledgeReceipt(client,context,policy,seq);
       let unknown:string|null=null;
-      let page:Array<{value:unknown;ordinal:number}>=[];
-      if(row.kind==='KnowledgePublished'||row.kind==='KnowledgeInvalidated'){
-        const field=row.kind==='KnowledgePublished'?'refs':'affected';
-        if((field==='refs'?row.refs_type:row.affected_type)!=='array')
-          unknown=field==='refs'?'published_event_missing_refs':'invalidated_event_missing_affected';
+      let page:Array<{value:unknown;ordinal:number;action?:'skip'|'relation_check'|'recompile';
+        cause?:{domain:'source'|'knowledge';objectId:string;versionId:string}|null}>=[];
+      if(row.kind==='KnowledgePublished'||row.kind==='SourceRegistered'){
+        if(row.kind==='KnowledgePublished'&&row.refs_type!=='array')unknown='published_event_missing_refs';
+        if(row.kind==='KnowledgePublished'&&row.superseded_type!==null&&row.superseded_type!=='null'&&
+          row.superseded_type!=='array')unknown='published_event_invalid_superseded';
+        if(row.kind==='SourceRegistered'){
+          if(row.supersedes_type===null||row.supersedes_type==='null')unknown='source_registered_without_supersedes';
+          else if(row.supersedes_type!=='object')unknown='source_registered_invalid_supersedes';
+          else if(row.supersedes_project_id!==context.scope.projectId||row.supersedes_space_id!==context.scope.spaceId)
+            unknown='source_supersedes_outside_scope';
+          else if(row.supersedes_domain!=='source'||
+            !version({objectId:row.supersedes_object_id,versionId:row.supersedes_version_id}))
+            unknown='source_registered_invalid_supersedes';
+        }
+        if(!unknown||row.kind==='KnowledgePublished')page=await eventFanoutPage(client,context,policy,seq,row.kind,offset,remaining+1);
+      }else if(row.kind==='KnowledgeInvalidated'){
+        const field='affected';
+        if(row.affected_type!=='array')unknown='invalidated_event_missing_affected';
         const result=await client.query<{object_id:string|null;version_id:string|null;ordinal:string}>(`
           WITH event_refs AS (
             SELECT x.item,x.ordinality::bigint AS ordinal
@@ -368,17 +477,24 @@ export function createPgMaintenanceTasks(pool:Pool,grant:KnowledgeWriterGrant):M
             FROM event_refs WHERE ordinal>$4 ORDER BY ordinal LIMIT $5`,
           [context.scope.projectId,seq,field,offset,remaining+1]);
         page=result.rows.map(item=>({value:{objectId:item.object_id,versionId:item.version_id},
-          ordinal:sequence(item.ordinal)}));
+          ordinal:sequence(item.ordinal),action:'recompile'}));
       }else if(row.kind==='SourceRightsRevoked'){
         const source=version({objectId:row.source_object_id,versionId:row.source_version_id});
-        if(source)page=await revokedDependentsPage(client,context,policy,seq,source,offset,remaining+1);
+        if(source&&(!row.source_space_id||row.source_space_id===context.scope.spaceId))
+          page=(await revokedDependentsPage(client,context,policy,seq,source,offset,remaining+1))
+            .map(item=>({...item,action:'recompile' as const}));
+        else if(source)unknown='revocation_ref_outside_space';
         else unknown='revocation_event_missing_ref';
       }else unknown=`unmapped_knowledge_kind:${row.kind}`;
       const moreInEvent=page.length>remaining;
       const taken=page.slice(0,remaining);
+      const noSuperseded=row.kind==='KnowledgePublished'&&row.superseded_count===0;
       if(unknown&&offset===0){skipped.count++;
         await receipt(client,context,'knowledge',policy,seq,null,{sequence:seq,kind:row.kind},null,unknown,'event:skip');}
-      if(!taken.length&&offset===0&&!unknown){skipped.count++;
+      if(noSuperseded&&offset===0&&!unknown){skipped.count++;
+        await receipt(client,context,'knowledge',policy,seq,null,{sequence:seq,kind:row.kind},null,
+          'publication_without_superseded_deferred_to_semantic_sweep','event:skip');}
+      if(!taken.length&&offset===0&&!unknown&&!noSuperseded){skipped.count++;
         await receipt(client,context,'knowledge',policy,seq,null,{sequence:seq,kind:row.kind},null,
           'event_has_no_affected_knowledge_ref','event:skip');}
       for(const item of taken){
@@ -386,16 +502,31 @@ export function createPgMaintenanceTasks(pool:Pool,grant:KnowledgeWriterGrant):M
         if(!ref){skipped.count++;
           await receipt(client,context,'knowledge',policy,seq,null,raw,null,'invalid_event_ref',`item:${item.ordinal}`);
           continue;}
+        if(item.action==='skip'||item.action==='relation_check'){
+          skipped.count++;
+          const metadata=await wikiMetadata(client,context,ref);
+          await receipt(client,context,'knowledge',policy,seq,
+            KnowledgeRefSchema.parse({...context.scope,domain:'knowledge',...ref,contentDigest:null}),raw,null,
+            metadata&&metadata.space_id!==context.scope.spaceId?'ref_outside_space':
+              'published_ref_deferred_to_semantic_sweep',`item:${item.ordinal}`);
+          continue;}
         const metadata=await wikiMetadata(client,context,ref);
         const knowledgeRef=KnowledgeRefSchema.parse({...context.scope,domain:'knowledge',...ref,contentDigest:null});
         const reason=!metadata?'revision_metadata_unavailable':!metadata.published?'revision_not_published':
           metadata.space_id!==context.scope.spaceId?'ref_outside_space':metadata.kind!=='wiki_page'?'ref_not_wiki_page':
-          !metadata.current?'revision_not_current':null;
+          !metadata.current?'revision_not_current':!metadata.review_admitted?'revision_not_reviewed_for_purpose':null;
         if(reason){skipped.count++;
           await receipt(client,context,'knowledge',policy,seq,knowledgeRef,raw,null,reason,`item:${item.ordinal}`);continue;}
-        const request:MaintenanceTaskRequest={kind:'recompile',subjectRef:knowledgeRef,sourceEventIds:[],relatedRefs:[],
+        const cause=item.cause;
+        let relatedRefs:KnowledgeRef[]=[];
+        if(cause&&version(cause)){
+          const sameSpace=cause.domain==='source'||
+            (await wikiMetadata(client,context,cause))?.space_id===context.scope.spaceId;
+          if(sameSpace)relatedRefs=[KnowledgeRefSchema.parse({...context.scope,...cause,contentDigest:null})];
+        }
+        const request:MaintenanceTaskRequest={kind:'recompile',subjectRef:knowledgeRef,sourceEventIds:[],relatedRefs,
           reason:`${row.kind} event ${seq} for exact Wiki revision`,methodVersion,rubricVersion};
-        const trigger:MaintenanceTrigger={stream:'knowledge',eventKey:`knowledge:${seq}:${ref.objectId}:${ref.versionId}`,
+        const trigger:MaintenanceTrigger={stream:'knowledge',eventKey:`knowledge:${seq}:recompile:${ref.objectId}:${ref.versionId}`,
           sequence:seq,ref:knowledgeRef,sourceEventId:null};
         const made=await insertTask(client,context,request,trigger);recordCreated(collected,made);
         await receipt(client,context,'knowledge',policy,seq,knowledgeRef,raw,made.value.id,null,`item:${item.ordinal}`);
