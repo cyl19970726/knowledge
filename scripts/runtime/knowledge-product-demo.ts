@@ -6,6 +6,7 @@ import {readTestDatabase} from './test-database.mjs';
 import {seedKnowledgeSyntheticFixture} from './knowledge-synthetic-fixture.ts';
 import {createKnowledgeApi} from '../../apps/knowledge-api/src/index.ts';
 import {createKnowledgeWorker} from '../../apps/knowledge-worker/src/index.ts';
+import {createSyntheticQueryAnswerer} from './knowledge-synthetic-answerer.ts';
 // A new disposable schema per invocation, never the normal business schema or DATABASE_URL.
 const connectionString=readTestDatabase({TEST_DATABASE_URL:process.env.KNOWLEDGE_DEMO_DATABASE_URL,TEST_DATABASE_REQUIRED:'1'},{required:true});
 const admin=new Pool({connectionString}),schema=`ccl_knowledge_demo_${randomUUID().replaceAll('-','')}`;
@@ -22,12 +23,15 @@ try{
  const fixture=await seedKnowledgeSyntheticFixture(pool);
  const token=`synthetic-local-${randomUUID()}-${randomUUID()}`;
  const api=await createKnowledgeApi({pool,token,principal:fixture.principal,writerGrant:fixture.writerGrant,enableSyntheticResearch:true,syntheticFixture:true,feedbackSourceRightsPolicyRef:'synthetic-local-only',
-  capabilities:fixture.authorization,port:apiPort});
+  capabilities:{...fixture.authorization,actions:[...fixture.authorization.actions,'ask:write']},
+  answerer:createSyntheticQueryAnswerer(),port:apiPort});
  server=await api.listen();
+ const address=server.address();if(!address||typeof address==='string')throw new Error('Synthetic API has no TCP listener');
+ const actualPort=address.port;
  const worker=await createKnowledgeWorker({pool,projectId:fixture.projectId,writerGrant:fixture.writerGrant});
  let busy=false;interval=setInterval(()=>{if(busy||stopped)return;busy=true;void worker.runOne().catch(error=>console.error('Synthetic worker failed:',error instanceof Error?error.message:'unknown')).finally(()=>{busy=false;});},500);
- await writeFile(resolve(output,'connection.json'),JSON.stringify({baseUrl:`http://127.0.0.1:${apiPort}`,projectId:fixture.projectId,spaceId:fixture.spaceId,purpose:'exploration_reading',token},null,2)+'\n',{mode:0o600});
- await writeFile(resolve(output,'status.json'),JSON.stringify({status:'running',owner:'knowledge-product-demo',pid:process.pid,schema,apiPort,synthetic:true},null,2)+'\n');
- process.stdout.write(`Synthetic knowledge demo ready at loopback:${apiPort}; connection details in local/knowledge-product/demo/connection.json. All data is synthetic; no paid model.\n`);
+ await writeFile(resolve(output,'connection.json'),JSON.stringify({baseUrl:`http://127.0.0.1:${actualPort}`,projectId:fixture.projectId,spaceId:fixture.spaceId,purpose:'exploration_reading',token},null,2)+'\n',{mode:0o600});
+ await writeFile(resolve(output,'status.json'),JSON.stringify({status:'running',owner:'knowledge-product-demo',pid:process.pid,schema,apiPort:actualPort,synthetic:true},null,2)+'\n');
+ process.stdout.write(`Synthetic knowledge demo ready at loopback:${actualPort}; connection details in local/knowledge-product/demo/connection.json. All data is synthetic; no paid model.\n`);
  for(const signal of ['SIGINT','SIGTERM'])process.once(signal,()=>void cleanup().then(()=>process.exit(0)));
 }catch(error){await cleanup();throw error;}

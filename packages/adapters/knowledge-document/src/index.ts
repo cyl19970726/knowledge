@@ -1,6 +1,6 @@
 import type {createKnowledgeClient,WriteOptions} from '@commerce/knowledge-client';
 import type {SourceUpsert,FeedbackInput,UseInput} from '@commerce/knowledge-contracts';
-type Client=ReturnType<typeof createKnowledgeClient>;
+type Client=Pick<ReturnType<typeof createKnowledgeClient>,'registerSource'|'query'|'recordUse'|'recordFeedback'>;
 async function sha(text:string){return Array.from(new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)))).map(x=>x.toString(16).padStart(2,'0')).join('');}
 export interface DocumentContribution {
  externalId:string;version:string;text:string;author:string|null;publisher:string|null;acquirer:string;obtainedAt:string;

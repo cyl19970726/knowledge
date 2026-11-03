@@ -1,0 +1,40 @@
+{
+  "initialViewport": {
+    "cssWidth": 1487,
+    "cssHeight": 1059,
+    "dpr": 0.75,
+    "nativeClip": {
+      "width": 1115,
+      "height": 793.5
+    },
+    "capturePixels": [
+      1487,
+      1058
+    ]
+  },
+  "drag": {
+    "before": 52,
+    "after": 45
+  },
+  "keyboard": {
+    "afterKeys": "50",
+    "afterEnd": "75",
+    "afterReset": "52"
+  },
+  "expanded": {
+    "graphWidth": 1394.666748046875,
+    "overflow": false,
+    "readingVisible": false
+  },
+  "restored": {
+    "scrollBefore": 1411.3333740234375,
+    "ratio": "52",
+    "scrollTop": 1411.3333740234375,
+    "selectionText": "联读选区（2/2）本地准备 · 服务读集在提交后核对"
+  },
+  "sharedLayouts": {
+    "notesBefore": "72",
+    "notesAfter": "64",
+    "answerRatioRestored": "52"
+  }
+}

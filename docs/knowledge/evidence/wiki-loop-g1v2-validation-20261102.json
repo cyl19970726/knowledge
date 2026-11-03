@@ -1,0 +1,91 @@
+{
+  "schemaVersion": "wiki-loop-g1v2-validation/1",
+  "date": "2026-11-02",
+  "baseRevision": "eecf30e90d6700d06b70d09402ab45a1567b28fb",
+  "branch": "codex/wiki-ingest-query-lint",
+  "sourceState": "uncommitted local candidate",
+  "checks": {
+    "fullBuild": {
+      "command": "npm run build",
+      "exitCode": 0,
+      "includes": [
+        "foundation",
+        "full TypeScript",
+        "Web build"
+      ]
+    },
+    "coreTests": {
+      "command": "TEST_DATABASE_REQUIRED=1 npm test",
+      "exitCode": 0,
+      "tests": 225,
+      "pass": 225,
+      "fail": 0,
+      "skipped": 0
+    },
+    "finalWebBuild": {
+      "command": "npm run build:knowledge-web",
+      "exitCode": 0
+    },
+    "finalWebTests": {
+      "passed": 30,
+      "failed": 0,
+      "overlapsCore": true,
+      "note": "Revalidated after localized error copy. The later input-budget label text change was checked by final Web build; core 225 ran before these copy-only changes."
+    },
+    "review": {
+      "result": "no reproducible high/medium finding in second-batch delta",
+      "targetedTestsPassed": 25
+    }
+  },
+  "retrieval": {
+    "fixture": "frozen developer-authored synthetic 119 pages / 30 questions",
+    "v1": {
+      "necessaryFound": 46,
+      "necessaryTotal": 48
+    },
+    "v2": {
+      "necessaryFound": 48,
+      "necessaryTotal": 48
+    },
+    "sqlParity": {
+      "v1Mismatches": 0,
+      "v2Mismatches": 0,
+      "questionsEach": 30
+    },
+    "notAnAnswerQualityMetric": true
+  },
+  "browserEvidence": "wiki-loop-browser-20261102.json",
+  "sourceFilesSha256": {
+    "apps/knowledge-api/src/index.ts": "0bae5f5583c28bf48b5cdf4560db020d78b8381b27e42d9a927346f5eff68d39",
+    "apps/knowledge-web/src/App.tsx": "cbf28f6e9c0a71dd38fcf7547bc888f98c7258aa216bcbff5e2c67a8805adbd8",
+    "apps/knowledge-web/src/ask-panel.tsx": "afa7d9f2ed57932690dfa7f27167616f8849fa60d5f96db4982d56b1326c8f87",
+    "apps/knowledge-web/src/ask-state.ts": "7e2994bfd5aa39bb273145e271e6f40cd23565d57af90366bce01439c4e5c6f8",
+    "apps/knowledge-web/src/styles.css": "839fe2ac70d9c8fefc39a9d3933ebe76e6f709ac1436058c0403628826daadcc",
+    "apps/knowledge-web/vite.config.ts": "70e87ec96adc1a924af1ba402ab28909502e35de427d60eb18690e9a82534a35",
+    "apps/knowledge-web/test/ask-state.test.ts": "374c486af9cc5e087aecc2e33568a5b65b7eee75c48d6e7f6bf2b04540bb5169",
+    "packages/knowledge/src/store.ts": "f48ec27e44c6e54ed68ebffe8a1ec7791dbe3de89f4df9658daeb038b012b3eb",
+    "packages/knowledge/src/types.ts": "3df516ca22cdec463c177d34a98a10134cf6d8995800fc11d167e66734a60961",
+    "packages/knowledge/src/wiki-lexical-query.ts": "16b66f7251e0f98251569ec1d2b4a430113d1370ba81b44770f1604706f39c46",
+    "packages/knowledge/test/wiki-lexical-v2.integration.test.ts": "058a8c9bd3ab52a16f5780c230c0f439101d1de0ff7769c033f8763448bde217",
+    "packages/knowledge-application/src/index.ts": "4bda87cf91032810caf7d6355044c7c661e6b3a7a475c6e1e6fec8c62fc306cd",
+    "packages/knowledge-application/src/ask.ts": "718c0be0e7bac06a50c4d07d86d705b9ba4a0bb101abfba435665f7b3699e980",
+    "packages/knowledge-contracts/src/index.ts": "dabf16fb9f688ad91d8faf421698923ce0c91a0891e66f6682656bee13c6b167",
+    "packages/knowledge-contracts/test/ask-contract.test.ts": "25ea7c7ebbee33a8acb966ea36cfc2685fc6f269e0059ce7de019533c95d3679",
+    "scripts/runtime/wiki-query-baseline.ts": "018e0fc229c3c94170408f34c6d9773cb5ce8f6ae75a215da8a219123605e678",
+    "scripts/runtime/knowledge-synthetic-answerer.ts": "b375fe84447f001b823502640d8ae6a868850ee92a7f55193ac09e2e7a70c71e",
+    "scripts/runtime/knowledge-product-demo.ts": "177b634a8cb2c7ed53f4d7f302b563e90e850446780801ae8aab4907ddf060bc"
+  },
+  "actualPaidModelCalls": 0,
+  "productionDatabaseAccess": false,
+  "deployments": 0,
+  "notEstablished": [
+    "real semantic gold and model quality",
+    "physical read byte budget",
+    "full-page refresh recovery",
+    "business auto-ingest and entity mentions",
+    "periodic lint and relationship judgments",
+    "two-round published cognition reuse",
+    "10k/100k scale",
+    "business effects"
+  ]
+}

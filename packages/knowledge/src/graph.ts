@@ -37,7 +37,7 @@ export async function getKnowledgeGraphRelation(knowledge:KnowledgeService,proje
       rationale:dep.rationale,conditions:dep.conditions,citations:dep.citations,sourceRef:dep.ref,targetRef:rev.ref,purpose:dep.purpose,reviewRef:dep.reviewRef});
   }
   for(const citation of citationsOf(rev)){
-    const from=citation.kind==='source'?graphNodeId('source',citation.sourceRef):graphNodeId('evidence',citation.anchor.sourceRef);
+    const from=citation.kind==='source'?graphNodeId(citation.sourceDomain??'source',citation.sourceRef):graphNodeId('evidence',citation.anchor.sourceRef);
     const anchored=citation.kind==='media'?anchorId(citation.anchor):from;
     if(source!==from&&source!==anchored)continue;
     add({id:`${source}|supports|${target}`,source,target,role:'supports',critical:true,label:'supports',rationale:citation.supports,
@@ -150,7 +150,7 @@ export async function createKnowledgeGraphProjection(knowledge: KnowledgeService
     if (rev.kind === 'reference_pack') rev.content.decisions.filter(d => d.selected).forEach(d => linkKnowledge(d.ref, target, 'uses', true));
     for (const citation of citationsOf(rev)) {
       if (citation.kind === 'source') {
-        const upstream = external('source', citation.sourceRef, `来源：${citation.supports.slice(0, 100)}`, rev.ref);
+        const upstream = external(citation.sourceDomain??'source', citation.sourceRef, `来源：${citation.supports.slice(0, 100)}`, rev.ref);
         const sourceNode = nodes.get(upstream);
         if (sourceNode) nodes.set(upstream, { ...sourceNode, label: `来源：${citation.supports.slice(0, 100)}`, summary: citation.supports });
         addEdge(upstream,target,'supports',true,'supports',{rationale:citation.supports,citations:[citation],sourceRef:citation.sourceRef,targetRef:rev.ref,purpose:view.review?.purpose});

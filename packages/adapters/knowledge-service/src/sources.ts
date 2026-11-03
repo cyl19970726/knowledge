@@ -1,6 +1,6 @@
 import {createHash,randomUUID} from 'node:crypto';
 import type {Pool,PoolClient} from 'pg';
-import {SourceRecordSchema,SourceContentSchema,SourceUpsertSchema,type SourceUpsert,type SourceRecord,type KnowledgeRef,type Scope,type SourceAccessProof} from '@commerce/knowledge-contracts';
+import {SourceRecordSchema,SourceContentSchema,SourceProvenanceSchema,type SourceUpsert,type SourceRecord,type SourceContent,type KnowledgeRef,type Scope,type SourceAccessProof} from '@commerce/knowledge-contracts';
 import type {CapabilityContext,SourceRegistryPort} from '@commerce/knowledge-application';
 import type {ReadContext} from '@commerce/knowledge-application';
 import {KnowledgeError} from '@commerce/knowledge-core/types';
@@ -9,6 +9,68 @@ import type {KnowledgeWriterGrant} from '@commerce/knowledge-core/writer-authori
 import {capabilityTransaction,migrateCapabilityReceipts,installCapabilityWriterGuards} from './transaction.ts';
 const sha=(s:string)=>createHash('sha256').update(s).digest('hex');
 interface SourceRow {object_id:string;version_id:string;head_version:string;generation:string;owner_id:string;revoked:boolean;payload:SourceUpsert;receipt_id:string;supersedes:KnowledgeRef|null;readers:string[]}
+type SourceMetadataPayload=Pick<SourceUpsert,'contentDigest'|'sourceSchemaVersion'|'sourceKind'|'assertionKind'|'sourceGroups'|
+ 'limitations'|'externalIdentity'|'author'|'publisher'|'acquirer'|'obtainedAt'|'publishedAt'|'rightsPolicyRef'> &
+ {custody:{mode:SourceUpsert['custody']['mode']}};
+interface SourceMetadataRow extends Omit<SourceRow,'payload'> {payload:SourceMetadataPayload;
+ feedback_schema_version:string|null;feedback_purpose:string|null;feedback_purpose_type:string|null}
+interface BoundedSourcePreflight {revoked:boolean;readers:string[];content_digest:string|null;custody_mode:string|null;
+ source_kind:string|null;source_schema_version:string|null;feedback_schema_version:string|null;feedback_purpose:string|null;
+ feedback_purpose_type:string|null;
+ text_bytes:number|null;anchors:SourceUpsert['anchors']|null}
+type BoundedRegistry=SourceRegistryPort & {readContentBounded:(scope:Scope,ref:KnowledgeRef,anchor:unknown,context:ReadContext,maxBytes:number)=>Promise<SourceContent|null>};
+const feedbackJsonSql=`CASE WHEN v.payload->>'sourceKind'='caller_feedback'
+ THEN ccl_source_try_jsonb(v.payload #>> '{custody,text}') ELSE NULL END`;
+async function metadataFor(db:Pick<PoolClient,'query'>,scope:Scope,ref:KnowledgeRef):Promise<SourceMetadataRow|null>{
+ const rows=await db.query<SourceMetadataRow>(`SELECT v.object_id,v.version_id,v.receipt_id,v.supersedes,
+ h.head_version,h.generation,h.owner_id,h.revoked,h.readers,
+ jsonb_build_object(
+   'contentDigest',v.payload->'contentDigest','sourceSchemaVersion',v.payload->'sourceSchemaVersion',
+   'sourceKind',v.payload->'sourceKind','assertionKind',v.payload->'assertionKind',
+   'sourceGroups',v.payload->'sourceGroups','limitations',v.payload->'limitations',
+   'externalIdentity',v.payload->'externalIdentity','author',v.payload->'author',
+   'publisher',v.payload->'publisher','acquirer',v.payload->'acquirer',
+   'obtainedAt',v.payload->'obtainedAt','publishedAt',v.payload->'publishedAt',
+   'rightsPolicyRef',v.payload->'rightsPolicyRef',
+   'custody',jsonb_build_object('mode',v.payload #>> '{custody,mode}')) AS payload,
+ fb.value->>'schemaVersion' AS feedback_schema_version,fb.value->>'purpose' AS feedback_purpose,
+ jsonb_typeof(fb.value->'purpose') AS feedback_purpose_type
+ FROM ccl_knowledge_source_versions v JOIN ccl_knowledge_source_heads h USING(project_id,space_id,object_id)
+ LEFT JOIN LATERAL (SELECT ${feedbackJsonSql} AS value) fb ON true
+ WHERE v.project_id=$1 AND v.space_id=$2 AND v.object_id=$3 AND v.version_id=$4`,
+ [scope.projectId,scope.spaceId,ref.objectId,ref.versionId]);
+ return rows.rows[0]??null;
+}
+function assertProjectedFeedbackPurpose(row:SourceMetadataRow|BoundedSourcePreflight,context:ReadContext):void{
+ const kind='payload' in row?row.payload.sourceKind:row.source_kind;
+ if(kind!=='caller_feedback')return;
+ const version='payload' in row?row.payload.sourceSchemaVersion:row.source_schema_version;
+ if(version!=='feedback-source/1.0'||row.feedback_schema_version!=='feedback-source/1.0'||
+   row.feedback_purpose_type!=='string'||!row.feedback_purpose?.trim()||row.feedback_purpose!==context.purpose)
+   throw new KnowledgeError('SOURCE_PURPOSE_FORBIDDEN','Feedback source is unavailable for this purpose',403);
+}
+async function boundedPreflight(db:Pick<PoolClient,'query'>,scope:Scope,ref:KnowledgeRef):Promise<BoundedSourcePreflight|null>{
+ const rows=await db.query<BoundedSourcePreflight>(`SELECT h.revoked,h.readers,
+ v.payload->>'contentDigest' AS content_digest,v.payload #>> '{custody,mode}' AS custody_mode,
+ v.payload->>'sourceKind' AS source_kind,v.payload->>'sourceSchemaVersion' AS source_schema_version,
+ fb.value->>'schemaVersion' AS feedback_schema_version,fb.value->>'purpose' AS feedback_purpose,
+ jsonb_typeof(fb.value->'purpose') AS feedback_purpose_type,
+ octet_length(v.payload #>> '{custody,text}') AS text_bytes,v.payload->'anchors' AS anchors
+ FROM ccl_knowledge_source_versions v JOIN ccl_knowledge_source_heads h USING(project_id,space_id,object_id)
+ LEFT JOIN LATERAL (SELECT ${feedbackJsonSql} AS value) fb ON true
+ WHERE v.project_id=$1 AND v.space_id=$2 AND v.object_id=$3 AND v.version_id=$4`,
+ [scope.projectId,scope.spaceId,ref.objectId,ref.versionId]);
+ return rows.rows[0]??null;
+}
+function assertBoundedSource(preflight:BoundedSourcePreflight,ref:KnowledgeRef,context:ReadContext):void{
+ if(preflight.revoked||!preflight.readers.includes(context.principal.id)||preflight.custody_mode!=='managed_copy')
+   throw new KnowledgeError('SOURCE_UNREADABLE','Source content is unavailable or revoked',403);
+ if(!preflight.content_digest)
+   throw new KnowledgeError('SOURCE_DIGEST_MISMATCH','Exact source digest is unavailable',409);
+ if(ref.contentDigest!==null&&preflight.content_digest!==ref.contentDigest)
+   throw new KnowledgeError('SOURCE_DIGEST_MISMATCH','Exact source digest differs',409);
+ assertProjectedFeedbackPurpose(preflight,context);
+}
 export async function migrateManagedSources(pool:Pool){await migrateCapabilityReceipts(pool);await pool.query(`
  CREATE TABLE IF NOT EXISTS ccl_knowledge_source_heads(project_id text NOT NULL,space_id text NOT NULL,object_id text NOT NULL,
  adapter_id text NOT NULL,external_id text NOT NULL,head_version text NOT NULL,generation bigint NOT NULL,
@@ -16,7 +78,15 @@ export async function migrateManagedSources(pool:Pool){await migrateCapabilityRe
  PRIMARY KEY(project_id,space_id,object_id),UNIQUE(project_id,space_id,adapter_id,external_id));
  CREATE TABLE IF NOT EXISTS ccl_knowledge_source_versions(project_id text NOT NULL,space_id text NOT NULL,object_id text NOT NULL,
  version_id text NOT NULL,external_version text NOT NULL,payload jsonb NOT NULL,receipt_id text NOT NULL,supersedes jsonb,
- PRIMARY KEY(project_id,space_id,object_id,version_id),UNIQUE(project_id,space_id,object_id,external_version));`);await installCapabilityWriterGuards(pool,["ccl_knowledge_source_heads", "ccl_knowledge_source_versions"]);}
+ PRIMARY KEY(project_id,space_id,object_id,version_id),UNIQUE(project_id,space_id,object_id,external_version));
+ CREATE OR REPLACE FUNCTION ccl_source_try_jsonb(source_text text) RETURNS jsonb
+ LANGUAGE plpgsql IMMUTABLE STRICT AS $source_json$
+ BEGIN
+   RETURN source_text::jsonb;
+ EXCEPTION WHEN invalid_text_representation OR numeric_value_out_of_range OR untranslatable_character THEN
+   RETURN NULL;
+ END;
+ $source_json$;`);await installCapabilityWriterGuards(pool,["ccl_knowledge_source_heads", "ccl_knowledge_source_versions"]);}
 function assertRead(context:ReadContext,ref:KnowledgeRef){if(context.scope.projectId!==context.principal.projectId||!context.principal.spaceIds.includes(context.scope.spaceId)||
  !context.principal.purposes.includes(context.purpose)||ref.projectId!==context.scope.projectId||ref.spaceId!==context.scope.spaceId||ref.domain!=='source')
  throw new KnowledgeError('SOURCE_FORBIDDEN','Source is outside the authorized context',403);}
@@ -24,8 +94,8 @@ async function rowFor(db:Pick<PoolClient,'query'>,scope:Scope,ref:KnowledgeRef):
  FROM ccl_knowledge_source_versions v JOIN ccl_knowledge_source_heads h USING(project_id,space_id,object_id)
  WHERE v.project_id=$1 AND v.space_id=$2 AND v.object_id=$3 AND v.version_id=$4`,[scope.projectId,scope.spaceId,ref.objectId,ref.versionId]);
  const row=r.rows[0];if(row&&ref.contentDigest!==null&&row.payload.contentDigest!==ref.contentDigest)throw new KnowledgeError('SOURCE_DIGEST_MISMATCH','Exact source digest differs',409);return row??null;}
-const refFor=(scope:Scope,row:SourceRow):KnowledgeRef=>({...scope,domain:'source',objectId:row.object_id,versionId:row.version_id,contentDigest:row.payload.contentDigest});
-function readable(row:SourceRow,principalId:string){return !row.revoked&&row.readers.includes(principalId)&&row.payload.custody.mode==='managed_copy';}
+const refFor=(scope:Scope,row:SourceRow|SourceMetadataRow):KnowledgeRef=>({...scope,domain:'source',objectId:row.object_id,versionId:row.version_id,contentDigest:row.payload.contentDigest});
+function readable(row:SourceRow|SourceMetadataRow,principalId:string){return !row.revoked&&row.readers.includes(principalId)&&row.payload.custody.mode==='managed_copy';}
 /** Feedback-derived managed copies inherit the observation's one authenticated purpose. */
 function assertCallerFeedbackPurpose(row:SourceRow,context:ReadContext):void{
  if(row.payload.sourceKind!=='caller_feedback')return;
@@ -36,10 +106,11 @@ function assertCallerFeedbackPurpose(row:SourceRow,context:ReadContext):void{
    !('purpose' in value)||typeof value.purpose!=='string'||!value.purpose.trim()||value.purpose!==context.purpose)
    throw new KnowledgeError('SOURCE_PURPOSE_FORBIDDEN','Feedback source is unavailable for this purpose',403);
 }
-function record(scope:Scope,row:SourceRow,principalId:string):SourceRecord {const can=readable(row,principalId),stored=SourceUpsertSchema.safeParse(row.payload);
- const provenance=stored.success?{externalIdentity:stored.data.externalIdentity,author:stored.data.author,publisher:stored.data.publisher,
-   acquirer:stored.data.acquirer,obtainedAt:stored.data.obtainedAt,publishedAt:stored.data.publishedAt,
-   custody:{mode:stored.data.custody.mode},rightsPolicyRef:stored.data.rightsPolicyRef}:undefined;
+function record(scope:Scope,row:SourceRow|SourceMetadataRow,principalId:string):SourceRecord {const can=readable(row,principalId);
+ const parsed=SourceProvenanceSchema.safeParse({externalIdentity:row.payload.externalIdentity,author:row.payload.author,
+   publisher:row.payload.publisher,acquirer:row.payload.acquirer,obtainedAt:row.payload.obtainedAt,
+   publishedAt:row.payload.publishedAt,custody:{mode:row.payload.custody.mode},rightsPolicyRef:row.payload.rightsPolicyRef});
+ const provenance=parsed.success?parsed.data:undefined;
  return SourceRecordSchema.parse({ref:refFor(scope,row),head:{...scope,domain:'source',objectId:row.object_id,versionId:row.head_version,contentDigest:row.head_version===row.version_id?row.payload.contentDigest:null},
  sourceSchemaVersion:row.payload.sourceSchemaVersion,sourceKind:row.payload.sourceKind,assertionKind:row.payload.assertionKind,sourceGroups:row.payload.sourceGroups,
  readability:{metadataVisible:row.readers.includes(principalId),contentReadable:can,anchorResolved:can,assurance:row.payload.custody.mode==='managed_copy'?'local_transaction':'read_time_only',
@@ -82,7 +153,7 @@ export async function upsertSourceInTransaction(client:PoolClient,context:Capabi
    return record(context.scope,(await rowFor(client,context.scope,{...context.scope,domain:'source',objectId,versionId,contentDigest:input.contentDigest}))!,context.principal.id);
 }
 /** The source owner and knowledge writer share the project transaction barrier. External leases are never inferred. */
-export function createPgSourceRegistry(pool:Pool,options:{writerGrant?:KnowledgeWriterGrant;readerIds?:readonly string[]}={}):SourceRegistryPort{return{
+export function createPgSourceRegistry(pool:Pool,options:{writerGrant?:KnowledgeWriterGrant;readerIds?:readonly string[]}={}):BoundedRegistry{return{
  async upsert(context:CapabilityContext,input:SourceUpsert,key:string){return capabilityTransaction(pool,context,'sources:upsert',key,input,options.writerGrant,
    (client,id)=>upsertSourceInTransaction(client,context,input,id,options),
    (result,client)=>assertCurrentSourceReplay(client,context,result,input.rightsPolicyRef));},
@@ -98,14 +169,64 @@ export function createPgSourceRegistry(pool:Pool,options:{writerGrant?:Knowledge
    await client.query(`INSERT INTO ccl_knowledge_events(project_id,kind,data) VALUES($1,'SourceRightsRevoked',$2)`,[context.scope.projectId,{ref,generation:expectedGeneration+1}]);
    return record(context.scope,{...row,revoked:true,generation:String(expectedGeneration+1)},context.principal.id);
  });},
- async readRecord(scope,ref,context){assertRead(context,ref);const row=await rowFor(pool,scope,ref);if(!row||!row.readers.includes(context.principal.id))return null;
-   assertCallerFeedbackPurpose(row,context);return record(scope,row,context.principal.id);},
+ async readRecord(scope,ref,context){assertRead(context,ref);
+   if(scope.projectId!==context.scope.projectId||scope.spaceId!==context.scope.spaceId)
+     throw new KnowledgeError('SOURCE_FORBIDDEN','Source is outside the authorized context',403);
+   const row=await metadataFor(pool,scope,ref);if(!row||!row.readers.includes(context.principal.id))return null;
+   if(ref.contentDigest!==null&&row.payload.contentDigest!==ref.contentDigest)
+     throw new KnowledgeError('SOURCE_DIGEST_MISMATCH','Exact source digest differs',409);
+   assertProjectedFeedbackPurpose(row,context);return record(scope,row,context.principal.id);},
  async readContent(scope,ref,anchor,context){assertRead(context,ref);const row=await rowFor(pool,scope,ref);if(!row)return null;
    if(!readable(row,context.principal.id)||row.payload.custody.mode!=='managed_copy')throw new KnowledgeError('SOURCE_UNREADABLE','Source content is unavailable or revoked',403);
    assertCallerFeedbackPurpose(row,context);
    const selected=anchor??null;if(selected&&!row.payload.anchors.some(a=>JSON.stringify(a)===JSON.stringify(selected)))throw new KnowledgeError('SOURCE_ANCHOR_UNRESOLVED','Requested anchor is not registered',422);
    return SourceContentSchema.parse({ref:refFor(scope,row),contentDigest:row.payload.contentDigest,content:row.payload.custody.text,anchor:selected,
     actualCoverage:{sourceRef:refFor(scope,row),anchors:selected?[selected]:row.payload.anchors,byteCount:Buffer.byteLength(row.payload.custody.text),coverage:'full',exclusions:[],readAt:new Date().toISOString(),readerAuthority:'knowledge-local-source-owner',readProofId:row.receipt_id},readability:record(scope,row,context.principal.id).readability});},
+ async readContentBounded(scope,ref,anchor,context,maxBytes){assertRead(context,ref);
+   if(scope.projectId!==context.scope.projectId||scope.spaceId!==context.scope.spaceId)
+     throw new KnowledgeError('SOURCE_FORBIDDEN','Source is outside the authorized context',403);
+   const preflight=await boundedPreflight(pool,scope,ref);if(!preflight)return null;
+   assertBoundedSource(preflight,ref,context);
+   if(!Number.isInteger(maxBytes)||maxBytes<0||maxBytes>1_000_000)
+     throw new KnowledgeError('SOURCE_READ_BUDGET_INVALID','Source read budget must be an integer from 0 to 1000000 bytes',422);
+   const selected=anchor??null;
+   if(selected&&!preflight.anchors?.some(a=>JSON.stringify(a)===JSON.stringify(selected)))
+     throw new KnowledgeError('SOURCE_ANCHOR_UNRESOLVED','Requested anchor is not registered',422);
+   if(preflight.text_bytes===null||preflight.text_bytes>maxBytes)
+     throw new KnowledgeError('SOURCE_READ_BUDGET_EXCEEDED','Managed source exceeds the read byte budget',422);
+   // This WHERE gate is repeated after preflight: a concurrent rights, digest or text change
+   // cannot return an oversized body to the application. It does not bound PostgreSQL disk IO.
+   const found=await pool.query<SourceRow>(`SELECT v.*,h.head_version,h.generation,h.owner_id,h.revoked,h.readers
+     FROM ccl_knowledge_source_versions v JOIN ccl_knowledge_source_heads h USING(project_id,space_id,object_id)
+     LEFT JOIN LATERAL (SELECT ${feedbackJsonSql} AS value) fb ON true
+     WHERE v.project_id=$1 AND v.space_id=$2 AND v.object_id=$3 AND v.version_id=$4
+       AND h.revoked=false AND h.readers ? $5 AND v.payload #>> '{custody,mode}'='managed_copy'
+       AND octet_length(v.payload #>> '{custody,text}')<=$6
+       AND v.payload->>'contentDigest'=$7
+       AND v.payload->>'sourceKind' IS NOT DISTINCT FROM $9::text
+       AND (v.payload->>'sourceKind' IS DISTINCT FROM 'caller_feedback' OR
+         (v.payload->>'sourceSchemaVersion'='feedback-source/1.0' AND
+          fb.value->>'schemaVersion'='feedback-source/1.0' AND
+          jsonb_typeof(fb.value->'purpose')='string' AND fb.value->>'purpose'=$8))`,
+     [scope.projectId,scope.spaceId,ref.objectId,ref.versionId,context.principal.id,maxBytes,preflight.content_digest,context.purpose,preflight.source_kind]);
+   const row=found.rows[0];
+   if(!row){const current=await boundedPreflight(pool,scope,ref);if(!current)return null;
+     assertBoundedSource(current,ref,context);
+     if(current.content_digest!==preflight.content_digest)
+       throw new KnowledgeError('SOURCE_DIGEST_MISMATCH','Source digest changed during the bounded read',409);
+     if(current.text_bytes===null||current.text_bytes>maxBytes)
+       throw new KnowledgeError('SOURCE_READ_BUDGET_EXCEEDED','Managed source exceeds the read byte budget',422);
+     throw new KnowledgeError('SOURCE_UNREADABLE','Source changed during the bounded read',409);}
+   if(row.payload.custody.mode!=='managed_copy')
+     throw new KnowledgeError('SOURCE_UNREADABLE','Source content is unavailable or revoked',403);
+   if(selected&&!row.payload.anchors.some(a=>JSON.stringify(a)===JSON.stringify(selected)))
+     throw new KnowledgeError('SOURCE_ANCHOR_UNRESOLVED','Requested anchor is not registered',422);
+   if(sha(row.payload.custody.text)!==row.payload.contentDigest)
+     throw new KnowledgeError('SOURCE_CONTENT_INTEGRITY','Managed source text does not match its stored digest',409);
+   return SourceContentSchema.parse({ref:refFor(scope,row),contentDigest:row.payload.contentDigest,content:row.payload.custody.text,anchor:selected,
+     actualCoverage:{sourceRef:refFor(scope,row),anchors:selected?[selected]:row.payload.anchors,
+       byteCount:Buffer.byteLength(row.payload.custody.text,'utf8'),coverage:'full',exclusions:[],readAt:new Date().toISOString(),
+       readerAuthority:'knowledge-local-source-owner',readProofId:row.receipt_id},readability:record(scope,row,context.principal.id).readability});},
  async proof(context,ref){assertRead(context,ref);const row=await rowFor(pool,context.scope,ref);if(!row||!readable(row,context.principal.id))throw new KnowledgeError('SOURCE_PROOF_UNAVAILABLE','A local readable managed source is required',403);
    assertCallerFeedbackPurpose(row,context);
    return {ownerId:row.owner_id,sourceRef:refFor(context.scope,row),digest:row.payload.contentDigest,subject:context.principal.id,audience:'knowledge-publication',purpose:context.purpose,

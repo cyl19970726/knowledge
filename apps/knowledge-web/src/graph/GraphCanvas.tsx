@@ -23,6 +23,7 @@ const style = [
   { selector: 'node[isRoot = "yes"]', style: { 'border-color': '#a6b5ce', 'border-width': 3, 'font-size': ROOT_LABEL_FONT_PX, 'font-weight': 700, 'shadow-blur': 16, 'shadow-opacity': 0.22 } },
   { selector: 'node.co-reading-first', style: { 'background-color': '#a975ee', 'border-color': '#d7b7ff', 'border-width': 5, 'z-index': 18 } },
   { selector: 'node.co-reading-second', style: { 'background-color': '#6da4f7', 'border-color': '#b8d5ff', 'border-width': 5, 'z-index': 18 } },
+  { selector: 'node.actual-read', style: { 'border-color': '#8bbaff', 'border-width': 5, 'shadow-color': '#78a9ff', 'shadow-opacity': 0.4, 'shadow-blur': 21, 'z-index': 19 } },
   { selector: 'node[availability = "metadata_only"]', style: { 'background-opacity': 0.5, 'border-color': '#d3dae9', 'border-width': 3 } },
   { selector: 'node[availability = "unknown"]', style: { 'background-opacity': 0.3, 'border-color': '#d3dae9', 'border-width': 2 } },
   { selector: 'node:selected', style: { 'border-color': '#efddff', 'border-width': 8, 'z-index': 20 } },
@@ -55,6 +56,7 @@ type Props = {
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
   coReadingIds: string[];
+  actualReadIds?: readonly string[];
   onNode: (id: string) => void;
   onEdge: (id: string) => void;
   onCamera: (camera: GraphCamera) => void;
@@ -64,7 +66,7 @@ type Props = {
   visible: boolean;
 };
 
-export function GraphCanvas({ graph, selectedNodeId, selectedEdgeId, coReadingIds, onNode, onEdge, onCamera, rememberedCamera, resetSignal, zoomRequest, visible }: Props) {
+export function GraphCanvas({ graph, selectedNodeId, selectedEdgeId, coReadingIds, actualReadIds = [], onNode, onEdge, onCamera, rememberedCamera, resetSignal, zoomRequest, visible }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const surface = useRef<HTMLDivElement>(null);
   const sessionRef = useRef<GraphRenderSession | null>(null);
@@ -162,12 +164,14 @@ export function GraphCanvas({ graph, selectedNodeId, selectedEdgeId, coReadingId
       cy.edges().removeClass('emphasis');
       if (selectedNodeId) cy.getElementById(selectedNodeId).connectedEdges().addClass('emphasis');
       cy.nodes().removeClass('co-reading-first co-reading-second');
+      cy.nodes().removeClass('actual-read');
       cy.edges().removeClass('co-reading-path');
       coReadingIds.forEach((id, index) => cy.getElementById(id).addClass(index === 0 ? 'co-reading-first' : 'co-reading-second'));
+      actualReadIds.forEach(id => cy.getElementById(id).addClass('actual-read'));
       if (coReadingIds.length === 2) coReadingPath(graph, coReadingIds[0], coReadingIds[1]).forEach(id => cy.getElementById(id).addClass('co-reading-path'));
       updateLabels(cy, graph, selectedNodeId, coReadingIds);
     });
-  }, [selectedNodeId, selectedEdgeId, coReadingIds.join('|'), layoutState, graph]);
+  }, [selectedNodeId, selectedEdgeId, coReadingIds.join('|'), actualReadIds.join('|'), layoutState, graph]);
 
   useEffect(() => {
     const session = sessionRef.current;

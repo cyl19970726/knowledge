@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "wiki-loop-validation/1",
+  "date": "2026-11-02",
+  "baseRevision": "eecf30e90d6700d06b70d09402ab45a1567b28fb",
+  "branch": "codex/wiki-ingest-query-lint",
+  "sourceState": "uncommitted local candidate",
+  "nodeVersion": "24.21.0",
+  "database": "PostgreSQL 17.11-alpine in dedicated loopback disposable ccl_test_wiki; schema per test",
+  "checks": {
+    "foundationBuild": {
+      "exitCode": 0
+    },
+    "typecheck": {
+      "exitCode": 0
+    },
+    "coreTests": {
+      "command": "TEST_DATABASE_REQUIRED=1 npm test",
+      "exitCode": 0,
+      "tests": 213,
+      "pass": 213,
+      "fail": 0,
+      "skipped": 0
+    },
+    "targetedAskAndBaselineTests": {
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "overlapsCoreTests": true
+    },
+    "documentationTests": {
+      "passed": 20,
+      "failed": 0
+    }
+  },
+  "review": {
+    "initialFinding": "typed unknown commit status was overwritten",
+    "resolution": "preserve typed status and disable retryable on unknown; fake-port regression passed; independent focused review passed"
+  },
+  "sourceFilesSha256": {
+    "apps/knowledge-api/src/index.ts": "2e33f0457c712deedab9ae8bf4bfbe871a196df39ad6f27c488d316e39a7222e",
+    "apps/knowledge-api/test/ask-ledger.integration.test.ts": "d398e0243a8bc4acb14dec4459525077a5ad6cb5cf9cf59bc0d0c8b56d3ef6f3",
+    "apps/knowledge-api/test/ask.integration.test.ts": "fe4a2f2a5836aa9aa4c12a61fc6b56e07c6b6cffb34625613e18096ac74b2717",
+    "package.json": "2231019933b3f7db55d8ddea398854568efaf03097ee7745e4ae2963d4b82ec2",
+    "packages/adapters/knowledge-service/src/ask.ts": "0bb035084ca507fcea253cb8de6b7d1a2b48956efd67513f4bdef1f9def67da0",
+    "packages/adapters/knowledge-service/src/index.ts": "d980e5122e6580492f4cf2a14ea62e17c650e089697fe782891af40546291a8c",
+    "packages/knowledge-application/src/ask.ts": "ad08d6eacefaad5b73e3203df014e2b440991fa23dfdfcbece46d0afb9160022",
+    "packages/knowledge-application/src/index.ts": "ece6f5aef15e7ad0a3916f12897a375ed2a12ffb2eef3afb408c9987b9d969e2",
+    "packages/knowledge-application/test/ask-uncertainty.test.ts": "db019506e84a4e16e05add706abaf7960bf95089829e018b34c7ce7208efe45b",
+    "packages/knowledge-application/test/fixtures/wiki-query-corpus.json": "6238006197e927276ebf18a2dcea01e9b35a63d8feaa59f2e6bfa3290b7c1926",
+    "packages/knowledge-application/test/wiki-query-baseline.test.ts": "a364f199de84b189b55a66cc2c0fa2656cb1ce108276ea908ebd38cc3ff6a35a",
+    "packages/knowledge-client/src/index.ts": "182dbba7bec526850a48a2d78321824c3e20584d9463708691a42d1cbb394c17",
+    "packages/knowledge-client/test/ask.test.ts": "85db16f6ad39dec22df24c947df7aa0a75a5a4b949e2d58cff8ff41a8e3e3843",
+    "packages/knowledge-contracts/src/index.ts": "b8b0d24ea6526dcf44adcbfd0237d54edecdbfe7b89736295e0be71d60aa74c8",
+    "packages/knowledge-contracts/test/ask-contract.test.ts": "d5f5198347b687e8631317bfb5aff05d54711a280cd617f79f7adb5a3833ed12",
+    "scripts/runtime/test-core.mjs": "6499d4c34cd225c776ce176e50ef814ad476229337c7de5975f94d883de1f1c5",
+    "scripts/runtime/wiki-query-baseline.ts": "5eda38e635ca161b19fba245821dfd0f6734ecf6c78723acd80871b77cf452bd"
+  },
+  "paidModelCalls": 0,
+  "productionDatabaseAccess": false,
+  "deployments": 0,
+  "notEstablished": [
+    "real model semantic quality",
+    "UI Ask experience",
+    "physical database/owner byte limits",
+    "business source automatic ingest",
+    "entity mention disambiguation",
+    "periodic lint and relation judgment ledger",
+    "two-round published cognition reuse",
+    "10k/100k scale performance",
+    "business effects"
+  ]
+}

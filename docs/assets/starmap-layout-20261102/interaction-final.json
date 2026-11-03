@@ -1,0 +1,35 @@
+{
+  "restore": {
+    "scrollBefore": 212,
+    "camera": "{\"position\":[0.8542246295765665,-0.21695186509073663,17.816685131168388],\"target\":[0,-0.4,0]}",
+    "ratio": "52",
+    "scroll": 212,
+    "cameraSame": true
+  },
+  "renderModes": {
+    "twoDimensionalKeepsAnswer": true,
+    "twoDimensionalSelection": "联读选区（2/2）本地准备 · 服务读集在提交后核对",
+    "listHasActualReads": true
+  },
+  "candidate": {
+    "before": true,
+    "after": true,
+    "independentReview": true,
+    "returnQuestion": "如何兼顾叙事吸引与商品辨认？"
+  },
+  "beforeReloadRatio": "45",
+  "reloaded": {
+    "question": "如何兼顾叙事吸引与商品辨认？",
+    "ratio": "45",
+    "candidateVisible": true
+  },
+  "mobile": {
+    "graphVisible": true,
+    "height": 844,
+    "overflow": false,
+    "readingVisible": true,
+    "separatorVisible": false,
+    "width": 389
+  },
+  "consoleErrors": []
+}

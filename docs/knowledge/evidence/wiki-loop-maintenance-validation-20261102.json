@@ -1,0 +1,164 @@
+{
+  "schemaVersion": 1,
+  "stage": "G3 durable maintenance, metadata Lint and pair judgment foundation",
+  "state": "verified-local-uncommitted-foundation",
+  "recordedAt": "2026-11-01T22:58:51.614187+00:00",
+  "baselines": {
+    "knowledge": "eecf30e90d6700d06b70d09402ab45a1567b28fb",
+    "commerce": "5fbc744b97d63d25111e00443a5d6e963dddfad7",
+    "commerceKnowledgePin": "f8ab747a86016fe06bb798e5bd0af324b0329981"
+  },
+  "environment": {
+    "node": "24.21.0",
+    "postgres": "17.11-alpine",
+    "isolation": "dedicated disposable local PostgreSQL, synthetic per-test schemas",
+    "realModelCalls": 0,
+    "paidModelCalls": 0,
+    "businessEnvLoaded": false,
+    "businessDatabaseUsed": false
+  },
+  "checks": {
+    "coreFullTests": {
+      "status": "passed",
+      "passed": 321,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/wiki-maintenance-core-delivery.log"
+    },
+    "businessFullTests": {
+      "status": "passed",
+      "passed": 998,
+      "failed": 0,
+      "skipped": 6,
+      "log": "/tmp/wiki-maintenance-commerce-full.log"
+    },
+    "coreBuild": {
+      "status": "passed",
+      "log": "/tmp/wiki-maintenance-delivery-build.log"
+    },
+    "typecheck": {
+      "status": "passed",
+      "log": "/tmp/wiki-maintenance-final-typecheck.log"
+    },
+    "businessTypecheck": {
+      "status": "passed",
+      "log": "/tmp/wiki-maintenance-commerce-typecheck.log"
+    },
+    "boundaries": {
+      "status": "passed",
+      "log": "/tmp/wiki-maintenance-boundaries.log"
+    },
+    "diagram": {
+      "status": "passed",
+      "gates": [
+        "validate",
+        "deliver",
+        "check",
+        "browser-check"
+      ],
+      "visualReview": "not-requested",
+      "receipt": "../../../../../../知识库设计/20261101-Luna增量维护设计/.archify/architecture-decision-port-20261101-211240/g3-maintenance-review-1/decision-port.finalize-summary.json"
+    },
+    "materializationTargeted": {
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/wiki-maintenance-materialization-final.log"
+    },
+    "docs": {
+      "status": "passed",
+      "coreReaders": "make docs / make docs-check passed",
+      "commerceReaders": "make docs / make docs-check passed; pinned mirror unchanged",
+      "coreDocsTests": {
+        "passed": 20,
+        "failed": 0
+      },
+      "logs": [
+        "/tmp/wiki-maintenance-core-docs-build.log",
+        "/tmp/wiki-maintenance-core-docs-check.log",
+        "/tmp/wiki-maintenance-commerce-docs-build.log",
+        "/tmp/wiki-maintenance-commerce-docs-check.log",
+        "/tmp/wiki-maintenance-docs-tests.log"
+      ]
+    }
+  },
+  "review": {
+    "acknowledgementCheckpoint": "fixed; original batch/model/cost persisted before finish",
+    "firstPostRevocation": "fixed; final get revalidates before disclosure",
+    "answerShape": "fixed; non-answer fields must be null",
+    "eventFanout": "fixed: bounded SQL reference pages and durable pending offsets; source revocation closure materialized once with zero-count marker, indexed ordinal pages thereafter",
+    "independentReadOnly": "final focused review found no remaining reproducible P1/P2; reviewer did not independently run full suites",
+    "unknownAccounting": "malformed accounting after dispatch remains outcome_unknown with original-key no-redispatch",
+    "predicateMissingEvidence": "unvalued missing evidence is retained rather than execution failure; mixed refusal stays incomplete"
+  },
+  "limits": [
+    "default worker metadata-only; semantic task processor must be configured",
+    "automatic semantic pair discovery/contradiction detection/compiler coordination not implemented",
+    "provider codecs are pure wire-data; no model transport or credentials",
+    "no independent semantic/human gold or business-effect acceptance",
+    "external source publication assurance/no-change review/unstaged-draft retry/full inbox remain incomplete",
+    "no commits/deployment/vendor pin advancement; candidate dependency links remain project-local"
+  ],
+  "observations": [
+    "source arrival -> durable queued task -> configured synthetic no_change; later arrival creates another task",
+    "method/rubric version upgrades replay their own event watermark",
+    "lease loss fences old worker; unknown external response never auto-reclaims",
+    "response checkpoint and later expiry preserve exact references and known cost",
+    "source rights revocation during provider/checkpoint denies first POST as well as GET disclosure",
+    "same-key judgment replay expires stale running rows and never calls provider again",
+    "large lint cycles persist complete paginated findings while preview stays bounded",
+    "maintenance tasks/findings and semantic judgments do not mutate knowledge heads, formal relations or publications",
+    "empty-schema maintenance worker initializes core dependencies without activating writer authority"
+  ],
+  "scope": "G3 foundation only: metadata maintenance and explicit bounded judgments; automatic semantic discovery/compilation coordination remains unfinished",
+  "sourceSha256": {
+    "packages/knowledge-contracts/src/index.ts": "7333f69400c2aced9038075681a37e1e3bbb0dc50e755dd0dcbd4db900a0205d",
+    "packages/knowledge-application/src/index.ts": "1154c2418de5ac54d3d7f7b071d704e3828965e8c7bbbd971036e11daefa68b1",
+    "packages/knowledge-application/src/maintenance.ts": "5b22665088e0d198cc9df7ebcd96d50bc3bb67fb8de248515a2a5aa0410d6516",
+    "packages/knowledge-application/src/relation-judgment.ts": "75895194557c86a4dfee19055178e366ea2f67bd5fdda9f5fa2b21c319f53b20",
+    "packages/knowledge-application/src/decision-codecs.ts": "17a50d00b1c1530c4621f84d9918815adcd67140736e69289dea9258eb19c599",
+    "packages/knowledge-application/test/maintenance-processor.test.ts": "0df020f5ec6fa6067c0fa1e5765be9f5868e44fc6d1cefeb3a40a80f663dab5f",
+    "packages/knowledge-application/test/relation-judgment-checkpoint.test.ts": "a991ab422a809397aa04b13b30875bc9334cdf3484a612c0b6398c17072f1fc3",
+    "packages/knowledge-application/test/decision-codecs.test.ts": "003776769f0582fe9daf76ace1c4133facb8bb780616456fafc59a7eb02239e7",
+    "packages/adapters/knowledge-service/src/maintenance-tasks.ts": "4a27287e7e1275017dbe69a1e962a47f100ad8506ab4273c298866bb125469d9",
+    "packages/adapters/knowledge-service/src/wiki-lint.ts": "c3a1d7675b78c2ea69612082918a711d0b20d8995c1660e06552f0ec664e6631",
+    "packages/adapters/knowledge-service/src/judgments.ts": "ed7e14228039604cfbd000db4c22e9a439f4eb69cadd928fd8985fbad261dcd1",
+    "apps/knowledge-api/src/index.ts": "2b74b7d41f314012ae30738bdbc7a80320d473178be1fb69480a04b5770dc102",
+    "apps/knowledge-api/test/maintenance-tasks.integration.test.ts": "e63e28e6255272f45b9e898720fb96088e00dab640afd62adc8fe81ce823e347",
+    "apps/knowledge-api/test/maintenance.integration.test.ts": "290026173c062ade7d9781b277b0957948a77b603c10f9cfec631edb46a99113",
+    "apps/knowledge-api/test/wiki-lint.integration.test.ts": "11d2c4d6d809bd43995d07eaef9d84e83627efa36c01d8fef8432d5d94b8d011",
+    "apps/knowledge-api/test/relation-judgment.integration.test.ts": "6407cb77384ed7b1ae7f613453b62dffd73fc9877c0e9bf5e9858b061fd364f1",
+    "apps/knowledge-worker/src/index.ts": "2501c9e58c98f7079475416e57e9b02da2f4f020e072155789d6ceb11ad86053",
+    "packages/knowledge-client/src/index.ts": "b5296ddff93b5bd81de665a541eb6994c4601d21a416b2c7d3f0c57a5df59580",
+    "scripts/runtime/wiki-scale-baseline.ts": "c0c8d8d019aa48c7218c68ef0c36e20bae1ac88c46e558217b25314796f2692a"
+  },
+  "scaleExploration": {
+    "storeSearchOnly": true,
+    "tenThousand": "wiki-scale-10000-20261102.json",
+    "hundredThousand": "wiki-scale-100000-20261102.json",
+    "hundredThousandState": "incomplete_or_failed: 40/180 not run under work cutoff; not an acceptance pass",
+    "realSemanticQualityMeasured": false
+  },
+  "businessFirstAttempt": {
+    "passed": 995,
+    "failed": 3,
+    "skipped": 6,
+    "cause": "lead PATH omitted existing ffmpeg and PostgreSQL tools; restored /opt/homebrew/bin and reran full suite successfully",
+    "productionCodeChangedForThis": false
+  },
+  "runtimeCleanup": {
+    "testContainer": "knowledge-wiki-loop-test-20261102",
+    "stoppedAndRemoved": true,
+    "scaleSchemas": "dropped in finally",
+    "liveBrowserDemo": "none added in this phase",
+    "egoTaskSpace": 81,
+    "page": "about:blank retained for ongoing goal"
+  },
+  "canonicalLivingPage": {
+    "id": "page_35e0d83c4f14819180a5b50a5995a1d4",
+    "sequence": 290,
+    "updated": true
+  },
+  "nextStep": "Implement and verify rebuildable current-head bigram prefilter; keep exact v1/v2 scoring and authorization. G3 automatic semantic coordination remains pending."
+}

@@ -1,0 +1,284 @@
+{
+  "schemaVersion": 1,
+  "stage": "source-driven background planning, judgment and compilation coordination with maintenance inbox",
+  "state": "pr8-local-engineering-verified-real-semantics-pending",
+  "recordedAt": "2026-11-02T00:49:18.973357+00:00",
+  "baselines": {
+    "knowledge": "eecf30e90d6700d06b70d09402ab45a1567b28fb",
+    "commerce": "5fbc744b97d63d25111e00443a5d6e963dddfad7",
+    "commerceKnowledgePin": "f8ab747a86016fe06bb798e5bd0af324b0329981"
+  },
+  "environment": {
+    "node": "24.21.0",
+    "postgres": "17.11-alpine",
+    "disposableDatabase": "loopback59356/ccl_test_wiki, per-test synthetic schemas",
+    "realModelCalls": 0,
+    "paidModelCalls": 0,
+    "businessEnvLoaded": false,
+    "businessDatabaseUsed": false
+  },
+  "checks": {
+    "coreInitialFull": {
+      "passed": 379,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/wiki-coordination-core-full.log"
+    },
+    "businessFull": {
+      "passed": 998,
+      "failed": 0,
+      "skipped": 6,
+      "log": "/tmp/wiki-coordination-commerce-full.log"
+    },
+    "sourcePlanUnit": {
+      "passed": 20,
+      "failed": 0
+    },
+    "sourcePlanLedger": {
+      "passed": 4,
+      "failed": 0
+    },
+    "coordinationLedger": {
+      "passed": 7,
+      "failed": 0
+    },
+    "coordinationUnit": {
+      "passed": 4,
+      "failed": 0,
+      "log": "/tmp/wiki-coordination-unit-final.log"
+    },
+    "endToEnd": {
+      "passed": 2,
+      "failed": 0,
+      "log": "/tmp/wiki-coordination-loop-reviewed.log",
+      "cases": [
+        "normal worker acknowledgement",
+        "review then lease expiry before acknowledgement"
+      ]
+    },
+    "webTargetedAfterLabels": {
+      "passed": 13,
+      "failed": 0,
+      "note": "source agent report; full final run pending"
+    },
+    "coreFinalFull": {
+      "passed": 383,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/wiki-coordination-core-delivery.log"
+    },
+    "parallelBuild": {
+      "status": "failed from overlapping build/pretest artifact writes",
+      "log": "/tmp/wiki-coordination-delivery-build.log",
+      "followup": "sequential build rerun active; no source weakened"
+    }
+  },
+  "observations": [
+    "source event -> queued task -> source plan -> bounded Wiki discovery -> typed judgment -> advisory hints consumed by compiler -> candidate, no autonomous publication",
+    "second source counterexample corrects same Wiki object after independent review; Ask reads current C2",
+    "review closure failure rolls publication back; approve/reject close compilation, run and task together",
+    "active worker lease retained during early review; expired worker reads proved canonical completed task without repeating providers",
+    "cancellation after planning prevents discovery/judgment/compilation dispatch",
+    "planning failed/refused/needs-evidence receipts recover original terminal state by lookup without model calls",
+    "known actual child overrun persists before failure; no later call is admitted",
+    "model-proposed exact spans remain proposals; no entity resolution or caller-proposed ledger rewrite",
+    "private model reasons remain in authorized run details; task metadata reason is generic"
+  ],
+  "browser": {
+    "tool": "Ego Lite 0.6.1.13",
+    "space": 88,
+    "previousSpace81": "not present in current inventory; only unrelated user-owned spaces existed",
+    "desktopActualWidth": 1159,
+    "mobileLayoutWidth": 390,
+    "horizontalOverflow": false,
+    "modelWriteRequestsDuringReadFlow": 0,
+    "initialUnknownScreensInspected": true,
+    "labelFollowup": "system reason and status labels localized; latest build and screenshot verification pending",
+    "notice": "update available; not upgraded"
+  },
+  "limits": [
+    "only source_research tasks with one exact source event are coordinated; existing-Wiki recompile/periodic semantic discovery remain queued",
+    "queries and mentions are provider-proposed; real semantics, entity disambiguation and human gold unverified",
+    "no_change is a proposal, independent no_change review remains incomplete",
+    "unstaged draft retry, query-answer return to research and external owner publication assurance remain incomplete",
+    "no real provider transports/accounts/disclosure/billing comparison; no deployments or vendor pin advancement; the pre-PR8 phase had no commits"
+  ],
+  "historicalEvidenceScope": "Existing baselines, 383 core and 998 business checks, and browser space 88 are pre-PR8 local candidate evidence; they are not acceptance on PR8 main.",
+  "pr8Integration": {
+    "baseHead": "2f66ba174bbd47be92d0bbdc238159d33c5a74f8",
+    "relationship": "PR8 merged main is the integration base; 415 passing core tests on this base include the synthetic coordination end-to-end regression. Earlier 383/998 and browser space 88 remain historical.",
+    "frontend": {
+      "r1": "merged dark workbench; default 3D, 2D/list and star/question/evolution perspectives with shared selection retained",
+      "twoPointFiveD": "handoff only; experimental entry must remain off by default; no implementation or acceptance claimed",
+      "cssEntryFix": "Evolution.css import moved to browser main entry so Node TSX tests can load App; not a visual design change",
+      "scrollFix": "AskPanel flex/min-height and overflow-y:auto permit desktop submit/result access inside PR8 fixed-height explorer; mobile keeps natural page flow"
+    },
+    "askSelectionContract": {
+      "maximumSelectedRefs": 5,
+      "refs": "exact knowledge refs with canonical nonnull digest; duplicate object/version rejected",
+      "reading": "bounded exact selected Wiki versions prioritized; matching lexical candidate versions deduplicated",
+      "receipt": "actual evidence, exclusions and read usage distinguish selected intent from material read",
+      "idempotency": "selected refs, purpose and budget freeze under original key; unknown checked read-only without a new paid POST",
+      "oldServer": "when askSelection capability is absent, web omits selectedRefs and keeps legacy Ask path",
+      "browserEndToEnd": "passed with synthetic local answerer; lexical zero-match query read two selected exact Wiki pages"
+    },
+    "checks": {
+      "coreFirstFull": {
+        "passed": 398,
+        "failed": 2,
+        "reason": "Node TSX App import attempted to load Evolution.css; fixed by moving CSS import to browser main entry"
+      },
+      "coreFinalFull": {
+        "passed": 416,
+        "failed": 0,
+        "skipped": 0,
+        "log": "/tmp/wiki-pr8-release-tests.log",
+        "includes": "new real HTTP/PG selected-reference regression and full coordination end-to-end suite"
+      },
+      "publicDocumentOnboarding": {
+        "status": "passed",
+        "schemaDropped": true,
+        "log": "/tmp/wiki-pr8-onboarding.log"
+      },
+      "docsBuild": {
+        "status": "passed",
+        "log": "/tmp/wiki-pr8-docs-build.log"
+      },
+      "docsCheck": {
+        "status": "passed",
+        "log": "/tmp/wiki-pr8-docs-check.log"
+      },
+      "docsTests": {
+        "status": "passed",
+        "count": 20,
+        "log": "/tmp/wiki-pr8-docs-tests.log"
+      },
+      "finalBuild": {
+        "status": "passed",
+        "exitCode": 0,
+        "log": "/tmp/wiki-pr8-release-build.log"
+      },
+      "businessFull": {
+        "status": "passed",
+        "exitCode": 0,
+        "tests": 1004,
+        "passed": 998,
+        "failed": 0,
+        "skipped": 6,
+        "durationMs": 83709.805,
+        "log": "/tmp/wiki-pr8-commerce-final.log",
+        "skipReason": "existing optional configuration cases"
+      },
+      "browser": {
+        "status": "passed_bounded_engineering_flow",
+        "space": 89,
+        "desktopWidth": 1159,
+        "mobileLayoutWidth": 390,
+        "horizontalOverflow": false,
+        "evidence": [
+          "pr8-ask-selection-desktop.png",
+          "pr8-ask-selection-mobile.png"
+        ],
+        "actualLedger": {
+          "askOperations": 1,
+          "rows": [
+            {
+              "state": "answered",
+              "evidence_count": 2,
+              "read_usage": {
+                "maxReadBytes": 60000,
+                "wikiPayloadBytes": 5345,
+                "preparedInputBytes": 2428,
+                "sourceContentBytes": 0
+              },
+              "cost": {
+                "money": {
+                  "state": "known",
+                  "amount": 0,
+                  "source": "synthetic_local_no_paid_calls",
+                  "currency": "USD"
+                },
+                "tokens": {
+                  "state": "known",
+                  "value": 0
+                },
+                "modelCalls": {
+                  "state": "known",
+                  "value": 0
+                }
+              }
+            }
+          ]
+        },
+        "observations": [
+          "default 3D retained; 2D/list and perspective controls accessible; co-reading choices preserved through mode switches",
+          "zero lexical result with selected A/B produced two exact Wiki evidence receipts; actual paid model calls and money zero",
+          "Wiki and original source reading returned to the same answered operation; durable Ask rows remained one and evidence remained two Wiki pages",
+          "maintenance task -> compilation -> candidate -> return retained selected task",
+          "unknown maintenance receipt kept unknown calls/tokens/money after read-only refresh"
+        ],
+        "repairs": [
+          "real desktop clipping reproduced before scroll fix; click succeeded after final CSS build",
+          "first fixture renamed seed principal and thus lost original source ACL; selected refs were correctly excluded and no provider called; demo now retains seed principal"
+        ],
+        "limits": [
+          "mobile layout only; no phone touch approval",
+          "no new system reduced-motion acceptance or user visual signoff",
+          "browser selection-change probe did not execute because of stale snapshot ref; freeze covered by state and HTTP tests",
+          "post-request fetch wrapper did not intercept the client captured fetch; no network POST-count claim from it; final durable ledger is authoritative"
+        ],
+        "cleanup": {
+          "demoExitCode": 0,
+          "readyFileRemoved": true,
+          "page": "about:blank",
+          "spaceRetainedForActiveGoal": true
+        },
+        "notice": "Ego Lite update available, not upgraded"
+      },
+      "businessTypes": {
+        "status": "passed",
+        "exitCode": 0,
+        "command": "tsc --noEmit",
+        "log": "/tmp/wiki-pr8-commerce-types.log"
+      },
+      "businessBoundaries": {
+        "status": "passed",
+        "exitCode": 0,
+        "log": "/tmp/wiki-pr8-commerce-boundaries.log"
+      }
+    },
+    "limits": [
+      "No real model transport or semantic gold validation",
+      "No external business owner publication guarantee",
+      "No production deployment",
+      "Earlier 383/998 and UI screenshots remain historical; browser QA on PR8 base is pending"
+    ],
+    "sourceSha256": {
+      "packages/knowledge-application/src/ask.ts": "5bae2061fc789d6dbfa0f05a19db9e5c6f47df18cd83be904f125d5c0bca3bbe",
+      "packages/knowledge-application/src/source-plan.ts": "ab8c41427e47cf6ceda0007aea924d48b794d2b7edbf06135effbbc825f1cdfd",
+      "packages/knowledge-application/src/coordination.ts": "5015be15ef9c3606854e7f5980ea28e08646b190e88cb776fb3897fc7c5bd9e5",
+      "packages/knowledge-contracts/src/index.ts": "f69743f2179e08e7c62cac05433d309782aeff5f79a7b72e7244486df3127cc5",
+      "apps/knowledge-api/src/index.ts": "b90e56c090ee3bafe19bffed75b460c851464f26b739916b612887155c170aaa",
+      "apps/knowledge-web/src/App.tsx": "e1ece831a6a59916dd5350fefe589f690f3777e1f1312adf5dc57337f25aaeb3",
+      "apps/knowledge-web/src/ask-panel.tsx": "568db7da918e4831c388200126c8f8af695d210a00ac56a0bf1c7354a7152996",
+      "apps/knowledge-web/src/styles.css": "91a878b39bea2437808ac9b74e3190d343b84b07ac4fbdeb5a8eb260161ea60f",
+      "scripts/runtime/knowledge-coordination-demo.ts": "ed21ffcbb1d003bc903206bed1cabd5963f74b79872b59d130f93fad71966fd6"
+    }
+  },
+  "delivery": {
+    "status": "draft_pull_request",
+    "url": "https://github.com/cyl19970726/knowledge/pull/9",
+    "base": "main",
+    "baseContainsPr8": "2f66ba174bbd47be92d0bbdc238159d33c5a74f8",
+    "implementationHead": "dde59fcfae3bee3310784e3f2d918ebe599c6a90",
+    "ci": {
+      "status": "success",
+      "url": "https://github.com/cyl19970726/knowledge/actions/runs/41374946836/job/125053041464",
+      "scope": "tested implementation head; later delivery metadata changes are documentation only"
+    },
+    "merged": false,
+    "deployed": false,
+    "goal": "active",
+    "testContainerStoppedAndRemoved": true
+  }
+}

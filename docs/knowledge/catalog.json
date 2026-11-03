@@ -2,7 +2,7 @@
   "title": "通用认知知识库 · 产品、能力与实现",
   "brand": "知识库",
   "home_id": "knowledge-overview",
-  "updated": "2026-11-02",
+  "updated": "2026-11-03",
   "documents": [
     {
       "id": "knowledge-overview",
@@ -72,6 +72,16 @@
       "status": "统一产品方案 · 功能分阶段实现 · 3D尚未落地",
       "summary": "三视角产品定义、现有能力与缺口、共享上下文及纵向交付",
       "date": "2026-11-01",
+      "lifecycle": "current"
+    },
+    {
+      "id": "knowledge-frontend-wiki-loop-adaptation",
+      "path": "frontend/wiki-loop-adaptation.md",
+      "title": "Ingest / Query / Lint 工作台功能适配",
+      "group": "产品与交互",
+      "status": "功能适配合同 · 实现与验收分别见状态页",
+      "summary": "知识对象、三种操作、共同上下文、状态表达与体验验收",
+      "date": "2026-11-02",
       "lifecycle": "current"
     },
     {
@@ -232,6 +242,26 @@
       "status": "源码PR66已合main · 合并前固定实施回执 · 未部署",
       "summary": "公共合同、独立服务和网页、来源证明、使用反馈及隔离合成验证；明确真实业务与 M4/M5 边界。",
       "date": "2026-10-26",
+      "lifecycle": "record"
+    },
+    {
+      "id": "knowledge-wiki-loop-20261102",
+      "path": "evidence/wiki-loop-implementation-20261102.md",
+      "title": "Ingest / Query / Lint 实施回执",
+      "group": "当前实现回执",
+      "status": "PR8 后本地候选 · 合成工程回执 · 未部署",
+      "date": "2026-11-02",
+      "summary": "Ask、来源登记、编纂、维护与协调的分期工程证据；实际验收以对应基线和回执为准。",
+      "lifecycle": "record"
+    },
+    {
+      "id": "knowledge-answer-research-design-audit-20261102",
+      "path": "evidence/answer-research-design-audit-20261102.md",
+      "title": "问答继续研究：页面审视与设计取舍",
+      "group": "当前实现回执",
+      "status": "Product Design 流程审视 · 合成页面 · 未部署",
+      "date": "2026-11-02",
+      "summary": "用当前应用内浏览器截图核对从回答到候选的阅读顺序、状态表达和技术细节层级。",
       "lifecycle": "record"
     },
     {
@@ -409,6 +439,26 @@
       "date": "2026-10-23",
       "lifecycle": "record",
       "subgroup": "历史工程验收"
+    },
+    {
+      "id": "knowledge-starmap-research-designs-20261102",
+      "path": "evidence/starmap-research-designs-20261102.md",
+      "title": "星图与问答联动的设计提案",
+      "group": "当前实现回执",
+      "status": "已选第2张 · 共享分栏已实现并核对",
+      "date": "2026-11-02",
+      "summary": "问题驱动的正文与星图并列布局、三种提案及用户选定的可调分栏修订。",
+      "lifecycle": "record"
+    },
+    {
+      "id": "knowledge-wiki-library-20261103",
+      "path": "evidence/wiki-library-20261103.md",
+      "title": "Wiki页库与修复任务入队验证",
+      "group": "当前实现回执",
+      "status": "本地工程与浏览器通过 · 未部署",
+      "date": "2026-11-03",
+      "summary": "独立Wiki目录、准确正文与图谱往返，以及失效事件和Lint到修复队列的边界。",
+      "lifecycle": "record"
     }
   ],
   "hash_aliases": {},
@@ -508,6 +558,49 @@
     "../assets/knowledge-workbench/r1/reduced-motion-1440.jpg",
     "../assets/knowledge-graph-space-20261031/02-fitted-overview.png",
     "../assets/knowledge-graph-space-20261031/03-challenge-context.png",
-    "../assets/knowledge-graph-space-20261031/current-graph-metrics.json"
+    "../assets/knowledge-graph-space-20261031/current-graph-metrics.json",
+    "../assets/wiki-loop-20261102/ask-desktop.png",
+    "../assets/wiki-loop-20261102/ask-mobile.png",
+    "../assets/wiki-loop-20261102/ask-recovered-mobile.png",
+    "../assets/wiki-loop-20261102/review-desktop.png",
+    "../assets/wiki-loop-20261102/review-mobile-pending.png",
+    "../assets/wiki-loop-20261102/review-mobile-published.png",
+    "../assets/answer-research-design-20261102/01-answer-refined.png",
+    "../assets/answer-research-design-20261102/01-answer.png",
+    "../assets/answer-research-design-20261102/02-research-preparation-refined.png",
+    "../assets/answer-research-design-20261102/02-research-preparation.png",
+    "../assets/answer-research-design-20261102/03-research-result-refined.png",
+    "../assets/answer-research-design-20261102/03-research-result.png",
+    "../assets/answer-research-design-20261102/04-candidate-review-refined.png",
+    "../assets/answer-research-design-20261102/04-candidate-review.png",
+    "../assets/answer-research-design-20261102/05-candidate-mobile-refined.png",
+    "../assets/answer-research-design-20261102/06-candidate-389-refined.png",
+    "../assets/wiki-loop-20261102/answer-research-desktop.png",
+    "../assets/wiki-loop-20261102/answer-research-recovered-mobile.png",
+    "../assets/knowledge-starmap-designs-20261102/graph-with-answer.png",
+    "../assets/knowledge-starmap-designs-20261102/reading-with-graph.png",
+    "../assets/knowledge-starmap-designs-20261102/candidate-in-graph.png",
+    "../assets/knowledge-starmap-designs-20261102/selected-resizable.png",
+    "../assets/knowledge-starmap-designs-20261102/prompts.json",
+    "../assets/starmap-layout-20261102/candidate-final.png",
+    "../assets/starmap-layout-20261102/desktop-answer-refined.png",
+    "../assets/starmap-layout-20261102/desktop-candidate-initial.png",
+    "../assets/starmap-layout-20261102/desktop-final.png",
+    "../assets/starmap-layout-20261102/desktop-initial-normalized.png",
+    "../assets/starmap-layout-20261102/desktop-initial.png",
+    "../assets/starmap-layout-20261102/graph-expanded-final.png",
+    "../assets/starmap-layout-20261102/graph-expanded-initial.png",
+    "../assets/starmap-layout-20261102/interaction-final.json",
+    "../assets/starmap-layout-20261102/interaction-initial.json",
+    "../assets/starmap-layout-20261102/interaction-ledger-initial.json",
+    "../assets/starmap-layout-20261102/ledger-final.json",
+    "../assets/starmap-layout-20261102/mobile-final.png",
+    "../assets/starmap-layout-20261102/mobile-initial.png",
+    "evidence/starmap-layout-validation-20261102.json",
+    "../assets/wiki-library-20261102/review-due-page.png",
+    "../assets/wiki-library-20261102/page-desktop.png",
+    "../assets/wiki-library-20261102/interaction.json",
+    "../assets/wiki-library-20261102/catalog-mobile.png",
+    "../assets/wiki-library-20261102/catalog-desktop.png"
   ]
 }

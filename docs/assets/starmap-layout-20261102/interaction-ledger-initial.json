@@ -1,0 +1,81 @@
+{
+  "scope": "synthetic QA before first visual fixes",
+  "answers": [
+    {
+      "id": "e518824d-822d-42ee-b120-8dfb7be340bd",
+      "state": "answered",
+      "evidence_count": 5,
+      "cost": {
+        "money": {
+          "state": "known",
+          "amount": 0,
+          "source": "synthetic_local_no_paid_calls",
+          "currency": "USD"
+        },
+        "tokens": {
+          "state": "known",
+          "value": 0
+        },
+        "modelCalls": {
+          "state": "known",
+          "value": 0
+        }
+      }
+    }
+  ],
+  "compilations": [
+    {
+      "id": "aeb41195-73fa-4895-96f9-420201c7f6c9",
+      "state": "waiting_for_review",
+      "question": "核对霁蓝罗盘288c7b6c的来源条件",
+      "answer_origin": null,
+      "cost": {
+        "money": {
+          "state": "known",
+          "amount": 0,
+          "source": "synthetic_no_model",
+          "currency": "USD"
+        },
+        "tokens": {
+          "state": "known",
+          "value": 0
+        },
+        "modelCalls": {
+          "state": "known",
+          "value": 0
+        }
+      }
+    },
+    {
+      "id": "c257e9a7-1cd5-4281-bfcc-2f772a87dc3f",
+      "state": "waiting_for_review",
+      "question": "如何在故事开始前清楚展示商品外观特征？",
+      "answer_origin": {
+        "answerId": "e518824d-822d-42ee-b120-8dfb7be340bd",
+        "question": "如何兼顾叙事吸引与商品辨认？",
+        "claimIndexes": [
+          0,
+          1
+        ],
+        "answerFingerprint": "88e95964ec5eafa34f904199c6c700233f5e2629faf92a580a295d71e98346fd"
+      },
+      "cost": {
+        "money": {
+          "state": "known",
+          "amount": 0,
+          "source": "synthetic_no_model",
+          "currency": "USD"
+        },
+        "tokens": {
+          "state": "known",
+          "value": 0
+        },
+        "modelCalls": {
+          "state": "known",
+          "value": 0
+        }
+      }
+    }
+  ],
+  "currentWiki": 32
+}

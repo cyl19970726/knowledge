@@ -33,6 +33,14 @@ make docs-knowledge-check
 
 AI 案头判断、真人脚本复述、实物与制作核验、真实观看结果分别记录。未执行的类别保持未观察；有据保留旧知识也是有效结果。私有原稿、真实响应、帧图、连接配置和参与者记录不进入可公开文档或版本库。
 
+## 从回答继续研究并核对原键（本地候选）
+
+先读实例能力：`ask`/`answer` 是当前有据问答，`researchAnswer` 要求编纂写权限，`compilation` 要求编纂读权限。只有原结果为 `answered` 且含 `answerFingerprint` 时，才让用户明确选择 claim、填写后续问题及费用上限。旧服务不返回指纹时不能发起这条研究；原答案只是研究线索，新编纂须重新准确读取完整原读集。合成演示可显式选择 0 USD 上限，不代表真实提供方可免费执行。
+
+研究写入用单独固定幂等键。当前标签页仅持久化原键和严格校验的调用者输入，不保存令牌、答案、Wiki 或来源正文。响应丢失、刷新或重新认证后，先用 `compilationLookup(key,purpose)` 或原编纂 ID GET 核对；不要换键自动 POST。候选形成后仍需独立审阅。若原 Ask 因旧 Wiki 换版而不再可读，已发表或拒绝的编纂仍可按原键查看历史 `answerOrigin`；来源撤权后这条历史读取也要拒绝。新键启动研究必须符合当前资格。
+
+本地浏览器走查已覆盖一个含两份 Wiki 和 176 字节来源原文的 Ask、两次用户明确的后续研究，以及第二次研究响应延迟期间刷新后只读恢复；这证明该合成路径的原键恢复行为，不证明真实模型费用、语义质量或自动发表。最终全量构建与回归状态按[当前状态](current-state.md)更新。
+
 ## 配置业务来源所有者
 
 PR68 已随 PR69 合入 `main`，保留两个运行边界。业务宿主持有旧分析仓储与对象存储读取凭据，通过私有 `KNOWLEDGE_SOURCE_OWNER_POLICY_PATH`、`KNOWLEDGE_SOURCE_OWNER_TOKEN` 和 `KNOWLEDGE_SOURCE_OWNER_SUBJECT_ID` 显式装配来源读取器。策略由代码中的 `BusinessSourcePolicySchema` 校验，按原项目、空间、来源对象、版本和用途授予权限；同一来源与用途的重复授权视为配置错误，不能靠追加一条撤权记录覆盖旧条目。
@@ -40,6 +48,34 @@ PR68 已随 PR69 合入 `main`，保留两个运行边界。业务宿主持有�
 独立知识 API 只配置 `KNOWLEDGE_SOURCE_OWNER_URL` 和服务间读取令牌 `KNOWLEDGE_SOURCE_OWNER_TOKEN`，或通过 `sourceOwner` 参数注入等价端口。业务宿主的路由是 `/api/v1/business-source-owner`；独立服务不构造视频分析宿主，也不取得对象存储或平台凭据。不配置该连接时明确显示所有者未连接。只读端口接受显式 HTTPS 或回环地址，不追随重定向或调用者提交的任意网址。
 
 这项读取装配与模型、采集、Worker 执行和发表配置分别处理。原报告、帧与知识行不因接入而重写；成功内容读取单独留回执。重启试用前确认端口、进程所有者、隔离数据库和清理责任，结束后停止自己拥有的服务并核对原记录保全。
+
+## 运行周期元数据维护（2026-11-02 本地候选）
+
+Worker 的维护模式须显式开启，并提供确定的项目、空间、用途及 active writer grant；API 也须显式启用维护能力及相应 `maintenance:read` / `maintenance:write` action。默认 Worker 每轮按来源与知识事件流收集任务，并以日期周期、确定分片和页数上限推进当前 Wiki 页头 Lint。完成的分片移到下一片；进程重启从持久 pass 游标恢复。`collect` 的事件游标与 `lint` 的周期游标分别管理，不用同一个 SDK 幂等 header 键重放下一页。
+
+默认模式只做元数据收集与七类结构提示，不执行语义任务。宿主需要实际任务执行时才注入 `MaintenanceProcessor`，并另行验证提供方授权、费用上限、外发、响应与取消恢复。任务账本保存尝试、租约、取消请求、分发准备及响应 checkpoint；外部调用状态不明时按原任务和回执核对，不换键重发。逐对 `DecisionProvider` 的应用与受保护账本可独立接入；Jev/OpenAI codec 仅处理 wire data，不含网络 transport 或凭据。
+
+要运行来源研究协调，API 须同时显式配置 `sourcePlanner`、`compiler`、`enableMaintenance` 和 `coordinationPolicy`，并使执行端使用注入的维护 processor；CLI 默认不内置真实 planner 或模型连接。先按任务 ID 读取 `/coordination-runs/by-task/:taskId`，必要时用 `POST /maintenance/process-one` 推进一项；按运行 ID、各子操作原键及来源权限核对进度。每步预算和请求已冻结，共享总期限至多五分钟；未知结果只按原键 lookup，取消、租约丢失或 ACK 丢失不能用新键重新调用模型。独立审阅通过同一事务关闭编纂、协调运行和任务；批准与拒绝的任务状态均为 completed，应查看 `compilationOutcome` 区分。过期 ACK 以实际发表或拒绝记录为准。失效旧 Wiki 的 `recompile` 队列任务仍待专门修复与执行接线；周期 `relation_check` 是另一路当前页头核查。
+
+检查一个 Lint 周期时，先看 `complete`、`scanned`、`startEpoch`、`observedEpoch` 和 `omittedReasons`，再看累计 `findingCount`。`findingIds` 仅是最近一页、最多 1000 个的预览；完整发现用 `maintenanceFindings` 分页核对。`incremental_current_heads` 不是时间点快照，周期内页头变化可能使旧 key 未覆盖；新周期才重扫。发现是待审提示，不自动改变知识或触发编纂。完整构建和独立审查以[当前状态](current-state.md)所指的对应回执为准。
+
+## 推进当前 Wiki 语义扫描（开发工作树候选）
+
+`SemanticSweep` 只读取当前已发表 Wiki 页头的元数据，不读正文、不执行判断。API 需显式装配编纂器、source intake、协调策略、维护能力与 active writer grant，并授予 `maintenance:read` / `maintenance:write`；`POST /maintenance/semantic-sweeps` 一次仅推进**一个分片的一页**，`GET /maintenance/semantic-sweeps/:passId?purpose=...` 按原范围读取。SDK 对应 `runSemanticSweep({purpose,cycleKey,shard,shardCount,limit,maxTasksPerShard,methodVersion,rubricVersion}, writeOpts)` 与 `semanticSweep(passId,purpose)`。`limit` 为 1–100，`maxTasksPerShard` 为 1–10000；跨页沿用相同周期、分片和方法版本，写入调用使用自己的 header，不能把原写入键当成下一页游标。
+
+检查 `scanned`、`lastObjectId`、`complete`、`limitReached`、`taskCount`、`startEpoch`、`observedEpoch` 和 `omittedReasons`。同一事务读取页头元数据，并提交 `relation_check` 任务、累计数与游标；`taskIds` 只预览最近一页最多 100 个，查全量任务须按维护任务入口分页。`maxTasksPerShard` 到达时若还有页头，`limitReached=true`、`complete=false`，剩余范围明确记录遗漏，不可称为扫描完成。`incremental_current_heads` 可能漏掉周期内新出现的较小键或换版，新周期才重新遍历。提交状态不明时先按原 pass 核对，不盲目新开周期。
+
+Worker 只有宿主显式提供 `maintenance.semanticSweep` 和支持 `relation_check` 的 processor 才按 UTC 日期组成周期键、逐片推进，并避免同一无进展状态忙转。CLI 的默认维护装配**不启用**语义扫描，也没有真实模型 transport；仅有任务不表示已经执行判断。任务处理仍须核对原键、用途、来源权限、外发授权和预算，纯 Wiki 路径见[接入手册](integration.md)。
+
+维护页头扫描的游标、分片和排序与 `ccl_knowledge_revisions_project_scope_uuid_idx` 的 project/space/UUID 顺序一致；准确 head join 继续排除旧版本。该索引由核心迁移创建。统计信息更新后的合成抽样计划使用索引，完整结果与失败对照见[周期维护回执](evidence/wiki-periodic-maintenance-validation-20261102.json)。分片仍可能过滤更多索引项，`LIMIT` 只界定返回页大小，不能解读为数据库只检查同样数量的行。
+
+## 重建当前页检索投影（G5 本地候选）
+
+先确认 API 显式启用维护、当前主体拥有相应 `maintenance:read` / `maintenance:write`，并已配置 active writer grant。用 SDK `searchProjectionStatus(purpose)` 或 `GET /maintenance/search-index?purpose=...` 读取认证项目与空间的状态；`null` 表示尚无该空间状态。`ready=false` 时查询会回退原词项 SQL，服务可继续检索。`ready=true` 也只是预筛可用，不是问答、权限或性能验收。
+
+每次用 `rebuildSearchProjection({purpose,limit,restart:false}, writeOpts)` 或对应 POST 推进有界一批，`limit` 取 1–5000；CLI 维护模式默认 100/批。观察 `lastObjectId`、`scanned`、`blockedRows`、`complete` 和 `ready` 后再决定是否继续。只有明确要重新从头覆盖核验时才传 `restart:true`；后续批次恢复 `false`。每次写调用使用自身的操作 header，不把同一个 header 键当作“下一页”游标或重放保证。状态与异常提交结果按原作用域核对，未知提交不推定该批未执行。Worker 可选 `searchProjection:{limit}`，遇到已 `ready` 或受超大字段阻塞而无进展时不会把它持续当成新工作忙转。
+
+重建在项目锁与受保护表内执行，按当前页头分页，清理仅存于缓存的孤儿项，核对页头版本、空间、格式与阻塞数后才标记 `ready`。标题、正文、身份键及别名规范化后合计超过 200000 UTF-8 字节会使该页不可索引、`blockedRows>0`；反复调用同一批不会修复该内容，应先通过正常修订路径处理再重验。手工改缓存会使空间失去 `ready` 并重置游标；页头或修订触发器在同一事务刷新投影。普通页头变化若不改变覆盖与阻塞状态，不额外重写同一空间状态；同值重建也不重写已有 gram 行。`updatedAt` 表示重建状态变化，不是每个页头的最新刷新时间；准确 head 与项目 epoch 才是对应版本权威。单字 Unicode 词项、格式不符、未就绪或诊断关闭时整次查询走原 SQL，原评分与权限路径不变。源码依据：重建和触发器 (`packages/knowledge/src/wiki-search-projection.ts`)、检索回退 (`packages/knowledge/src/store.ts`)、Worker 进度 (`apps/knowledge-worker/src/index.ts`)。G5 的完整构建、规模数据和最终差异证据仍以[当前状态](current-state.md)所列待回执为准。
 
 ## 修改文档后的检查
 
@@ -57,3 +93,10 @@ python3 -m unittest tests.test_build_docs -v
 源码与文档分别通过 PR 交付，整合时解决 catalog 和实施回执归属，再重新生成与检查两套 HTML。Git 合并记录不证明服务已切换；正式部署另按明确授权与运行回执处理。
 
 文档回滚依靠 Git 中的完整源文件、稳定文档 ID 和迁移映射。不要删除原业务数据或改写历史回执来让当前说明显得一致。
+
+
+### 当前 Wiki 页与修复任务
+
+工作台侧栏“Wiki页”按当前scope和purpose浏览当前版本，使用 `wikiCatalog` 能力及目录种类过滤；不能用当前图节点数量代替页库总数。失效页仍可按服务许可读取原文核对。
+
+发表事件的superseded与来源更新的supersedes会触发关键依赖闭包的修复任务；Lint的到期和关键依据失效也可回填任务。有效新页交由既有周期扫描处理。当前processor尚未领取recompile，运维不得将已入队写成已修复；后续验收须走到独立审阅、发表及下一轮查询。

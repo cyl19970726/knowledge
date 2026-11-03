@@ -1,0 +1,123 @@
+{
+  "schemaVersion": "wiki-loop-g1v3-validation/1",
+  "date": "2026-11-02",
+  "baseRevision": "eecf30e90d6700d06b70d09402ab45a1567b28fb",
+  "branch": "codex/wiki-ingest-query-lint",
+  "state": "uncommitted local candidate",
+  "environment": {
+    "node": "24.21.0",
+    "postgres": "17.11-alpine",
+    "database": "dedicated loopback ccl_test_wiki; unique schema per test"
+  },
+  "checks": {
+    "reviewedFullBuild": {
+      "command": "npm run build",
+      "exitCode": 0
+    },
+    "reviewedCoreTests": {
+      "command": "TEST_DATABASE_REQUIRED=1 npm test",
+      "exitCode": 0,
+      "tests": 242,
+      "pass": 242,
+      "fail": 0,
+      "skipped": 0
+    },
+    "initialTargeted": {
+      "passed": 29,
+      "failed": 0,
+      "overlapsCore": true
+    }
+  },
+  "review": {
+    "finding": "revocation during awaited dispatch checkpoint could still reach provider",
+    "failingRegressionObserved": {
+      "providerCalls": 1,
+      "expected": 0
+    },
+    "fix": "revalidate after checkpoint, assert frozen epoch, sync deadline check, then invoke",
+    "passingRegression": {
+      "providerCalls": 0,
+      "state": "failed",
+      "knownCalls": 0
+    },
+    "independentFocusedReview": "passed",
+    "remainingBoundary": "read-time dispatch authorization; no external network transaction/lease guarantee"
+  },
+  "browser": {
+    "fixedBuild": true,
+    "refreshedBeforeUiAcknowledgement": true,
+    "storedFields": [
+      "input",
+      "key",
+      "v"
+    ],
+    "tokenPersisted": false,
+    "answerPersisted": false,
+    "originalKeyPreserved": true,
+    "question": "查询 visibility",
+    "money": "2.50",
+    "sourceChecked": true,
+    "askPostsAfterReload": 0,
+    "lookupGets": 1,
+    "claimCount": 1,
+    "readUsage": {
+      "maxReadBytes": 60000,
+      "wikiPayloadBytes": 5003,
+      "preparedInputBytes": 2332,
+      "sourceContentBytes": 176
+    },
+    "actualMoney": {
+      "state": "known",
+      "amount": 0,
+      "source": "synthetic_local_no_paid_calls",
+      "currency": "USD"
+    },
+    "actualCalls": {
+      "state": "known",
+      "value": 0
+    },
+    "serverOperationCount": 1
+  },
+  "browserScopeNote": "Refresh UI and payload-budget walkthrough ran before the dispatch-fence correction. UI and accounting code did not change in that correction; the reviewed final build and 242 tests cover the corrected backend.",
+  "contentBudgetScope": {
+    "wiki": "UTF-8 PostgreSQL JSON payload returned to application",
+    "source": "UTF-8 managed source text returned to application",
+    "preparedInput": "serialized evidence/ question/ purpose input size checked separately",
+    "excluded": [
+      "database internal scanning and disk IO",
+      "metadata responses",
+      "wire framing and failed transport overhead"
+    ]
+  },
+  "sourceFilesSha256": {
+    "packages/knowledge-application/src/index.ts": "32a103963273d1368d07bc9639a813f5b257c74fa860d473a6a5771842b00826",
+    "packages/knowledge-application/src/ask.ts": "5dcf1a0a726405ce05b3e41ef972bb8ed1c2c908bc3fc5724330027df4fe5366",
+    "packages/knowledge/src/store.ts": "86fe6be609909ea192b6c04767b174710589b9cb49754e8a0a1915bf5738dbbf",
+    "packages/knowledge/src/types.ts": "9cdedfbd4d6a83ca34288c94a2af6520d2687d37474b0327f3c0b7c5e6eb3b9e",
+    "packages/adapters/knowledge-service/src/sources.ts": "45caf2994804afe043d85fb70185482071cc80533328036f7463a369620e57b0",
+    "packages/adapters/knowledge-service/src/source-owner.ts": "ce39b24d0ce00580bfca47cfb0b973fd4e67997fd6a3eb8b989d7b9fbc10ba7d",
+    "packages/knowledge-contracts/src/index.ts": "7ec4931f3377da5030e5988d041ec7c7874238a1c98d5119cab3794c70ff1562",
+    "packages/knowledge-client/src/index.ts": "6ea2d8ded8314e5956720e356dd81fa5f3f74b46ace1ea3cea6f60f605e43931",
+    "apps/knowledge-api/src/index.ts": "13a1d6488b5cf8f3d5d15bed7c8d9019b664ec88e32107c0c2f2aeffc82b3843",
+    "apps/knowledge-web/src/App.tsx": "f19015e0c67ee82b6988f380ff74737ab629920202c0608aae0e018f605e4447",
+    "apps/knowledge-web/src/ask-state.ts": "04b666feb64ce853c6d85beaafcdfd478523df814eafde45546c7c6c85e10af7",
+    "apps/knowledge-web/src/ask-panel.tsx": "f5bfb006b9dafe95699b643c9fdf06f0ebca579bddc01ddff292997dd85efd97",
+    "apps/knowledge-web/test/ask-state.test.ts": "94c79e23a4cf91c2ed7e2bab15cb11a19aabc79d172145fd8180d539638187f8",
+    "apps/knowledge-api/test/ask-bounded.integration.test.ts": "fed30be9ca8d147e462c99da596a751cd51aef5468837004bae50cb2771b4258",
+    "apps/knowledge-api/test/source-bounded.integration.test.ts": "6a39351398752d021a7165e763dd54b95b26ce5f9fb8369e5009fb0210f3a26c",
+    "packages/knowledge/test/wiki-bounded-read.integration.test.ts": "204296840b5af8439b85a3231e92a4c18f071fa30fcb301d19c1fdea51dbf4de",
+    "packages/knowledge-application/test/ask-dispatch-rights.test.ts": "7b104ad3d67d4f8725b3247f30d8465cc9319db4c1db9286181815d2bfefcb34",
+    "packages/knowledge-client/test/capability-recovery.test.ts": "c637d376dde25bea07851cd5ab0b81f4e8ea166ab50701f7323d7a588a41fd48"
+  },
+  "actualPaidCalls": 0,
+  "productionAccess": false,
+  "deployments": 0,
+  "remaining": [
+    "real model adapter, authorized disclosure and semantic evaluation",
+    "bounded business-owner HTTP bridge",
+    "Ingest entity/source provenance",
+    "periodic Lint and judgment ledger",
+    "reviewed two-round cognition loop",
+    "10k/100k scale and business value"
+  ]
+}

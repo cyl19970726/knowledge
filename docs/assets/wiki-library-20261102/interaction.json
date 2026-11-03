@@ -1,0 +1,27 @@
+{
+  "pagination": {
+    "first": 24,
+    "afterMore": 32,
+    "returnLoaded32": true
+  },
+  "search": {
+    "query": "信息职责",
+    "matched": 1,
+    "sourceReturnPreserved": true
+  },
+  "nonAdmittedReadable": true,
+  "sourceBytes": 239,
+  "split": {
+    "before": "52",
+    "dragged": "46",
+    "keyboard": "48",
+    "reset": "52"
+  },
+  "mobile": {
+    "height": 844,
+    "overflow": false,
+    "separatorVisible": false,
+    "width": 390
+  },
+  "consoleErrors": []
+}

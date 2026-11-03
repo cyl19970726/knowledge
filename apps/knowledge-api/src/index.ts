@@ -9,23 +9,26 @@ import {Pool} from 'pg';
 import {ZodError} from 'zod';
 import {createKnowledgeStore} from '@commerce/knowledge-core/store';
 import {migrateKnowledge} from '@commerce/knowledge-core/migrations';
+import {createWikiSearchProjection} from '@commerce/knowledge-core/wiki-search-projection';
 import {KnowledgeError} from '@commerce/knowledge-core/types';
+import {digest} from '@commerce/knowledge-core/utils';
 import type {KnowledgeWriterGrant} from '@commerce/knowledge-core/writer-authority';
 import {listWikiPageProfiles,wikiPageProfileFingerprint} from '@commerce/knowledge-core/wiki-page';
 import {createKnowledgeApplication,createSourceApplication,createSyntheticResearchService,createUseFeedbackApplication,createReviewApplication,createFeedbackSourceApplication,
+  createAskWikiService,createAskAnswerReader,createAnswerResearchApplication,createSourceIntakeApplication,createWikiCompileApplication,createMaintenanceApplication,createRelationJudgmentApplication,createSourcePlanApplication,createCoordinationProcessor,type SourcePlanner,type CoordinationPolicy,type DecisionProvider,type WikiCompiler,type QueryAnswerer,
   type KnowledgeApplication,type Principal,type ReadContext,type CapabilityContext,type CapabilityPrincipal,type SyntheticResearchProvider,type SourceOwnerPort} from '@commerce/knowledge-application';
 import {createPgKnowledgeReceiptPort,migrateKnowledgeReadReceipts,createPgKnowledgeOperations,migrateKnowledgeOperations,
   createPgSourceRegistry,migrateManagedSources,createHttpSourceOwner,routeSourceOwners,createPgUseFeedbackPort,migrateKnowledgeUses} from '@commerce/knowledge-service-adapter';
 import {createPgReviewPort,migrateKnowledgeReviews,lookupCapabilityOperation,getCapabilityOperation,createPgFeedbackSourcePort,
-  createPgFeedbackResearchPort} from '@commerce/knowledge-service-adapter';
+  createPgFeedbackResearchPort,createPgKnowledgeAnswers,migrateKnowledgeAnswers,createPgSourceIntake,migrateSourceIntake,createPgWikiCompilations,migrateWikiCompilations,createPgWikiCompileStage,migrateMaintenanceTasks,createPgMaintenanceTasks,migrateWikiLint,createPgWikiLint,migrateRelationJudgments,createPgRelationJudgments,migrateSourcePlans,createPgSourcePlans,migrateCoordinationRuns,createPgCoordinationRuns,migrateSemanticSweeps,createPgSemanticSweep} from '@commerce/knowledge-service-adapter';
 import {CONTRACT_VERSION,CatalogRequestSchema,CompareRequestSchema,GraphRequestSchema,HistoryRequestSchema,KnowledgeRefSchema,QueryRequestSchema,ReadReceiptSchema,
   SourceUpsertSchema,ResearchRequestSchema,CancelRequestSchema,OperationLookupSchema,UseInputSchema,FeedbackInputSchema,ChangesRequestSchema,
-  ReviewRequestSchema,ReviewDecisionSchema,FeedbackSourceRequestSchema} from '@commerce/knowledge-contracts';
+  ReviewRequestSchema,ReviewDecisionSchema,FeedbackSourceRequestSchema,AskRequestSchema,SourceEventRequestSchema,EntityMentionExtractionSchema,WikiCompileRequestSchema,MaintenanceCollectRequestSchema,LintRequestSchema,RelationJudgmentRequestSchema,SearchProjectionBuildRequestSchema,SourcePlanRequestSchema,SemanticSweepApiRequestSchema,AnswerResearchRequestSchema} from '@commerce/knowledge-contracts';
 
 export interface KnowledgeApiConfig {pool:Pool;token:string;principal:Principal;port?:number;host?:string;
   writerGrant?:KnowledgeWriterGrant;enableSyntheticResearch?:boolean;researchProvider?:SyntheticResearchProvider;capabilities?:CapabilityPrincipal;
-  syntheticFixture?:boolean;feedbackSourceRightsPolicyRef?:string;sourceOwner?:SourceOwnerPort}
-export interface KnowledgeApi {app:Express;service:KnowledgeApplication;research:ReturnType<typeof createSyntheticResearchService>|null;listen():Promise<Server>}
+  syntheticFixture?:boolean;feedbackSourceRightsPolicyRef?:string;sourceOwner?:SourceOwnerPort;answerer?:QueryAnswerer;enableSourceIngest?:boolean;compiler?:WikiCompiler;authorizeCompilerDispatch?:Parameters<typeof createWikiCompileApplication>[0]['authorizeExternalDispatch'];sourceReaderIds?:readonly string[];enableMaintenance?:boolean;decisionProvider?:DecisionProvider;authorizeDecisionDispatch?:Parameters<typeof createRelationJudgmentApplication>[0]['authorizeExternalDispatch'];sourcePlanner?:SourcePlanner;authorizeSourcePlannerDispatch?:Parameters<typeof createSourcePlanApplication>[0]['authorizeExternalDispatch'];coordinationPolicy?:Omit<CoordinationPolicy,'providerFingerprint'>}
+export interface KnowledgeApi {app:Express;service:KnowledgeApplication;research:ReturnType<typeof createSyntheticResearchService>|null;coordination:ReturnType<typeof createCoordinationProcessor>|null;listen():Promise<Server>}
 function equalSecret(actual:string,expected:string):boolean {const a=Buffer.from(actual),b=Buffer.from(expected);return a.length===b.length&&timingSafeEqual(a,b);}
 const message=(error:unknown)=>error instanceof Error?error.message:'Unexpected error';
 
@@ -39,16 +42,42 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
   await migrateManagedSources(config.pool);
   await migrateKnowledgeUses(config.pool,{writerGrant:config.writerGrant});
   await migrateKnowledgeReviews(config.pool);
-  if(config.enableSyntheticResearch){if(!config.writerGrant)throw new Error('Synthetic research requires a trusted writer grant');await migrateKnowledgeOperations(config.pool);}
+  if(config.enableSyntheticResearch&&!config.writerGrant)throw new Error('Synthetic research requires a trusted writer grant');
+  // Reviews inspect operation lineage even when synthetic execution itself is disabled.
+  if(config.writerGrant)await migrateKnowledgeOperations(config.pool);
+  if(config.answerer||config.compiler){if(!config.writerGrant)throw new Error('AskWiki requires a trusted operation writer grant');await migrateKnowledgeAnswers(config.pool);}
+  if(config.enableSourceIngest){if(!config.writerGrant)throw new Error('Source intake requires a trusted writer grant');await migrateSourceIntake(config.pool);}
+  if(config.compiler){if(!config.writerGrant||!config.enableSourceIngest)throw new Error('Wiki compiler requires an active writer configuration and explicit source intake');await migrateWikiCompilations(config.pool);}
+  if(config.sourceReaderIds&&(config.sourceReaderIds.length>100||config.sourceReaderIds.some(id=>!id.trim()||id.length>200)))throw new Error('Source reader IDs require bounded authenticated identities');
+  if(config.enableMaintenance){if(!config.writerGrant)throw new Error('Maintenance requires an active writer configuration');await migrateSourceIntake(config.pool);await migrateMaintenanceTasks(config.pool);await migrateWikiLint(config.pool);}
+  if(config.decisionProvider){if(!config.writerGrant)throw new Error('Decision judgment requires an active writer configuration');await migrateRelationJudgments(config.pool);}
+  if(config.sourcePlanner){if(!config.writerGrant||!config.enableSourceIngest)throw new Error('Source planner requires explicit source intake and writer');await migrateSourcePlans(config.pool);}
+  if(config.coordinationPolicy){if(!config.compiler||!config.enableMaintenance)throw new Error('Coordination requires explicit compiler and maintenance');await migrateCoordinationRuns(config.pool);await migrateSemanticSweeps(config.pool);}
   const app=express();app.disable('x-powered-by');app.use(express.json({limit:'1mb'}));
   const store=createKnowledgeStore(config.pool,{writerGrant:config.writerGrant}),receipts=createPgKnowledgeReceiptPort(config.pool);
-  const sourceRegistry=createPgSourceRegistry(config.pool,{writerGrant:config.writerGrant,readerIds:[config.principal.id]});
+  const sourceRegistry=createPgSourceRegistry(config.pool,{writerGrant:config.writerGrant,readerIds:config.sourceReaderIds??[config.principal.id]});
   const sources=createSourceApplication(sourceRegistry);
   const useFeedback=createUseFeedbackApplication(createPgUseFeedbackPort(config.pool,{writerGrant:config.writerGrant}));
   const reviews=config.writerGrant?createReviewApplication(createPgReviewPort(config.pool,config.writerGrant,sourceRegistry)):null;
   const feedbackSources=config.writerGrant&&config.feedbackSourceRightsPolicyRef?
     createFeedbackSourceApplication(createPgFeedbackSourcePort(config.pool,{writerGrant:config.writerGrant,rightsPolicyRef:config.feedbackSourceRightsPolicyRef})):null;
   const service=createKnowledgeApplication({store,receipts,sources:routeSourceOwners(sourceRegistry,config.sourceOwner)});
+  const answerOperations=config.writerGrant&&(config.answerer||config.compiler)?createPgKnowledgeAnswers(config.pool,config.writerGrant):null;
+  const answerReader=answerOperations?createAskAnswerReader({reader:service,operations:answerOperations}):null;
+  const sourceIntake=config.enableSourceIngest&&config.writerGrant?createSourceIntakeApplication({reader:service,port:createPgSourceIntake(config.pool,config.writerGrant)}):null;
+  const judgment=config.decisionProvider&&config.writerGrant?createRelationJudgmentApplication({reader:service,operations:createPgRelationJudgments(config.pool,config.writerGrant),provider:config.decisionProvider,authorizeExternalDispatch:config.authorizeDecisionDispatch}):null;
+  const sourcePlan=config.sourcePlanner&&config.writerGrant&&sourceIntake?createSourcePlanApplication({reader:service,intake:sourceIntake,operations:createPgSourcePlans(config.pool,config.writerGrant),provider:config.sourcePlanner,authorizeExternalDispatch:config.authorizeSourcePlannerDispatch}):null;
+  const wikiCompile=config.compiler&&config.writerGrant&&sourceIntake?createWikiCompileApplication({reader:service,intake:sourceIntake,operations:createPgWikiCompilations(config.pool,config.writerGrant),provider:config.compiler,
+    sources:sourceRegistry,stage:createPgWikiCompileStage(config.pool,config.writerGrant,sourceRegistry),judgments:judgment??undefined,answers:answerReader??undefined,authorizeExternalDispatch:config.authorizeCompilerDispatch}):null;
+  const answerResearch=wikiCompile&&answerReader?createAnswerResearchApplication({answers:answerReader,compiler:wikiCompile}):null;
+  const coordination=config.coordinationPolicy&&wikiCompile&&config.writerGrant?createCoordinationProcessor({reader:service,intake:sourceIntake??undefined,planner:sourcePlan??undefined,compiler:wikiCompile,judgments:judgment??undefined,operations:createPgCoordinationRuns(config.pool,config.writerGrant),tasks:createPgMaintenanceTasks(config.pool,config.writerGrant),
+    policy:{...config.coordinationPolicy,providerFingerprint:digest({planner:config.sourcePlanner&&{id:config.sourcePlanner.id,version:config.sourcePlanner.version,model:config.sourcePlanner.model},compiler:config.compiler&&{id:config.compiler.id,version:config.compiler.methodVersion,model:config.compiler.model},judgment:config.decisionProvider&&{id:config.decisionProvider.id,version:config.decisionProvider.version,model:config.decisionProvider.model}})},
+    execution:[config.sourcePlanner?.execution,config.compiler?.execution,config.decisionProvider?.execution].includes('external')?'external':'local_deterministic'}):null;
+  const projection=config.enableMaintenance&&config.writerGrant?createWikiSearchProjection(config.pool,{writerGrant:config.writerGrant}):null;
+  const maintenance=config.enableMaintenance&&config.writerGrant?createMaintenanceApplication({tasks:createPgMaintenanceTasks(config.pool,config.writerGrant),lint:createPgWikiLint(config.pool,config.writerGrant),processor:coordination??undefined,semanticSweep:coordination?createPgSemanticSweep(config.pool,config.writerGrant):undefined,
+    searchProjection:{status:context=>projection!.status(context.scope.projectId,context.scope.spaceId),runBatch:(context,input)=>projection!.runBatch(context.scope.projectId,context.scope.spaceId,input)}}):null;
+  const askWiki=config.answerer&&config.writerGrant?createAskWikiService({reader:service,
+    operations:answerOperations!,provider:config.answerer}):null;
   const operations=config.enableSyntheticResearch&&config.writerGrant?createPgKnowledgeOperations(config.pool,config.writerGrant):null;
   const research=operations?createSyntheticResearchService({store,receipts,operations,sources:sourceRegistry,
     feedback:createPgFeedbackResearchPort(config.pool),provider:config.researchProvider}):null;
@@ -70,23 +99,42 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
         typeof error.code==='string'&&typeof error.status==='number'&&error.status>=400&&error.status<600;
       const status=known?Number(error.status):error instanceof ZodError?400:500;
       const code=known?String(error.code):error instanceof ZodError?'INVALID_REQUEST':'INTERNAL_ERROR';
-      res.status(status).json({requestId,code,message:status===500?'Knowledge request failed':message(error),retryable:status===409||status===503,
+      res.status(status).json({requestId,code,message:status===500?'Knowledge request failed':message(error),
+        retryable:(status===409||status===503)&&!(typeof error==='object'&&error&&'commitStatus' in error&&error.commitStatus==='unknown'),
         commitStatus:typeof error==='object'&&error&&'commitStatus' in error?error.commitStatus:'not_committed',
         ...(typeof error==='object'&&error&&'operationId' in error?{operationId:error.operationId}:{})});
     }};
-  app.get(`${base}/capabilities`,route(async context=>({data:{permittedActions:['query','catalog','exact','history','compare','graph','read_receipt',
+  app.get(`${base}/capabilities`,route(async(context,req)=>({data:{permittedActions:['query','catalog','wikiCatalog','exact','history','compare','graph','read_receipt',
     ...config.writerGrant&&config.capabilities?.actions.includes('sources:write')?['registerSource']:[],
     ...config.writerGrant&&config.capabilities?.actions.includes('uses:write')?['recordUse']:[],
     ...config.writerGrant&&config.capabilities?.actions.includes('feedback:write')?['recordFeedback']:[],
     ...feedbackSources&&config.capabilities?.actions.includes('feedback:source')?['registerFeedbackSource']:[],
     ...config.enableSyntheticResearch&&config.writerGrant&&config.capabilities?.actions.includes('research:write')?['research']:[],
-    ...config.writerGrant&&config.capabilities?.actions.includes('review:request')?['requestReview']:[]],
+    ...config.writerGrant&&config.capabilities?.actions.includes('review:request')?['requestReview']:[],
+    ...config.writerGrant&&config.capabilities?.actions.includes('review:decide')?['decideReview']:[],
+    ...config.writerGrant&&config.capabilities?.actions.some(action=>['review:read','review:request','review:decide'].includes(action))?['reviewTicket']:[],
+    ...askWiki&&config.capabilities?.actions.includes('ask:write')?['ask','answer','askSelection']:[],
+    ...sourceIntake&&config.capabilities?.actions.includes('ingest:write')?['registerSourceEvent']:[],
+    ...maintenance&&config.capabilities?.actions.includes('maintenance:read')?['maintenanceTasks','maintenanceFindings','searchProjectionStatus']:[],
+    ...sourcePlan&&config.capabilities?.actions.includes('source-plans:read')&&config.capabilities.actions.includes('ingest:read')?['sourcePlan']:[],
+    ...sourcePlan&&config.capabilities?.actions.includes('source-plans:write')&&config.capabilities.actions.includes('source-plans:read')&&config.capabilities.actions.includes('ingest:read')?['planSource']:[],
+    ...coordination&&config.capabilities?.actions.includes('maintenance:read')?['coordinationRun','semanticSweep']:[],
+    ...coordination&&config.capabilities?.actions.includes('maintenance:write')?['processMaintenance','runSemanticSweep']:[],
+    ...maintenance&&config.capabilities?.actions.includes('maintenance:write')?['collectMaintenance','lintWiki','cancelMaintenance','rebuildSearchProjection']:[],
+    ...judgment&&config.capabilities?.actions.includes('judgments:write')&&config.capabilities.actions.includes('judgments:read')?['judgeRelation']:[],
+    ...judgment&&config.capabilities?.actions.includes('judgments:read')?['judgment']:[],
+    ...sourceIntake&&config.capabilities?.actions.includes('ingest:read')?['sourceEvent']:[],
+    ...wikiCompile&&config.capabilities?.actions.includes('compile:write')&&config.capabilities.actions.includes('compile:read')?['compileWiki']:[],
+    ...wikiCompile&&config.capabilities?.actions.includes('compile:read')?['compilation']:[],
+    ...answerResearch&&config.capabilities?.actions.includes('compile:write')&&config.capabilities.actions.includes('compile:read')?['researchAnswer']:[],
+    ...sourceIntake&&config.capabilities?.actions.includes('ingest:mentions')&&config.capabilities.actions.includes('ingest:read')?['recordEntityMentions']:[]],
     purposes:config.principal.purposes,profiles,mode:config.writerGrant?'ready':'read_only',contractVersion:CONTRACT_VERSION,policyVersion:service.policyVersion,
-    limits:{queryItems:100,graphNodes:200,receiptTtlSeconds:900}}})));
+    ...(req.query.recovery==='1'?{recoveryScope:digest({principalId:context.principal.id,clientInstallationId:context.principal.clientInstallationId,projectId:context.scope.projectId,spaceId:context.scope.spaceId})}:{}),
+    limits:{queryItems:100,graphNodes:200,receiptTtlSeconds:900,queryIdentityLexicalVersion:2}}})));
   app.get(`${base}/profiles`,route(async()=>({data:profiles})));
   app.post(`${base}/query`,route((context,req)=>service.query(context,QueryRequestSchema.parse(req.body))));
   app.get(`${base}/catalog`,route((context,req)=>service.catalog(context,CatalogRequestSchema.parse({
-    purpose:req.query.purpose,query:req.query.query,limit:Number(req.query.limit??50),cursor:req.query.cursor}))));
+    purpose:req.query.purpose,query:req.query.query,kinds:req.query.kinds===undefined?undefined:Array.isArray(req.query.kinds)?req.query.kinds:[req.query.kinds],limit:Number(req.query.limit??50),cursor:req.query.cursor}))));
   app.get(`${base}/objects/:objectId/versions/:versionId`,route((context,req)=>service.exact(context,KnowledgeRefSchema.parse({
     ...context.scope,domain:'knowledge',objectId:req.params.objectId,versionId:req.params.versionId,contentDigest:req.query.digest}))));
   app.get(`${base}/objects/:objectId/history`,route((context,req)=>service.history(context,HistoryRequestSchema.parse({
@@ -100,6 +148,66 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
     ...context.scope,domain:req.query.domain??'source',objectId:req.params.objectId,versionId:req.params.versionId,contentDigest:req.query.digest??null}),
     typeof req.query.anchor==='string'?JSON.parse(req.query.anchor):null)})));
   const capability=(context:ReadContext):CapabilityContext=>({...context,authorization:config.capabilities??{actions:[],adapterIds:[],rightsPolicyIds:[]}});
+  const intake=()=>{if(!sourceIntake)throw new KnowledgeError('SOURCE_INTAKE_DISABLED','Source intake is not configured',503);return sourceIntake;};
+  app.post(`${base}/source-events`,route(async(context,req)=>{
+    const input=SourceEventRequestSchema.parse(req.body);
+    if(req.header('Idempotency-Key')!==input.eventKey)throw new KnowledgeError('IDEMPOTENCY_KEY_MISMATCH','Header must retain the producer event key',409);
+    return {data:await intake().receive(capability(context),input)};
+  }));
+  app.get(`${base}/source-events/lookup`,route(async(context,req)=>{
+    const found=await intake().lookup(capability(context),SourceEventRequestSchema.shape.adapterId.parse(req.query.adapterId),SourceEventRequestSchema.shape.eventKey.parse(req.query.eventKey));
+    return {data:found?{state:'known',event:found}:{state:'unknown',event:null}};
+  }));
+  app.get(`${base}/source-events/:eventId`,route(async(context,req)=>({data:await intake().get(capability(context),ReadReceiptSchema.shape.id.parse(req.params.eventId))})));
+  app.post(`${base}/source-events/:eventId/mentions`,route(async(context,req)=>{
+    const input=EntityMentionExtractionSchema.parse(req.body);
+    if(req.header('Idempotency-Key')!==input.methodVersion)throw new KnowledgeError('IDEMPOTENCY_KEY_MISMATCH','Header must retain the extraction method version',409);
+    return {data:await intake().recordMentions(capability(context),ReadReceiptSchema.shape.id.parse(req.params.eventId),input,100_000)};
+  }));
+  app.get(`${base}/source-events/:eventId/mentions`,route(async(context,req)=>({data:await intake().mentions(capability(context),ReadReceiptSchema.shape.id.parse(req.params.eventId),EntityMentionExtractionSchema.shape.methodVersion.parse(req.query.methodVersion))})));
+  const planner=()=>{if(!sourcePlan)throw new KnowledgeError('SOURCE_PLANNER_DISABLED','Source planner is not configured',503);return sourcePlan;};
+  app.post(`${base}/source-plans`,route(async(context,req)=>({data:await planner().plan(capability(context),SourcePlanRequestSchema.parse(req.body),String(req.header('Idempotency-Key')??''))})));
+  app.get(`${base}/source-plans/lookup`,route(async(context,req)=>{const found=await planner().lookup(capability(context),String(req.query.key??''));return {data:found?{state:'known',plan:found}:{state:'unknown',plan:null}};}));
+  app.get(`${base}/source-plans/:planId`,route(async(context,req)=>({data:await planner().get(capability(context),ReadReceiptSchema.shape.id.parse(req.params.planId))})));
+  const coordinated=()=>{if(!coordination)throw new KnowledgeError('COORDINATION_DISABLED','Coordination is not configured',503);return coordination;};
+  app.get(`${base}/coordination-runs/by-task/:taskId`,route(async(context,req)=>({data:await coordinated().byTask(capability(context),ReadReceiptSchema.shape.id.parse(req.params.taskId))})));
+  app.get(`${base}/coordination-runs/:runId`,route(async(context,req)=>({data:await coordinated().get(capability(context),ReadReceiptSchema.shape.id.parse(req.params.runId))})));
+  const compiler=()=>{if(!wikiCompile)throw new KnowledgeError('WIKI_COMPILER_DISABLED','Wiki compiler is not configured',503);return wikiCompile;};
+  app.post(`${base}/compilations`,route(async(context,req)=>({data:await compiler().compile(capability(context),WikiCompileRequestSchema.parse(req.body),String(req.header('Idempotency-Key')??''))})));
+  app.get(`${base}/compilations/lookup`,route(async(context,req)=>{const found=await compiler().lookup(capability(context),String(req.query.key??''));return {data:found?{state:'known',compilation:found}:{state:'unknown',compilation:null}};}));
+  app.get(`${base}/compilations/:compilationId`,route(async(context,req)=>({data:await compiler().get(capability(context),ReadReceiptSchema.shape.id.parse(req.params.compilationId))})));
+  const maintained=()=>{if(!maintenance)throw new KnowledgeError('MAINTENANCE_DISABLED','Maintenance is not configured',503);return maintenance;};
+  app.get(`${base}/maintenance/search-index`,route(async(context)=>({data:await maintained().searchProjectionStatus(capability(context))})));
+  app.post(`${base}/maintenance/search-index`,route(async(context,req)=>{const {purpose,...input}=SearchProjectionBuildRequestSchema.parse(req.body);if(purpose!==context.purpose)throw new KnowledgeError('PURPOSE_MISMATCH','Search build purpose differs',403);return {data:await maintained().rebuildSearchProjection(capability(context),input)};}));
+  app.post(`${base}/maintenance/semantic-sweeps`,route(async(context,req)=>{coordinated();const {purpose,...input}=SemanticSweepApiRequestSchema.parse(req.body);if(purpose!==context.purpose)throw new KnowledgeError('PURPOSE_MISMATCH','Sweep purpose differs',403);return {data:await maintained().runSemanticSweep(capability(context),input)};}));
+  app.get(`${base}/maintenance/semantic-sweeps/:passId`,route(async(context,req)=>({data:await maintained().semanticSweep(capability(context),ReadReceiptSchema.shape.id.parse(req.params.passId))})));
+  app.post(`${base}/maintenance/process-one`,route(async(context)=>{coordinated();return {data:await maintained().runOne(capability(context))};}));
+  app.post(`${base}/maintenance/collect`,route(async(context,req)=>{const input=MaintenanceCollectRequestSchema.parse(req.body);if(input.purpose!==context.purpose)throw new KnowledgeError('PURPOSE_MISMATCH','Maintenance purpose differs',403);return {data:await maintained().collect(capability(context),input)};}));
+  app.post(`${base}/maintenance/lint`,route(async(context,req)=>{const {purpose,...input}=LintRequestSchema.parse(req.body);if(purpose!==context.purpose)throw new KnowledgeError('PURPOSE_MISMATCH','Lint purpose differs',403);return {data:await maintained().runLint(capability(context),input)};}));
+  app.get(`${base}/maintenance/tasks`,route(async(context,req)=>({data:await maintained().list(capability(context),{limit:Number(req.query.limit??50),...typeof req.query.cursor==='string'?{cursor:req.query.cursor}:{}})})));
+  app.get(`${base}/maintenance/tasks/:taskId`,route(async(context,req)=>({data:await maintained().get(capability(context),ReadReceiptSchema.shape.id.parse(req.params.taskId))})));
+  app.post(`${base}/maintenance/tasks/:taskId/cancel`,route(async(context,req)=>({data:await maintained().cancel(capability(context),ReadReceiptSchema.shape.id.parse(req.params.taskId))})));
+  app.get(`${base}/maintenance/findings`,route(async(context,req)=>({data:await maintained().findings(capability(context),{limit:Number(req.query.limit??50),...typeof req.query.cursor==='string'?{cursor:req.query.cursor}:{},...typeof req.query.status==='string'?{status:req.query.status as 'open'|'superseded'|'resolved'}:{}})})));
+  const judgments=()=>{if(!judgment)throw new KnowledgeError('JUDGMENT_DISABLED','Decision provider is not configured',503);return judgment;};
+  app.post(`${base}/judgments`,route(async(context,req)=>({data:await judgments().judge(capability(context),RelationJudgmentRequestSchema.parse(req.body),String(req.header('Idempotency-Key')??''))})));
+  app.get(`${base}/judgments/lookup`,route(async(context,req)=>{const found=await judgments().lookup(capability(context),String(req.query.key??''));return {data:found?{state:'known',judgment:found}:{state:'unknown',judgment:null}};}));
+  app.get(`${base}/judgments/:judgmentId`,route(async(context,req)=>({data:await judgments().get(capability(context),ReadReceiptSchema.shape.id.parse(req.params.judgmentId))})));
+  app.post(`${base}/ask`,route(async(context,req)=>{
+    if(!askWiki)throw new KnowledgeError('ASK_DISABLED','AskWiki provider is not configured',503);
+    return {data:await askWiki.ask(capability(context),AskRequestSchema.parse(req.body),String(req.header('Idempotency-Key')??''))};
+  }));
+  app.get(`${base}/answers/lookup`,route(async(context,req)=>{
+    if(!askWiki)throw new KnowledgeError('ASK_DISABLED','AskWiki is not configured',503);
+    return {data:await askWiki.lookup(context,String(req.query.key??''))};
+  }));
+  app.post(`${base}/answers/:answerId/research`,route(async(context,req)=>{
+    if(!answerResearch)throw new KnowledgeError('ANSWER_RESEARCH_DISABLED','Answer research compiler is not configured',503);
+    return {data:await answerResearch.research(capability(context),ReadReceiptSchema.shape.id.parse(req.params.answerId),AnswerResearchRequestSchema.parse(req.body),String(req.header('Idempotency-Key')??''))};
+  }));
+  app.get(`${base}/answers/:answerId`,route(async(context,req)=>{
+    if(!askWiki)throw new KnowledgeError('ASK_DISABLED','AskWiki is not configured',503);
+    return {data:await askWiki.get(context,ReadReceiptSchema.shape.id.parse(req.params.answerId))};
+  }));
   const requireWrites=()=>{if(!config.writerGrant)throw new KnowledgeError('WRITES_DISABLED','Knowledge writes are disabled in this API',503);};
   app.post(`${base}/sources`,route(async(context,req)=>{requireWrites();return {data:await sources.upsert(capability(context),SourceUpsertSchema.parse(req.body),
     String(req.header('Idempotency-Key')??''))};}));
@@ -158,7 +266,7 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
   app.post(`${base}/review-requests/:reviewRequestId/decisions`,route(async(context,req)=>{if(!reviews)throw new KnowledgeError('REVIEW_DISABLED','Reviews are disabled',503);
     return {data:await reviews.decide(capability(context),String(req.params.reviewRequestId),ReviewDecisionSchema.parse(req.body),
       String(req.header('Idempotency-Key')??''))};}));
-  return {app,service,research,listen:()=>new Promise<ReturnType<typeof createHttpServer>>((resolve,reject)=>{const server=createHttpServer(app);
+  return {app,service,research,coordination,listen:()=>new Promise<ReturnType<typeof createHttpServer>>((resolve,reject)=>{const server=createHttpServer(app);
     server.once('error',reject);server.listen(config.port??4311,config.host??'127.0.0.1',()=>resolve(server));})};
 }
 
@@ -167,7 +275,11 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
     projectId=process.env.KNOWLEDGE_API_PROJECT_ID,spaceIds=process.env.KNOWLEDGE_API_SPACE_IDS?.split(',').map(x=>x.trim()).filter(Boolean);
   if(!databaseUrl||!token||!projectId||!spaceIds?.length)throw new Error('Set KNOWLEDGE_DATABASE_URL, KNOWLEDGE_API_TOKEN, KNOWLEDGE_API_PROJECT_ID, KNOWLEDGE_API_SPACE_IDS');
   const syntheticWrites=process.env.KNOWLEDGE_SYNTHETIC_WRITES==='1';
-  const grantRaw=syntheticWrites?process.env.KNOWLEDGE_WRITER_GRANT_JSON:undefined;
+  const sourceIntakeFlag=process.env.KNOWLEDGE_SOURCE_INTAKE_ENABLED;
+  if(sourceIntakeFlag!==undefined&&!['0','1'].includes(sourceIntakeFlag))throw new Error('KNOWLEDGE_SOURCE_INTAKE_ENABLED must be 0 or 1');
+  const sourceIntakeEnabled=sourceIntakeFlag==='1';
+  const grantRaw=syntheticWrites||sourceIntakeEnabled?process.env.KNOWLEDGE_WRITER_GRANT_JSON:undefined;
+  if(sourceIntakeEnabled&&!grantRaw)throw new Error('Source intake requires a trusted KNOWLEDGE_WRITER_GRANT_JSON capability');
   if(syntheticWrites&&!grantRaw)throw new Error('Synthetic writes require a trusted KNOWLEDGE_WRITER_GRANT_JSON capability');
   const grant=grantRaw?JSON.parse(grantRaw) as Partial<KnowledgeWriterGrant>:undefined;
   if(grant&&(typeof grant.ownerId!=='string'||!Number.isSafeInteger(grant.generation)||typeof grant.token!=='string'))
@@ -175,12 +287,14 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   const list=(value:string|undefined)=>value?.split(',').map(x=>x.trim()).filter(Boolean)??[];
   const pool=new Pool({connectionString:databaseUrl});
   const api=await createKnowledgeApi({pool,token,principal:{id:process.env.KNOWLEDGE_API_PRINCIPAL_ID??'local-owner',
-    clientInstallationId:'local-api',projectId,spaceIds,purposes:['exploration_reading']},
-    ...(grant?{writerGrant:grant as KnowledgeWriterGrant,enableSyntheticResearch:true,
+    clientInstallationId:process.env.KNOWLEDGE_API_CLIENT_INSTALLATION_ID?.trim()||'local-api',projectId,spaceIds,purposes:['exploration_reading']},
+    ...(grant?{writerGrant:grant as KnowledgeWriterGrant,enableSyntheticResearch:syntheticWrites,enableSourceIngest:sourceIntakeEnabled,
       capabilities:{actions:list(process.env.KNOWLEDGE_API_ACTIONS),adapterIds:list(process.env.KNOWLEDGE_API_ADAPTER_IDS),
         rightsPolicyIds:list(process.env.KNOWLEDGE_API_RIGHTS_POLICY_IDS)},
       ...(process.env.KNOWLEDGE_FEEDBACK_SOURCE_RIGHTS_POLICY_REF?{feedbackSourceRightsPolicyRef:process.env.KNOWLEDGE_FEEDBACK_SOURCE_RIGHTS_POLICY_REF}:{})}:{}),
-    ...(process.env.KNOWLEDGE_SOURCE_OWNER_URL?{sourceOwner:createHttpSourceOwner({baseUrl:process.env.KNOWLEDGE_SOURCE_OWNER_URL,token:process.env.KNOWLEDGE_SOURCE_OWNER_TOKEN??''})}:{}),
+    ...(process.env.KNOWLEDGE_SOURCE_OWNER_URL?{sourceOwner:createHttpSourceOwner({baseUrl:process.env.KNOWLEDGE_SOURCE_OWNER_URL,token:process.env.KNOWLEDGE_SOURCE_OWNER_TOKEN??'',
+      supportsBoundedContent:process.env.KNOWLEDGE_SOURCE_OWNER_BOUNDED==='1'})}:{}),
+    ...(process.env.KNOWLEDGE_SOURCE_READER_IDS?{sourceReaderIds:list(process.env.KNOWLEDGE_SOURCE_READER_IDS)}:{}),
     syntheticFixture:process.env.KNOWLEDGE_SYNTHETIC_FIXTURE==='1',
     port:Number(process.env.KNOWLEDGE_API_PORT??4311)});
   const server=await api.listen();process.stdout.write(`Knowledge API listening on ${JSON.stringify(server.address())}\n`);

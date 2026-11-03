@@ -21,10 +21,11 @@
     "build:knowledge-server": "npm run build:knowledge-contracts && npm run build:knowledge-core && npm run build -w @commerce/knowledge-application && npm run build -w @commerce/knowledge-service-adapter && npm run build -w @commerce/knowledge-api && npm run build -w @commerce/knowledge-worker",
     "build:knowledge-adapters": "npm run build:knowledge-client && npm run build -w @commerce/knowledge-document-adapter",
     "dev:knowledge-demo": "npm run build:knowledge-server && tsx scripts/runtime/knowledge-product-demo.ts",
-    "test:knowledge-product": "node --import ./scripts/runtime/test-environment.mjs --import tsx --test packages/knowledge-contracts/test/*.test.ts packages/knowledge-client/test/*.test.ts apps/knowledge-api/test/*.test.ts apps/knowledge-web/test/*.test.ts packages/knowledge/test/writer-authority.integration.test.ts",
+    "test:knowledge-product": "node --import ./scripts/runtime/test-environment.mjs --import tsx --test packages/knowledge-contracts/test/*.test.ts packages/knowledge-client/test/*.test.ts packages/knowledge-application/test/*.test.ts apps/knowledge-api/test/*.test.ts apps/knowledge-web/test/*.test.ts apps/knowledge-web/test/*.test.tsx packages/knowledge/test/writer-authority.integration.test.ts",
     "test:document-onboarding": "node --import ./scripts/runtime/test-environment.mjs --import tsx scripts/runtime/document-onboarding-demo.ts",
     "build:knowledge-foundation": "npm run build:knowledge-client && npm run build:knowledge-server && npm run build:knowledge-adapters",
-    "build:knowledge-core": "npm run build -w @commerce/knowledge-core"
+    "build:knowledge-core": "npm run build -w @commerce/knowledge-core",
+    "eval:wiki-query": "node --import ./scripts/runtime/test-environment.mjs --import tsx scripts/runtime/wiki-query-baseline.ts"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",

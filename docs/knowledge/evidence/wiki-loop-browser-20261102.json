@@ -1,0 +1,51 @@
+{
+  "layout": {
+    "fixedBuild": true,
+    "desktop": {
+      "width": 1440,
+      "height": 1000,
+      "overflow": false,
+      "claimCount": 1,
+      "evidenceCount": 2,
+      "conditions": true,
+      "counterexamples": true
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "overflow": false,
+      "claimCount": 1,
+      "evidenceCount": 2,
+      "conditions": true,
+      "counterexamples": true
+    }
+  },
+  "readReturn": {
+    "fixedBuild": true,
+    "sourceReadBytes": 176,
+    "sourceTextObserved": true,
+    "question": "查询 visibility",
+    "askPosts": 1,
+    "answerReads": 2
+  },
+  "revocation": {
+    "fixedBuild": true,
+    "syntheticSourceOnly": true,
+    "revocationHttpStatus": 200,
+    "answerHidden": true,
+    "claimsVisible": 0,
+    "newSubmitDisabled": true,
+    "readOnlyCheckOffered": true,
+    "askPosts": 1,
+    "error": "An answer basis is no longer current and admitted"
+  },
+  "schemaVersion": "wiki-loop-browser/1",
+  "date": "2026-11-02",
+  "fixture": "fixed Vite production build with isolated synthetic API and explicit zero-paid-model answerer",
+  "notEstablished": [
+    "real model semantic quality",
+    "real user comprehension",
+    "production source authorization"
+  ],
+  "note": "Revocation runtime check used the then-English server error; frontend failure wording was subsequently localized and revalidated by AskState tests."
+}

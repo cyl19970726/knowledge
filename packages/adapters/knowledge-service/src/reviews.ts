@@ -1,3 +1,5 @@
+import {createPgCompilationReviewPort} from './compilation-review.ts';
+import {migrateWikiCompilations} from './wiki-compile.ts';
 import type {Pool} from 'pg';
 import {randomUUID} from 'node:crypto';
 import {CandidateViewSchema,type ReviewRequest,type ReviewDecision,type ReviewTicket,type FinalizeReceipt,type ResearchResult,
@@ -21,7 +23,10 @@ export async function migrateKnowledgeReviews(pool:Pool){await migrateCapability
   UNIQUE(project_id,space_id,target_kind,target_id)
 )`);await pool.query(`DROP TRIGGER IF EXISTS ccl_writer_guard ON ccl_knowledge_review_tickets;
   CREATE TRIGGER ccl_writer_guard BEFORE INSERT OR UPDATE OR DELETE ON ccl_knowledge_review_tickets
-  FOR EACH ROW EXECUTE FUNCTION ccl_assert_knowledge_writer()`);}
+  FOR EACH ROW EXECUTE FUNCTION ccl_assert_knowledge_writer()`);
+  await pool.query("ALTER TABLE ccl_knowledge_review_tickets ADD COLUMN IF NOT EXISTS origin_kind text NOT NULL DEFAULT 'research'");
+  await migrateWikiCompilations(pool);
+}
 function sameTarget(a:ReviewRequest['target'],b:ReviewRequest['target']){return digest(a)===digest(b);}
 function originalResearchPurpose(input:unknown):string|null{
   if(!input||typeof input!=='object')return null;
@@ -31,7 +36,7 @@ function originalResearchPurpose(input:unknown):string|null{
   return typeof purpose==='string'&&purpose.trim()?purpose:null;
 }
 /** Review targets are frozen by content digest. Candidate approval uses the same KnowledgeStore publish transaction. */
-export function createPgReviewPort(pool:Pool,writerGrant:KnowledgeWriterGrant,sources?:SourceRegistryPort):ReviewPort{
+function createPgResearchReviewPort(pool:Pool,writerGrant:KnowledgeWriterGrant,sources?:SourceRegistryPort):ReviewPort{
   const store=createKnowledgeStore(pool,{writerGrant});
   async function target(context:ReadContext,input:ReviewRequest){
     if(input.target.kind==='candidate'){
@@ -195,4 +200,16 @@ export function createPgReviewPort(pool:Pool,writerGrant:KnowledgeWriterGrant,so
       return final;
     });},
   };
+}
+
+/** Explicit origin routing preserves the legacy synthetic review policy. */
+export function createPgReviewPort(pool:Pool,writerGrant:KnowledgeWriterGrant,sources?:SourceRegistryPort):ReviewPort{
+ const research=createPgResearchReviewPort(pool,writerGrant,sources),compilation=createPgCompilationReviewPort(pool,writerGrant,sources);
+ async function compiledTicket(context:ReadContext,id:string){const row=await pool.query('SELECT origin_kind FROM ccl_knowledge_review_tickets WHERE id=$1 AND project_id=$2 AND space_id=$3',[id,context.scope.projectId,context.scope.spaceId]);return row.rows[0]?.origin_kind==='wiki_compile';}
+ return {
+  async viewCandidate(context,id){return await compilation.hasOrigin(context,id)?compilation.viewCandidate(context,id):research.viewCandidate(context,id);},
+  async request(context,input,key){return input.target.kind==='candidate'&&await compilation.hasOrigin(context,input.target.candidateId)?compilation.request(context,input,key):research.request(context,input,key);},
+  async ticket(context,id){return await compiledTicket(context,id)?compilation.ticket(context,id):research.ticket(context,id);},
+  async decide(context,id,input,key){return await compiledTicket(context,id)?compilation.decide(context,id,input,key):research.decide(context,id,input,key);},
+ };
 }

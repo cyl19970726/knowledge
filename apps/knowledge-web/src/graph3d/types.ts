@@ -11,6 +11,7 @@ export type KnowledgeGraph3DProps = {
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
   coReadingIds: readonly string[];
+  actualReadIds?: readonly string[];
   onNode: (id: string) => void;
   onEdge: (id: string) => void;
   onCamera: (camera: Graph3DCamera) => void;

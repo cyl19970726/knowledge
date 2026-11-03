@@ -1,0 +1,297 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-11-02T05:30:07.077738+00:00",
+  "baseHead": "9d677e7a324eb9d629db60b56d4625c0a33f3775",
+  "state": "engineering-verified-real-semantics-pending",
+  "scope": "explicit answer claims and follow-up question -> original full readset -> compilation -> independent review -> next query",
+  "environment": {
+    "node": "24.21.0",
+    "postgres": "17.11-alpine",
+    "dedicatedTestDatabase": "127.0.0.1:59356/ccl_test_wiki",
+    "businessEnvLoaded": false,
+    "businessDatabaseUsed": false,
+    "realModelCalls": 0,
+    "paidModelCalls": 0,
+    "modelCallAccountingScope": "Knowledge application Ask/compile execution only; excludes Host Product Design image generation, tracked separately by Host"
+  },
+  "checks": {
+    "build": {
+      "passed": true,
+      "log": "/tmp/wiki-answer-design-build.log"
+    },
+    "core": {
+      "passed": 468,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/wiki-answer-design-core-final.log"
+    },
+    "priorCore": {
+      "passed": 465,
+      "log": "/tmp/wiki-answer-compile-core-final-20261102.log",
+      "note": "before the Product Design UI refinements; direct test-core command, not npm prebuild"
+    },
+    "web": {
+      "passed": 109,
+      "failed": 0,
+      "scope": "source agent targeted run; included in final core suite"
+    },
+    "publicDocumentOnboarding": {
+      "passed": true,
+      "schemaDropped": true,
+      "log": "/tmp/wiki-answer-return-onboarding.log"
+    },
+    "businessTypes": {
+      "passed": true,
+      "log": "/tmp/wiki-answer-return-commerce-types.log"
+    },
+    "businessBoundaries": {
+      "passed": true,
+      "log": "/tmp/wiki-answer-return-commerce-boundaries.log"
+    },
+    "docsBuild": {
+      "passed": true,
+      "scope": "standalone knowledge and root readers",
+      "log": "/tmp/wiki-answer-return-docs-build.log"
+    },
+    "docsCheck": {
+      "passed": true,
+      "scope": "both generated readers and knowledge migration",
+      "log": "/tmp/wiki-answer-return-docs-check.log"
+    },
+    "docsTests": {
+      "passed": 20,
+      "failed": 0,
+      "log": "/tmp/wiki-answer-return-docs-tests.log"
+    },
+    "commerceTargeted": {
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "scope": "source owner and document bridge targeted suite",
+      "log": "/tmp/wiki-answer-return-commerce-targeted.log"
+    }
+  },
+  "contract": {
+    "fingerprint": "question/claims/evidence/excluded/coverage/readsetFingerprint/provider/reason/gaps; accounting omitted",
+    "selection": "claim indexes and original answer fingerprint are fixed; all original evidence is reread, including uncited background",
+    "sourceRefs": "exact source versions, no fabricated source events; answer text is advisory only",
+    "limit": "Wiki page count; all Wiki and source evidence combined <=100",
+    "history": "new research requires current admissible inputs; published/rejected compilation replay may inspect historical Wiki, current source rights always checked",
+    "origin": "answerOrigin retains original question; compilation.question is the new research question"
+  },
+  "engineeringBrowser": {
+    "tool": "Ego Lite 0.6.1.13",
+    "space": 92,
+    "desktopWidth": 1159,
+    "mobileLayoutWidth": 390,
+    "horizontalOverflow": false,
+    "flow": [
+      "Ask with two selected Wiki pages and 176-byte original source",
+      "Q1 research creates candidate and returns to unchanged original question",
+      "Q2 response reaches HTTP200 but is held from the client for15s",
+      "reload before response delivery then reauthenticate restores Q2 through original-key GET; zero new POST"
+    ],
+    "ledger": {
+      "answers": [
+        {
+          "id": "6a52bf3f-6be2-4e07-9107-ae25d36af969",
+          "state": "answered",
+          "evidence_count": 3,
+          "cost": {
+            "money": {
+              "state": "known",
+              "amount": 0,
+              "source": "synthetic_local_no_paid_calls",
+              "currency": "USD"
+            },
+            "tokens": {
+              "state": "known",
+              "value": 0
+            },
+            "modelCalls": {
+              "state": "known",
+              "value": 0
+            }
+          }
+        }
+      ],
+      "research": [
+        {
+          "id": "566e6923-ae40-4e28-9bb0-c54b35b55738",
+          "request_key": "7daf94bb-fe7f-4c35-8ce6-aa44e6641ed8",
+          "state": "waiting_for_review",
+          "answer_seed": {
+            "answerId": "6a52bf3f-6be2-4e07-9107-ae25d36af969",
+            "claimIndexes": [
+              0
+            ],
+            "expectedAnswerFingerprint": "f3f8e6590823c76747e82577b82bc5edcbd4c16abc8a5c455d8e6d4961f39693"
+          },
+          "answer_origin": {
+            "answerId": "6a52bf3f-6be2-4e07-9107-ae25d36af969",
+            "question": "月石玄冰",
+            "claimIndexes": [
+              0
+            ],
+            "answerFingerprint": "f3f8e6590823c76747e82577b82bc5edcbd4c16abc8a5c455d8e6d4961f39693"
+          },
+          "evidence_count": 32,
+          "read_usage": {
+            "maxReadBytes": 500000,
+            "wikiPayloadBytes": 88583,
+            "preparedInputBytes": 47373,
+            "sourceContentBytes": 176
+          },
+          "cost": {
+            "money": {
+              "state": "known",
+              "amount": 0,
+              "source": "synthetic_no_model",
+              "currency": "USD"
+            },
+            "tokens": {
+              "state": "known",
+              "value": 0
+            },
+            "modelCalls": {
+              "state": "known",
+              "value": 0
+            }
+          }
+        },
+        {
+          "id": "3e652a56-e89f-480e-bcdf-82757e3b9d8a",
+          "request_key": "9484e5a5-f3df-47fa-b750-b2922610c650",
+          "state": "waiting_for_review",
+          "answer_seed": {
+            "answerId": "6a52bf3f-6be2-4e07-9107-ae25d36af969",
+            "claimIndexes": [
+              0
+            ],
+            "expectedAnswerFingerprint": "f3f8e6590823c76747e82577b82bc5edcbd4c16abc8a5c455d8e6d4961f39693"
+          },
+          "answer_origin": {
+            "answerId": "6a52bf3f-6be2-4e07-9107-ae25d36af969",
+            "question": "月石玄冰",
+            "claimIndexes": [
+              0
+            ],
+            "answerFingerprint": "f3f8e6590823c76747e82577b82bc5edcbd4c16abc8a5c455d8e6d4961f39693"
+          },
+          "evidence_count": 32,
+          "read_usage": {
+            "maxReadBytes": 500000,
+            "wikiPayloadBytes": 88583,
+            "preparedInputBytes": 47367,
+            "sourceContentBytes": 176
+          },
+          "cost": {
+            "money": {
+              "state": "known",
+              "amount": 0,
+              "source": "synthetic_no_model",
+              "currency": "USD"
+            },
+            "tokens": {
+              "state": "known",
+              "value": 0
+            },
+            "modelCalls": {
+              "state": "known",
+              "value": 0
+            }
+          }
+        }
+      ],
+      "counts": {
+        "current_wiki": 32,
+        "source_events": 1
+      }
+    },
+    "limits": [
+      "synthetic-only",
+      "mobile layout, not phone touch approval",
+      "captured before the later Product Design refinements"
+    ],
+    "cleanup": "demo exited0, its schema and ready file removed, space92 left blank"
+  },
+  "productDesign": {
+    "workflow": "index -> saved-context preflight(missing) -> audit -> get-context -> bounded fixes to existing PR8 target",
+    "browser": "in-app browser, temporary agent-created tab closed",
+    "report": "answer-research-design-audit-20261102.md",
+    "freshCaptures": true,
+    "pairedComparison": [
+      "02 research preparation before/after",
+      "04 candidate review before/after"
+    ],
+    "observations": [
+      "research entry beside answer",
+      "known result makes candidate the primary action; separate explicit new-research entry",
+      "linked candidates hide unrelated pre-submit/no-readset message and manual UUID form",
+      "candidate title contrast and research input styling improved; IDs remain in details"
+    ],
+    "narrowViewport": {
+      "requested": 390,
+      "initialActual": 520,
+      "calibratedActual": 389,
+      "height": 844,
+      "horizontalOverflow": false,
+      "overrideReset": true
+    },
+    "limits": [
+      "no complete WCAG, screen-reader, system reduced-motion or phone-touch acceptance",
+      "bounded demos reached lifetime limits between captures; no product failure claimed from fixture cleanup"
+    ]
+  },
+  "review": {
+    "independentStaticReview": "no remaining reproducible high/medium issue in reviewed scope",
+    "fixed": [
+      "reason was missing from answer fingerprint",
+      "original question and follow-up question were incorrectly equated in UI response binding",
+      "Wiki read limit must not count source inputs",
+      "linked candidate inherited unrelated submission preparation UI"
+    ]
+  },
+  "limits": [
+    "explicit user-triggered research; no automatic selection of valuable answers",
+    "invalid Wiki repair/recompile, entity resolution, independent no-change review, unstaged retry, external publication assurance and real-model/human-gold/business effects remain incomplete",
+    "synthetic/model fixture outputs do not prove semantic quality",
+    "Existing follow-up form and candidate flow do not place answer/candidate into a continuously linked star graph; proposed concept images are not runtime acceptance"
+  ],
+  "goal": "active",
+  "sourceSha256": {
+    "packages/knowledge-application/src/ask.ts": "513588472300d9ee4ddfd168c4305e20cbac5b50ae987b7fa84258cdf58e00ae",
+    "packages/knowledge-application/src/answer-research.ts": "84b123dace8faa45d4cfe27c5aec8efae61a6820a67fdf38141bb332cf616990",
+    "packages/knowledge-application/src/wiki-compile.ts": "e00c651104100099294c2242d8a76b1deee8ac9cdcc5c1ce2f33536b61cb0914",
+    "packages/adapters/knowledge-service/src/wiki-compile.ts": "de9c76d507b64d6d19d650b624961e07e1dfdc38d2cafe2d645d8ab7df86e4e4",
+    "packages/knowledge-contracts/src/index.ts": "5a8489ad5abb83841b13107ae9638a8ffcd32bf9939eca35cae1f229775bcdf3",
+    "apps/knowledge-api/src/index.ts": "257bbd563474f6804fbe262b0704ad5d9cd188de533c437bdef0dbd1b306ef22",
+    "apps/knowledge-web/src/answer-research-state.ts": "cc95b7083ec7fc1e4f672ebd1041dc8336f04bbfe581dd8d58e5aa4c5c3457f6",
+    "apps/knowledge-web/src/answer-research-panel.tsx": "b1389c28b111998e9af4ce4ae7ecf8827f52aee9fef1008f2d6bd3722f594fee",
+    "apps/knowledge-web/src/App.tsx": "d4ac9b020f3bb231dc30d133d90bb0afc1022de370341b67b2e128b6286e8559"
+  },
+  "currentImplementation": "Explicit answer-claim continuation, follow-up form, candidate and original-answer return; graph-linked question/candidate layout is pending user design choice and implementation",
+  "starGraphDesign": {
+    "status": "awaiting_user_choice",
+    "conceptCountPlanned": 3,
+    "runtimeLayoutImplemented": false,
+    "acceptanceBoundary": "Host design concept images are proposals, not running product validation"
+  },
+  "sourceSha256Verified": true,
+  "supplementedAt": "2026-11-02T06:03:39.226170+00:00",
+  "implementationCommit": "5f5cfdeb13b053bd28686735d6f256bf91010e26",
+  "cleanup": {
+    "dedicatedContainerId": "7fd44aeb583be97f3cc05583236a1c982a787555f9a423365102c78faae7b7b1",
+    "owner": "wiki-ingest-query-lint",
+    "stopExitCode": 0,
+    "autoRemove": true,
+    "remainingMatchingContainers": 0,
+    "demoProcesses": "previously joined to terminal exit0; schemas and ready file removed",
+    "businessEnvironmentTouched": false
+  },
+  "validationTarget": {
+    "commit": "5f5cfdeb13b053bd28686735d6f256bf91010e26",
+    "scope": "Explicit answer research and form/candidate-return refinements, before the selected star-map layout",
+    "sourceSha256Scope": "Files at the recorded implementation commit; later layout changes have separate validation"
+  }
+}
