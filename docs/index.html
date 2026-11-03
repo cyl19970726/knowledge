@@ -2830,6 +2830,8 @@ console.log(source.data.ref, result.data.items, receipt.data.orderedItems);
 <article id="knowledge-system" class="doc" aria-label="职责与架构"><div class="chapter-meta"><span>现行说明 · 实现与部署分别见状态页</span><span>2026-11-01</span></div><h1 id="knowledge-system--知识产品的职责与架构">知识产品的职责与架构</h1>
 <p>独立前端与业务系统使用同一组知识能力；知识服务保持唯一的版本、关系、审阅和发表权威。通用核心只维护跨业务成立的内容与执行合同，业务适配保留自己的来源、身份和任务规则，固定日期的实现与部署仍由证据记录承担。</p>
 <p>本页解释知识怎样被保存、改变和使用，再说明各层的责任。当前主线实现与正式部署见<a href="#knowledge-current-state">当前状态</a>；认识与关系的细则见<a href="#knowledge-model">通用认知模型</a>；新业务落地顺序见<a href="#knowledge-onboarding">技术接入手册</a>。以下是目标架构，不以图上的模块宣称真实语义研究已经完成。</p>
+<p><a href="knowledge/diagrams/wiki-assets-operations.html">打开知识资产与 Ingest / Query / Lint 交互式分层图</a> · <a href="knowledge/diagrams/wiki-assets-operations.json">可编辑图源</a>。它把原始资产、准确来源、实体提及、Wiki 页、关系与账本放到资产层，分别聚焦三种操作怎样读写这些对象，以及现有 LLM 与判断端口的位置。</p>
+<p>这张图收录此前讨论过的 <strong>PR9 开发期设计快照</strong>，保留当时的实现标记和 PR8 源码锚点，不能把其中“本地候选”当成今天的发布状态。PR9 现已合并；当前实现和未完成项以<a href="#knowledge-current-state">状态页</a>及 <a href="https://github.com/cyl19970726/knowledge/issues/10" target="_blank" rel="noopener noreferrer">Issue10</a>为准。HTML 可单独打开，源代码链接指向固定 GitHub 提交。</p>
 <h2 id="knowledge-system--保存什么同一网络中的四种内容">保存什么：同一网络中的四种内容</h2>
 <figure class="mermaid-figure" data-mermaid-diagram><div class="mermaid-output" role="img" aria-label="Mermaid diagram"></div><pre class="mermaid-source"><code>flowchart TB
   S[&quot;来源与证据&lt;br/&gt;原件、版本、已有理解&quot;]
