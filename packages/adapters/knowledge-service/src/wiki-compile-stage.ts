@@ -28,6 +28,32 @@ const sourceGroups=(items:WikiCompileStageInput['evidence'],base?:KnowledgeRevis
 const unsupported=(dependency:Dependency)=>dependency.domain==='analysis'||dependency.domain==='evidence'||dependency.domain==='context';
 function assurance():never {return fail('COMPILATION_SOURCE_ASSURANCE_REQUIRED','Complete local publication source assurance is required',409);}
 
+/** Applies explicit repair dispositions. Replaced or removed lineage leaves dependencies, citations and navigation together. */
+function repairedBasis(old:KnowledgeRevision,plan:NonNullable<WikiDraftChange['repair']>,
+  evidence:ReadonlyMap<string,WikiCompileStageInput['evidence'][number]>,objectId:string){
+  if(old.kind!=='wiki_page')fail('COMPILE_TARGET_UNREAD','Update target must be a Wiki page');
+  const key=(domain:string,ref:Pick<KnowledgeRef,'objectId'|'versionId'>)=>`${domain}:${refKey(ref)}`;
+  const disposition=new Map(plan.dependencies.map(item=>[key(item.domain,item.ref),item]));
+  const prior=old.dependencies.filter(dep=>dep.critical&&!(dep.domain==='knowledge'&&dep.ref.objectId===objectId));
+  if(prior.some(dep=>!disposition.has(key(dep.domain,dep.ref)))||disposition.size!==new Set(prior.map(dep=>key(dep.domain,dep.ref))).size)
+    fail('COMPILE_REPAIR_DISPOSITION_INCOMPLETE','Every prior critical dependency needs one explicit disposition');
+  const replaced=new Map<string,Pick<KnowledgeRef,'objectId'|'versionId'>>(),removed=new Set<string>();
+  for(const item of plan.dependencies){const id=key(item.domain,item.ref);
+    if(item.action==='remove')removed.add(id);
+    if(item.action==='replace'){const read=evidence.get(item.replacementEvidenceId!);
+      if(!read||read.role==='repair_target'||read.kind!==(item.domain==='knowledge'?'wiki_page':'source_content'))
+        fail('COMPILE_REPAIR_REPLACEMENT_UNREAD','A replacement must be exact evidence read by this compilation');
+      replaced.set(id,version(read!.ref));}
+  }
+  const gone=(domain:string,ref:Pick<KnowledgeRef,'objectId'|'versionId'>)=>removed.has(key(domain,ref))||replaced.has(key(domain,ref));
+  // Kept critical lineage and unrelated non-critical edges stay; replacement edges arrive as selected support.
+  const dependencies=old.dependencies.filter(dep=>!(dep.domain==='knowledge'&&dep.ref.objectId===objectId)&&!gone(dep.domain,dep.ref));
+  const citations=old.content.citations.filter(citation=>citation.kind!=='source'||!gone(citation.sourceDomain??'source',citation.sourceRef));
+  const navigation=old.content.navigation.flatMap(link=>{const id=key('knowledge',link.ref);
+    if(removed.has(id))return [];const next=replaced.get(id);return [next?{...link,ref:next}:link];});
+  return {dependencies,citations,navigation};
+}
+
 function checkedEvidence(context:ReadContext,input:WikiCompileStageInput){
   const evidence=new Map<string,WikiCompileStageInput['evidence'][number]>();
   for(const item of input.evidence){
@@ -115,6 +141,11 @@ export function createPgWikiCompileStage(pool:Pool,grant:KnowledgeWriterGrant,so
     if(!input.methodVersion.trim()||/synthetic/i.test(input.methodVersion)||!Number.isFinite(Date.parse(input.createdAt)))
       fail('COMPILE_METHOD_INVALID','Real compilation needs its own method and creation time');
     const evidence=checkedEvidence(context,input),proofs=localProofs(context,input);
+    const repairTarget=input.request.repairTarget??null;
+    const repairEvidence=[...evidence.values()].filter(item=>item.role==='repair_target');
+    if(repairTarget?(repairEvidence.length!==1||refKey(repairEvidence[0].ref)!==refKey(repairTarget)||
+      repairEvidence[0].ref.contentDigest!==repairTarget.contentDigest):repairEvidence.length)
+      fail('COMPILE_REPAIR_TARGET_INVALID','A repair target must be the one exact comparison-only input of a repair');
     const seenObjects=new Set<string>();
     const changes:KnowledgeChangeSet['changes']=[],baseHeads:KnowledgeChangeSet['baseHeads']=[];
     const neededSources=new Map<string,KnowledgeRef>();
@@ -137,12 +168,18 @@ export function createPgWikiCompileStage(pool:Pool,grant:KnowledgeWriterGrant,so
         else needSource({...context.scope,domain:'source',...dep.ref,contentDigest:null});
       }
     };
+    // The repair target only has to remain the unchanged current head; its invalid lineage is what the repair replaces.
+    const requireRepairBase=async(item:WikiCompileStageInput['evidence'][number])=>{
+      const metadata=await store.inspectFrozen?.(context.scope.projectId,version(item.ref));
+      if(!metadata?.published||!metadata.current||metadata.spaceId!==context.scope.spaceId||metadata.storageDigest!==item.storageDigest)
+        fail('COMPILE_BASE_HEAD_CHANGED','The repair target is no longer the unchanged current page',409);
+    };
     for(const [index,draft] of input.proposal.drafts.entries()){
       const profile=getWikiPageProfile(draft.profile.id,draft.profile.version);
       if(!profile||wikiPageProfileFingerprint(profile)!==draft.profile.digest)
         fail('COMPILE_PROFILE_INVALID','Draft profile differs from the registered exact profile');
       if(new Set(draft.supportEvidenceIds).size!==draft.supportEvidenceIds.length||
-        draft.supportEvidenceIds.some(id=>!evidence.has(id)))
+        draft.supportEvidenceIds.some(id=>!evidence.has(id)||evidence.get(id)!.role==='repair_target'))
         fail('COMPILE_SUPPORT_UNREAD','Draft support must name distinct evidence in the exact readset');
       const selected=draft.supportEvidenceIds.map(id=>evidence.get(id)!);
       const target=draft.targetEvidenceId?evidence.get(draft.targetEvidenceId):undefined;
@@ -153,7 +190,10 @@ export function createPgWikiCompileStage(pool:Pool,grant:KnowledgeWriterGrant,so
       if(old&&(old.content.profile.id!==draft.profile.id||old.content.profile.version!==draft.profile.version||
         old.content.identity.key!==draft.identityKey))
         fail('COMPILE_IDENTITY_CHANGED','An update cannot change its profile or identity key',409);
-      if(target)await requireLineage(target);
+      const repairing=target?.role==='repair_target';
+      if(repairing!==(!!draft.repair)||repairTarget&&!repairing)
+        fail('COMPILE_REPAIR_TARGET_INVALID','Only the repair draft revises the comparison-only target with explicit dispositions');
+      if(target)await (repairing?requireRepairBase(target):requireLineage(target));
       const current=await matchingCurrent(pool,context,draft);
       if(old){
         if(!current||current.object_id!==old.ref.objectId||current.version_id!==old.ref.versionId)
@@ -166,20 +206,22 @@ export function createPgWikiCompileStage(pool:Pool,grant:KnowledgeWriterGrant,so
       if(!old&&(await store.head(context.scope.projectId,objectId)))
         fail('COMPILE_IDENTITY_CONFLICT','Stable page ID is already occupied',409);
       const ref={objectId,versionId:stableUuid(canonical({operationId:input.operationId,index,draft}))};
-      const inherited=old?.dependencies.filter(dep=>dep.domain!=='knowledge'||dep.ref.objectId!==objectId)??[];
-      if(inherited.some(unsupported)||old?.content.citations.some(c=>c.kind==='media'||c.sourceDomain&&c.sourceDomain!=='source'))
+      const repaired=old&&draft.repair?repairedBasis(old,draft.repair,evidence,objectId):null;
+      const inherited=repaired?repaired.dependencies:old?.dependencies.filter(dep=>dep.domain!=='knowledge'||dep.ref.objectId!==objectId)??[];
+      const oldCitations=repaired?repaired.citations:old?.content.citations??[];
+      if(inherited.some(unsupported)||oldCitations.some(c=>c.kind==='media'||c.sourceDomain&&c.sourceDomain!=='source'))
         assurance();
       const selectedDeps:Dependency[]=selected.map(item=>({domain:item.kind==='wiki_page'?'knowledge':'source',ref:version(item.ref),
         role:'derived_from',critical:true}));
       const dependencies=uniqueDeps([...inherited,...selectedDeps.filter(dep=>dep.domain!=='knowledge'||dep.ref.objectId!==objectId)]);
-      const citations=[...(old?.content.citations??[]),...selected.filter(item=>item.kind==='source_content').map(item=>({
+      const citations=[...oldCitations,...selected.filter(item=>item.kind==='source_content').map(item=>({
         kind:'source' as const,sourceRef:version(item.ref),sourceDomain:'source' as const,locator:item.locator,
         supports:draft.rationale}))];
       const uniqueCitations=[...new Map(citations.map(c=>[canonical(c),c])).values()];
       const content=WikiPageContentSchema.parse({schemaVersion:'1.0',profile:{id:profile.id,version:profile.version},
         identity:{key:draft.identityKey,aliases:old?.content.identity.aliases??[]},summary:draft.summary,
         conditions:draft.conditions,counterexamples:draft.counterexamples,unknowns:draft.unknowns,
-        nextQuestions:draft.nextQuestions,citations:uniqueCitations,navigation:old?.content.navigation??[]});
+        nextQuestions:draft.nextQuestions,citations:uniqueCitations,navigation:repaired?repaired.navigation:old?.content.navigation??[]});
       const frozenDeps=wikiPageFrozenDependencies({content,dependencies});
       if(frozenDeps.some(unsupported))assurance();
       for(const dep of frozenDeps.filter(dep=>dep.domain==='source'&&dep.critical)){
@@ -198,7 +240,8 @@ export function createPgWikiCompileStage(pool:Pool,grant:KnowledgeWriterGrant,so
         content,scope:{applicability:old?.scope.applicability??{productVersionRefs:[],platforms:[],markets:[],languages:[],
           audiences:[],goals:[],requiredProduction:[],transferRationale:null},
           limitations:[...new Set([...(old?.scope.limitations??[]),'编纂候选：语义、来源和适用范围尚待独立审阅。'])],
-          unknowns:[...new Set([...(old?.scope.unknowns??[]),...draft.unknowns])],reviewDueAt:old?.scope.reviewDueAt??null},
+          unknowns:[...new Set([...(old?.scope.unknowns??[]),...draft.unknowns])],
+          reviewDueAt:draft.repair?.reviewDue.action==='set'?draft.repair.reviewDue.until:draft.repair?.reviewDue.action==='clear'?null:old?.scope.reviewDueAt??null},
         dependencies:frozenDeps,sourceGroups:sourceGroups(selected,old),artifactRef:null,createdAt:input.createdAt,analysisQuality:null};
       const revision:KnowledgeRevision={...base,binding:{bindingKind:'wiki_page',spaceId:context.scope.spaceId,
         specificationId:'wiki-compile-stage',specificationVersion:'1',contentVersion:'wiki_page/1.0',

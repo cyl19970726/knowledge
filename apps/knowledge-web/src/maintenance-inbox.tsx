@@ -14,7 +14,7 @@ const stateName: Record<MaintenanceTask['state'], string> = {
 const coordinationStateName: Record<CoordinationRun['state'], string> = {
   reserved: '已预留', running: '处理中', waiting_for_review: '等待独立审阅', no_change: '提案无变化',
   needs_evidence: '需要补证', refused: '已拒绝', failed: '处理失败', outcome_unknown: '结果待核对',
-  completed: '已完成', cancelled: '已取消',
+  completed: '已完成', cancelled: '已取消', superseded: '目标已更新，按过时结束',
 };
 const compilationStateName: Record<WikiCompileResult['state'], string> = {
   reserved: '已预留', running: '处理中', draft_ready: '草稿已就绪', waiting_for_review: '等待独立审阅',

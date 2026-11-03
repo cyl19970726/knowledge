@@ -459,6 +459,16 @@
       "date": "2026-11-03",
       "summary": "独立Wiki目录、准确正文与图谱往返，以及失效事件和Lint到修复队列的边界。",
       "lifecycle": "record"
+    },
+    {
+      "id": "knowledge-wiki-repair-20261103",
+      "path": "evidence/wiki-repair-20261103.md",
+      "title": "失效 Wiki 修复执行验证",
+      "group": "当前实现回执",
+      "status": "本地工程通过 · 未部署",
+      "date": "2026-11-03",
+      "summary": "recompile 处理器、仅供对照的修复目标、逐项依赖处置，以及从失效到下一轮 Ask 采用的真实 HTTP/PG 链路。",
+      "lifecycle": "record"
     }
   ],
   "hash_aliases": {},
