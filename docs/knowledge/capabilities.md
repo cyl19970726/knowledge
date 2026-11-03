@@ -22,6 +22,10 @@
 
 K03 查询不保证对任意自然语言问题生成答案；K08 不是给普通业务调用者的任意发表入口。来源登记、研究成功、审阅通过、知识发表及业务成功分别判断。
 
+### Wiki 页目录
+
+`wikiCatalog` 能力声明允许 `GET /catalog` 使用 `kinds=wiki_page`，SDK调用为 `catalog({purpose,limit,kinds:['wiki_page'],query?,cursor?})`。筛选在分页之前执行，游标绑定种类、查询、scope、主体、用途与知识epoch。未传kinds时保留原目录行为。页库列出当前已发表Wiki及其真实状态；有权阅读不等于当前用途可采用，历史与候选各有独立入口。
+
 ### 显式有据问答
 
 普通 `/query` 继续返回候选，未指定方法时保留标题/正文词项 v1；显式 `retrievalMethod: wiki-lexical-v2` 追加结构化身份键和别名。别名匹配是召回信号，不证明同一实体或语义支持。方法版本写入读取回执并绑定分页游标；v1/v2 不能混用游标。工作台只在服务声明 `queryIdentityLexicalVersion: 2` 时启用 v2，以兼容旧服务。

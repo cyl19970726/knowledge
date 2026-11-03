@@ -2,7 +2,7 @@
   "title": "通用认知知识库 · 产品、能力与实现",
   "brand": "知识库",
   "home_id": "knowledge-overview",
-  "updated": "2026-11-02",
+  "updated": "2026-11-03",
   "documents": [
     {
       "id": "knowledge-overview",
@@ -449,6 +449,16 @@
       "date": "2026-11-02",
       "summary": "问题驱动的正文与星图并列布局、三种提案及用户选定的可调分栏修订。",
       "lifecycle": "record"
+    },
+    {
+      "id": "knowledge-wiki-library-20261103",
+      "path": "evidence/wiki-library-20261103.md",
+      "title": "Wiki页库与修复任务入队验证",
+      "group": "当前实现回执",
+      "status": "本地工程与浏览器通过 · 未部署",
+      "date": "2026-11-03",
+      "summary": "独立Wiki目录、准确正文与图谱往返，以及失效事件和Lint到修复队列的边界。",
+      "lifecycle": "record"
     }
   ],
   "hash_aliases": {},
@@ -586,6 +596,11 @@
     "../assets/starmap-layout-20261102/ledger-final.json",
     "../assets/starmap-layout-20261102/mobile-final.png",
     "../assets/starmap-layout-20261102/mobile-initial.png",
-    "evidence/starmap-layout-validation-20261102.json"
+    "evidence/starmap-layout-validation-20261102.json",
+    "../assets/wiki-library-20261102/review-due-page.png",
+    "../assets/wiki-library-20261102/page-desktop.png",
+    "../assets/wiki-library-20261102/interaction.json",
+    "../assets/wiki-library-20261102/catalog-mobile.png",
+    "../assets/wiki-library-20261102/catalog-desktop.png"
   ]
 }
