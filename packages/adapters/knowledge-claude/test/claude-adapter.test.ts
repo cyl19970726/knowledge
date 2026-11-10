@@ -238,3 +238,12 @@ test('a ledger failure after a billed dispatch keeps the model-call key blocked'
   await assert.rejects(service.call(context(['model:call']),request,'eval-key-0003'),(error:{code?:string})=>error.code==='MODEL_CALL_IN_PROGRESS');
   assert.equal(sent.length,1,'the billed request is never sent a second time');
 });
+
+test('unusable model output is a ProviderOutputError carrying the billed cost',async()=>{
+  const {ProviderOutputError}=await import('@commerce/knowledge-application');
+  const {transport}=fakeTransport(()=>({text:'{"outcome":"answered"'}));
+  const answerer=createClaudeAnswerer(createClaudeModelPort({transport,ledger:createMemorySpendLedger(),config}));
+  await assert.rejects(answerer.answer({operationId:'x',question:'Q',purpose:'p',evidence:[evidence('w','b','wiki_page')],signal,
+    budget:{maxModelCalls:1,maxReadBytes:1,deadline:new Date().toISOString(),maxMoney:null}}),
+    (error:unknown)=>error instanceof ProviderOutputError&&error.receipt.cost.money.state==='known'&&error.receipt.requestId==='req_fake');
+});

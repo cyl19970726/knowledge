@@ -2,7 +2,7 @@ import {z} from 'zod';
 import {zodOutputFormat} from '@anthropic-ai/sdk/helpers/zod';
 import {AskProviderAnswerSchema,SourcePlanProposalSchema,WikiCompileProposalSchema,DecisionBatchResultSchema,
   type ProfileRef,type DecisionQuestion} from '@commerce/knowledge-contracts';
-import type {QueryAnswerer,AskEvidence,SourcePlanner,WikiCompiler,DecisionProvider} from '@commerce/knowledge-application';
+import {ProviderOutputError,type QueryAnswerer,type AskEvidence,type SourcePlanner,type WikiCompiler,type DecisionProvider} from '@commerce/knowledge-application';
 import {KnowledgeError} from '@commerce/knowledge-core/types';
 import {knowledgeCost,type ClaudeModelPort,type ModelCallResult} from './model-port.ts';
 
@@ -17,12 +17,22 @@ const moneyCap=(budget:{maxMoney:{amount:number;currency:string}|null})=>{
   if(budget.maxMoney.currency!=='USD')throw new KnowledgeError('MONEY_CURRENCY_UNSUPPORTED','Claude spending is bounded in USD',422);
   return budget.maxMoney.amount;
 };
-function parseOutput<T>(result:ModelCallResult,schema:z.ZodType<T>,what:string):T{
-  if(result.outcome==='truncated')throw new KnowledgeError('PROVIDER_OUTPUT_TRUNCATED',`${what} output hit the token ceiling`,502);
-  let value:unknown;
-  try{value=JSON.parse(result.text);}catch{throw new KnowledgeError('PROVIDER_OUTPUT_INVALID',`${what} output is not JSON`,502);}
+/** The model answered and was billed; its output is unusable. Carries the cost so the operation fails with known accounting. */
+export function invalidOutput(result:ModelCallResult,message:string,code:'PROVIDER_OUTPUT_INVALID'|'PROVIDER_OUTPUT_TRUNCATED'='PROVIDER_OUTPUT_INVALID'){
+  return new ProviderOutputError(code,message,{cost:knowledgeCost(result),modelReturned:result.modelReturned,requestId:result.requestId});
+}
+/** Model-derived values must satisfy the shared contract; a violation is the model's invalid output, not an unknown outcome. */
+function contract<T>(result:ModelCallResult,schema:z.ZodType<T>,value:unknown,what:string):T{
   const parsed=schema.safeParse(value);
-  if(!parsed.success)throw new KnowledgeError('PROVIDER_OUTPUT_INVALID',`${what} output does not match its schema`,502);
+  if(!parsed.success)throw invalidOutput(result,`${what} violates its contract`);
+  return parsed.data;
+}
+function parseOutput<T>(result:ModelCallResult,schema:z.ZodType<T>,what:string):T{
+  if(result.outcome==='truncated')throw invalidOutput(result,`${what} output hit the token ceiling`,'PROVIDER_OUTPUT_TRUNCATED');
+  let value:unknown;
+  try{value=JSON.parse(result.text);}catch{throw invalidOutput(result,`${what} output is not JSON`);}
+  const parsed=schema.safeParse(value);
+  if(!parsed.success)throw invalidOutput(result,`${what} output does not match its schema`);
   return parsed.data;
 }
 /** Fences untrusted text inside our tags; unescapeUntrusted reverses it for text the model copies back. */
@@ -62,10 +72,11 @@ export function createClaudeAnswerer(port:ClaudeModelPort):QueryAnswerer{
         prompt:[`Purpose: ${input.purpose}`,input.gaps?.length?`Known gaps before answering:\n${list(input.gaps)}`:'',`Question: ${input.question}`].filter(Boolean).join('\n\n'),
         outputFormat:format(AnswerOutput),maxMoneyUsd:moneyCap(input.budget),signal:input.signal});
       const ids=new Set(input.evidence.map(item=>item.id));
-      const answer=result.outcome==='refused'?{outcome:'refused' as const,claims:[],reason:'The model declined to answer',gaps:[]}:
-        AskProviderAnswerSchema.parse(parseOutput(result,AnswerOutput,'Answer'));
-      if(answer.claims.some(claim=>claim.evidenceIds.some(id=>!ids.has(id))))
-        throw new KnowledgeError('PROVIDER_OUTPUT_INVALID','Answer cites evidence that was not supplied',502);
+      const output=result.outcome==='refused'?{outcome:'refused' as const,claims:[],reason:'The model declined to answer',gaps:[]}:parseOutput(result,AnswerOutput,'Answer');
+      const parsed=AskProviderAnswerSchema.safeParse(output);
+      if(!parsed.success)throw invalidOutput(result,'Answer violates the answer contract');
+      const answer=parsed.data;
+      if(answer.claims.some(claim=>claim.evidenceIds.some(id=>!ids.has(id))))throw invalidOutput(result,'Answer cites evidence that was not supplied');
       return {answer,cost:knowledgeCost(result),modelReturned:result.modelReturned,requestId:result.requestId};
     }};
 }
@@ -103,10 +114,10 @@ export function createClaudeSourcePlanner(port:ClaudeModelPort):SourcePlanner{
         return {item,span:locateMention(input.source.body,item.surface,item.occurrence)};});
       const unplaced=located.filter(entry=>!entry.span).length;
       const planned=output.outcome==='planned';
-      const proposal=SourcePlanProposalSchema.parse({outcome:output.outcome,question:planned?output.question:null,
+      const proposal=contract(result,SourcePlanProposalSchema,{outcome:output.outcome,question:planned?output.question:null,
         queries:planned?[...new Set(output.queries)].slice(0,5):[],
         mentions:planned?located.flatMap(({item,span})=>span?[{entityType:item.entityType,surface:item.surface,...span}]:[]).slice(0,100):[],
-        reason:output.reason,gaps:[...output.gaps,...unplaced?[`${unplaced} proposed mentions were not found verbatim in the source and were dropped`]:[]].slice(0,100)});
+        reason:output.reason,gaps:[...output.gaps,...unplaced?[`${unplaced} proposed mentions were not found verbatim in the source and were dropped`]:[]].slice(0,100)},'Source plan');
       // Raw keeps only counts; the provider output may quote the source body.
       return {proposal,raw:{mentionsProposed:output.mentions.length,mentionsDropped:unplaced,stopReason:result.stopReason},cost,...meta};
     }};
@@ -147,15 +158,15 @@ export function createClaudeWikiCompiler(port:ClaudeModelPort):WikiCompiler{
       const ids=new Set(input.evidence.map(item=>item.id));
       const drafts=output.outcome!=='proposed'?[]:output.drafts.slice(0,5).map(draft=>{
         const profile=profiles.get(draft.profileId);
-        if(!profile)throw new KnowledgeError('PROVIDER_OUTPUT_INVALID',`Draft uses unknown profile ${draft.profileId}`,502);
+        if(!profile)throw invalidOutput(result,`Draft uses unknown profile ${draft.profileId}`);
         if(!draft.supportEvidenceIds.length||draft.supportEvidenceIds.some(id=>!ids.has(id))||(draft.targetEvidenceId!==null&&!ids.has(draft.targetEvidenceId)))
-          throw new KnowledgeError('PROVIDER_OUTPUT_INVALID','Draft cites evidence that was not supplied',502);
+          throw invalidOutput(result,'Draft cites evidence that was not supplied');
         return {targetEvidenceId:draft.targetEvidenceId,profile,identityKey:draft.identityKey,title:draft.title,summary:draft.summary,
           conditions:[...draft.claimStatus?[`claim_status:${draft.claimStatus}`]:[],...draft.conditions].slice(0,50),
           counterexamples:draft.counterexamples.slice(0,50),unknowns:draft.unknowns.slice(0,50),nextQuestions:draft.nextQuestions.slice(0,50),
           supportEvidenceIds:[...new Set(draft.supportEvidenceIds)].slice(0,50),rationale:draft.rationale};
       });
-      return {proposal:WikiCompileProposalSchema.parse({outcome:output.outcome,drafts,reason:output.reason,gaps:output.gaps.slice(0,100)}),cost,...meta};
+      return {proposal:contract(result,WikiCompileProposalSchema,{outcome:output.outcome,drafts,reason:output.reason,gaps:output.gaps.slice(0,100)},'Compilation'),cost,...meta};
     }};
 }
 
@@ -191,9 +202,9 @@ export function createClaudeDecisionProvider(port:ClaudeModelPort):DecisionProvi
             probability:answered&&q.type==='predicate'?unit(answer.probability):null,
             distribution:answered&&q.type!=='predicate'&&answer.distribution?Object.fromEntries(answer.distribution.map(entry=>[entry.value,unit(entry.probability)!])):null,
             confidence:answered?unit(answer.confidence):null,reason:answer.reason?.slice(0,1000)??null}];});
-      const batch=DecisionBatchResultSchema.parse({modelReturned:result.modelReturned??port.config.model,answers,
+      const batch=contract(result,DecisionBatchResultSchema,{modelReturned:result.modelReturned??port.config.model,answers,
         inputTokens:result.usage.inputTokens+result.usage.cacheCreationInputTokens+result.usage.cacheReadInputTokens,outputTokens:result.usage.outputTokens,
-        requestId:result.requestId,raw:{stopReason:result.stopReason}});
+        requestId:result.requestId,raw:{stopReason:result.stopReason}},'Decision batch');
       return {result:batch,cost:knowledgeCost(result)};
     }};
 }

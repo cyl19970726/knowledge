@@ -29,7 +29,9 @@ dbTest('Claude providers through the API: disclosure gate, budgeted Ask, ledger 
     const seed=await seedKnowledgeSyntheticFixture(pool,`synthetic-${randomUUID()}`),token=`test-${randomUUID()}-${randomUUID()}`;
     await migrateModelSpend(pool);await migrateModelCalls(pool);
     const ledger=createPgSpendLedger(pool);
+    let garbled=false;
     const {transport,sent}=fakeTransport(params=>{
+      if(garbled)return 'not json at all';
       const text=JSON.stringify(params.messages);
       const id=/<evidence id=\\"([^\\"]+)\\" kind=\\"wiki_page\\"/.exec(text)?.[1];
       return id?JSON.stringify({outcome:'answered',claims:[{text:'合成断言，仅用于接线测试。',evidenceIds:[id]}],reason:'synthetic',gaps:[]}):'plain arm answer';
@@ -66,6 +68,17 @@ dbTest('Claude providers through the API: disclosure gate, budgeted Ask, ledger 
       const rows=(await pool.query("SELECT role,state,actual_usd::float8 AS usd FROM ccl_knowledge_model_spend")).rows;
       assert.deepEqual(rows.map(row=>[row.role,row.state]),[['ask','settled']]);
       assert.equal(answer.cost.money.state==='known'&&answer.cost.money.amount,rows[0].usd);
+    });
+    await t.test('an answered but unusable reply fails with its billed cost instead of an unknown outcome',async()=>{
+      const client=await start(true);garbled=true;
+      try{
+        const answer=(await client.ask(ask(),{idempotencyKey:randomUUID()})).data;
+        assert.equal(answer.state,'failed');
+        assert.match(answer.reason,/^PROVIDER_OUTPUT_INVALID/);
+        assert.equal(answer.cost.money.state,'known');
+        assert.ok(answer.cost.money.state==='known'&&answer.cost.money.amount>0);
+        assert.equal(answer.provider?.requestId,'req_synthetic');
+      }finally{garbled=false;}
     });
     await t.test('a generic model call shares the ledger and replays without a second charge',async()=>{
       const client=await start(true),key=`eval-${randomUUID()}`;
