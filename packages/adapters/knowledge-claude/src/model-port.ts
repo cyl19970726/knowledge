@@ -80,6 +80,10 @@ export function validateModelConfig(config:ClaudeModelConfig):ClaudeModelConfig{
   return config;
 }
 
+/** Errors the port raises only when no request was billed. Anything else may follow a billed dispatch
+ * (for example a ledger conflict while settling), so callers must treat it as an unknown outcome. */
+export const UNBILLED_MODEL_ERRORS:ReadonlySet<string>=new Set(['MODEL_BUDGET_EXCEEDED','MODEL_DAILY_BUDGET_EXCEEDED','MODEL_PRICE_UNKNOWN',
+  'MODEL_CALL_REJECTED','MODEL_RATE_LIMITED','MODEL_UNAVAILABLE']);
 /** A provider error raised before anything was billed: a request the provider refuses outright (4xx) is
  * MODEL_CALL_REJECTED; rate limits and outages keep their own codes so callers know a later retry can succeed. */
 function rejected(error:unknown,fallback:string):KnowledgeError{

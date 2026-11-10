@@ -4,7 +4,7 @@ import {ModelCallRequestSchema,ModelCallResultSchema,type ModelCallRequest,type 
 import {authorizeCapability,type CapabilityContext} from '@commerce/knowledge-application';
 import {KnowledgeError} from '@commerce/knowledge-core/types';
 import {digest} from '@commerce/knowledge-core/utils';
-import {knowledgeCost,type ClaudeModelPort} from './model-port.ts';
+import {knowledgeCost,UNBILLED_MODEL_ERRORS,type ClaudeModelPort} from './model-port.ts';
 import {CLAUDE_PROVIDER_ID} from './providers.ts';
 
 /** One row per idempotency key: a replay returns the stored result and is never billed twice. */
@@ -67,8 +67,8 @@ export function createModelCallService(options:{port:ClaudeModelPort;store:Model
         result=await options.port.call({role:'model_call',operationId:id,system:request.system,cachedPrefix:request.cachedPrefix??undefined,prompt:request.prompt,
           maxMoneyUsd:request.maxMoney.amount,maxOutputTokens:request.maxOutputTokens??undefined,signal:signal??new AbortController().signal});
       }catch(error){
-        // A call rejected before dispatch may be retried with the same key; an unknown outcome keeps the key blocked.
-        if(error instanceof KnowledgeError&&error.code!=='PROVIDER_OUTCOME_UNKNOWN')await options.store.abandon(owner,key);
+        // Only an error known to precede billing frees the key; any other error may follow a billed dispatch.
+        if(error instanceof KnowledgeError&&UNBILLED_MODEL_ERRORS.has(error.code))await options.store.abandon(owner,key);
         throw error;
       }
       const stored=ModelCallResultSchema.parse({id,label:request.label,requestDigest,outcome:result.outcome,text:result.text,usage:result.usage,
