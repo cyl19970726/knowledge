@@ -25,7 +25,10 @@ function parseOutput<T>(result:ModelCallResult,schema:z.ZodType<T>,what:string):
   if(!parsed.success)throw new KnowledgeError('PROVIDER_OUTPUT_INVALID',`${what} output does not match its schema`,502);
   return parsed.data;
 }
-const escape=(value:string)=>value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+/** Fences untrusted text inside our tags; unescapeUntrusted reverses it for text the model copies back. */
+export const escapeUntrusted=(value:string)=>value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+export const unescapeUntrusted=(value:string)=>value.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
+const escape=escapeUntrusted;
 const list=(items:readonly string[])=>items.length?items.map(item=>`- ${item}`).join('\n'):'(none)';
 /** Evidence is untrusted data. It is fenced and escaped so it cannot close its own tag or pose as instructions. */
 export function renderEvidence(evidence:readonly AskEvidence[]):string{
@@ -95,7 +98,9 @@ export function createClaudeSourcePlanner(port:ClaudeModelPort):SourcePlanner{
       const cost=knowledgeCost(result),meta={modelReturned:result.modelReturned,requestId:result.requestId};
       if(result.outcome==='refused')return {proposal:SourcePlanProposalSchema.parse({outcome:'refused',question:null,queries:[],mentions:[],reason:'The model declined to plan this source',gaps:[]}),raw:null,cost,...meta};
       const output=parseOutput(result,PlanOutput,'Source plan');
-      const located=output.mentions.map(item=>({item,span:locateMention(input.source.body,item.surface,item.occurrence)}));
+      // The model read an escaped body, so a copied surface may carry &amp; and friends.
+      const located=output.mentions.map(raw=>{const item={...raw,surface:unescapeUntrusted(raw.surface)};
+        return {item,span:locateMention(input.source.body,item.surface,item.occurrence)};});
       const unplaced=located.filter(entry=>!entry.span).length;
       const planned=output.outcome==='planned';
       const proposal=SourcePlanProposalSchema.parse({outcome:output.outcome,question:planned?output.question:null,

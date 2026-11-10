@@ -2,7 +2,7 @@ import {createPgCompilationReviewPort} from './compilation-review.ts';
 import {migrateWikiCompilations} from './wiki-compile.ts';
 import type {Pool} from 'pg';
 import {randomUUID} from 'node:crypto';
-import {CandidateViewSchema,type ReviewRequest,type ReviewDecision,type ReviewTicket,type FinalizeReceipt,type ResearchResult,
+import {CandidateViewSchema,ReviewTicketSchema,type ReviewRequest,type ReviewDecision,type ReviewTicket,type FinalizeReceipt,type ResearchResult,
   type KnowledgeRef,type ChangeItem,type FeedbackRecord} from '@commerce/knowledge-contracts';
 import type {CapabilityContext,ReadContext,ReviewPort,SourceRegistryPort} from '@commerce/knowledge-application';
 import {createKnowledgeStore} from '@commerce/knowledge-core/store';
@@ -25,6 +25,7 @@ export async function migrateKnowledgeReviews(pool:Pool){await migrateCapability
   CREATE TRIGGER ccl_writer_guard BEFORE INSERT OR UPDATE OR DELETE ON ccl_knowledge_review_tickets
   FOR EACH ROW EXECUTE FUNCTION ccl_assert_knowledge_writer()`);
   await pool.query("ALTER TABLE ccl_knowledge_review_tickets ADD COLUMN IF NOT EXISTS origin_kind text NOT NULL DEFAULT 'research'");
+  await pool.query('ALTER TABLE ccl_knowledge_review_tickets ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now()');
   await migrateWikiCompilations(pool);
 }
 function sameTarget(a:ReviewRequest['target'],b:ReviewRequest['target']){return digest(a)===digest(b);}
@@ -173,7 +174,7 @@ function createPgResearchReviewPort(pool:Pool,writerGrant:KnowledgeWriterGrant,s
       }
       const final:FinalizeReceipt={reviewReceiptId:decisionId,target:ticket.payload.target,publication,result:cognitiveOutcome};
       await client.query(`UPDATE ccl_knowledge_review_tickets SET state='finalized',payload=$2,final_receipt=$3,reviewer_id=$4,decision=$5,decided_at=now() WHERE id=$1`,
-        [id,{...ticket.payload,status:'finalized'},final,context.principal.id,input]);
+        [id,{...ticket.payload,status:'finalized',reviewer:{principalId:context.principal.id,kind:context.principal.actor?.kind??'unspecified',model:context.principal.actor?.model??null}},final,context.principal.id,input]);
       const researchId=ticket.target_kind==='candidate'?ticket.target_id:ticket.target_id;
       await client.query(`UPDATE ccl_knowledge_operations SET result=jsonb_set(jsonb_set(jsonb_set(result,'{reviewState}',$2::jsonb),'{reviewReceiptId}',$3::jsonb),'{publication}',$4::jsonb),
         state='succeeded',updated_at=now() WHERE id=$1 AND result IS NOT NULL`,
@@ -211,5 +212,23 @@ export function createPgReviewPort(pool:Pool,writerGrant:KnowledgeWriterGrant,so
   async request(context,input,key){return input.target.kind==='candidate'&&await compilation.hasOrigin(context,input.target.candidateId)?compilation.request(context,input,key):research.request(context,input,key);},
   async ticket(context,id){return await compiledTicket(context,id)?compilation.ticket(context,id):research.ticket(context,id);},
   async decide(context,id,input,key){return await compiledTicket(context,id)?compilation.decide(context,id,input,key):research.decide(context,id,input,key);},
+  async queue(context,input){
+   if(context.scope.projectId!==context.principal.projectId||!context.principal.spaceIds.includes(context.scope.spaceId)||!context.principal.purposes.includes(context.purpose))
+    throw new KnowledgeError('REVIEW_READ_FORBIDDEN','Review context forbidden',403);
+   const escalated=input.escalated==='only'?"AND payload ? 'escalation'":input.escalated==='exclude'?"AND NOT payload ? 'escalation'":'';
+   const rows=await pool.query<{payload:ReviewTicket}>(`SELECT payload FROM ccl_knowledge_review_tickets
+     WHERE project_id=$1 AND space_id=$2 AND purpose=$3 AND state='pending' AND proposer_id<>$4 AND ($6::text IS NULL OR target_kind=$6) ${escalated}
+     ORDER BY created_at,id LIMIT $5`,[context.scope.projectId,context.scope.spaceId,context.purpose,context.principal.id,input.limit,input.targetKind??null]);
+   return rows.rows.map(row=>ReviewTicketSchema.parse(row.payload));},
+  async escalate(context,id,input,key){return capabilityTransaction(pool,context,'review:escalate',key,{id,input},writerGrant,async client=>{
+   const row=(await client.query<{payload:ReviewTicket;proposer_id:string;purpose:string;state:string}>(`SELECT payload,proposer_id,purpose,state FROM ccl_knowledge_review_tickets
+     WHERE id=$1 AND project_id=$2 AND space_id=$3 FOR UPDATE`,[id,context.scope.projectId,context.scope.spaceId])).rows[0];
+   if(!row||row.purpose!==context.purpose)throw new KnowledgeError('REVIEW_TICKET_UNAVAILABLE','Review ticket unavailable',404);
+   if(row.proposer_id===context.principal.id)throw new KnowledgeError('SELF_REVIEW_FORBIDDEN','Independent reviewer must differ from proposer',403);
+   if(row.state!=='pending')throw new KnowledgeError('REVIEW_ALREADY_FINALIZED','Only pending reviews can be escalated',409);
+   const ticket=ReviewTicketSchema.parse({...row.payload,escalation:{categories:input.categories,note:input.note,at:new Date().toISOString(),
+     by:{principalId:context.principal.id,kind:context.principal.actor?.kind??'unspecified',model:context.principal.actor?.model??null}}});
+   await client.query('UPDATE ccl_knowledge_review_tickets SET payload=$2 WHERE id=$1',[id,ticket]);
+   return ticket;});},
  };
 }

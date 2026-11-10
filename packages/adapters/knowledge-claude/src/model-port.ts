@@ -80,6 +80,15 @@ export function validateModelConfig(config:ClaudeModelConfig):ClaudeModelConfig{
   return config;
 }
 
+/** A provider error raised before anything was billed: a request the provider refuses outright (4xx) is
+ * MODEL_CALL_REJECTED; rate limits and outages keep their own codes so callers know a later retry can succeed. */
+function rejected(error:unknown,fallback:string):KnowledgeError{
+  const status=error instanceof ClaudeDispatchError?error.status:null;
+  const message=error instanceof Error?error.message:fallback;
+  if(status===429)return new KnowledgeError('MODEL_RATE_LIMITED',message,429);
+  if(status!==null&&status>=400&&status<500&&status!==408)return new KnowledgeError('MODEL_CALL_REJECTED',message,502);
+  return new KnowledgeError('MODEL_UNAVAILABLE',message,503);
+}
 /** Generic, budgeted Claude call shared by every knowledge provider and the HTTP model-call route. */
 export function createClaudeModelPort(options:{transport:ClaudeTransport;ledger:SpendLedger;config:ClaudeModelConfig;now?:()=>Date}):ClaudeModelPort{
   const config=Object.freeze(validateModelConfig({...options.config}));
@@ -94,7 +103,10 @@ export function createClaudeModelPort(options:{transport:ClaudeTransport;ledger:
       const output_config:OutputConfig={effort:config.effort,...input.outputFormat?{format:input.outputFormat}:{}};
       const base={model:config.model,system,messages:[{role:'user' as const,content}],output_config};
       // Token counting is free and gives an exact input size for the worst-case reservation.
-      const inputTokens=await options.transport.countTokens(base,input.signal);
+      let inputTokens:number;
+      // Counting happens before any reservation or generation, so its failure is never billed.
+      try{inputTokens=await options.transport.countTokens(base,input.signal);}
+      catch(error){throw rejected(error,'Token count failed');}
       const ceiling=Math.min(input.maxOutputTokens??config.maxOutputTokens,config.maxOutputTokens);
       const maxTokens=Math.min(ceiling,outputAllowance(config.model,inputTokens,cap));
       if(maxTokens<(config.minOutputTokens??1024))
@@ -106,8 +118,9 @@ export function createClaudeModelPort(options:{transport:ClaudeTransport;ledger:
       catch(error){
         const billed=error instanceof ClaudeDispatchError?error.billed:'unknown';
         const reason=error instanceof Error?error.message:'Model call failed';
-        if(billed==='no')await options.ledger.release(reservation.id,reason);else await options.ledger.markUnknown(reservation.id,reason);
-        throw new KnowledgeError(billed==='no'?'MODEL_CALL_REJECTED':'PROVIDER_OUTCOME_UNKNOWN',reason,billed==='no'?502:504);
+        if(billed==='no'){await options.ledger.release(reservation.id,reason);throw rejected(error,reason);}
+        await options.ledger.markUnknown(reservation.id,reason);
+        throw new KnowledgeError('PROVIDER_OUTCOME_UNKNOWN',reason,504);
       }
       const usage:TokenUsage={inputTokens:message.usage.input_tokens,outputTokens:message.usage.output_tokens,
         cacheCreationInputTokens:message.usage.cache_creation_input_tokens??0,cacheReadInputTokens:message.usage.cache_read_input_tokens??0};
