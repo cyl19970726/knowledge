@@ -1,9 +1,10 @@
 import {createServer as createHttpServer} from 'node:http';
 import type {Server} from 'node:http';
-import {timingSafeEqual,randomUUID} from 'node:crypto';
+import {timingSafeEqual,randomUUID,createHash} from 'node:crypto';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import express from 'express';
+import {readPrincipalsFile} from './principals-file.ts';
 import type {Express} from 'express';
 import {Pool} from 'pg';
 import {ZodError} from 'zod';
@@ -28,20 +29,45 @@ import {ModelCallRequestSchema,CONTRACT_VERSION,CatalogRequestSchema,CompareRequ
   SourceUpsertSchema,ResearchRequestSchema,CancelRequestSchema,OperationLookupSchema,UseInputSchema,FeedbackInputSchema,ChangesRequestSchema,
   ReviewRequestSchema,ReviewDecisionSchema,FeedbackSourceRequestSchema,AskRequestSchema,SourceEventRequestSchema,EntityMentionExtractionSchema,WikiCompileRequestSchema,MaintenanceCollectRequestSchema,LintRequestSchema,RelationJudgmentRequestSchema,SearchProjectionBuildRequestSchema,SourcePlanRequestSchema,SemanticSweepApiRequestSchema,AnswerResearchRequestSchema} from '@commerce/knowledge-contracts';
 
-export interface KnowledgeApiConfig {pool:Pool;token:string;principal:Principal;port?:number;host?:string;
+/** One authenticated party. Only the SHA-256 of its bearer token is configured; actions and purposes are per principal. */
+export interface ApiPrincipal {tokenSha256:string;principal:Principal;capabilities:CapabilityPrincipal}
+export interface KnowledgeApiConfig {pool:Pool;
+  /** Legacy single principal; ignored when principals is set. */
+  token?:string;principal?:Principal;principals?:readonly ApiPrincipal[];port?:number;host?:string;
   writerGrant?:KnowledgeWriterGrant;enableSyntheticResearch?:boolean;researchProvider?:SyntheticResearchProvider;capabilities?:CapabilityPrincipal;
   syntheticFixture?:boolean;feedbackSourceRightsPolicyRef?:string;
   /** External model disclosure policy; builds dispatch authorizers that are not supplied explicitly. */
   modelDisclosure?:ModelDisclosurePolicy;authorizeAskDispatch?:Parameters<typeof createAskWikiService>[0]['authorizeExternalDispatch'];
   modelCalls?:ReturnType<typeof createModelCallService>;sourceOwner?:SourceOwnerPort;answerer?:QueryAnswerer;enableSourceIngest?:boolean;compiler?:WikiCompiler;authorizeCompilerDispatch?:Parameters<typeof createWikiCompileApplication>[0]['authorizeExternalDispatch'];sourceReaderIds?:readonly string[];enableMaintenance?:boolean;decisionProvider?:DecisionProvider;authorizeDecisionDispatch?:Parameters<typeof createRelationJudgmentApplication>[0]['authorizeExternalDispatch'];sourcePlanner?:SourcePlanner;authorizeSourcePlannerDispatch?:Parameters<typeof createSourcePlanApplication>[0]['authorizeExternalDispatch'];coordinationPolicy?:Omit<CoordinationPolicy,'providerFingerprint'>}
 export interface KnowledgeApi {app:Express;service:KnowledgeApplication;research:ReturnType<typeof createSyntheticResearchService>|null;coordination:ReturnType<typeof createCoordinationProcessor>|null;listen():Promise<Server>}
-function equalSecret(actual:string,expected:string):boolean {const a=Buffer.from(actual),b=Buffer.from(expected);return a.length===b.length&&timingSafeEqual(a,b);}
+export const tokenSha256=(token:string)=>createHash('sha256').update(token,'utf8').digest('hex');
+function equalDigest(actual:string,expected:string):boolean {const a=Buffer.from(actual,'hex'),b=Buffer.from(expected,'hex');return a.length===32&&b.length===32&&timingSafeEqual(a,b);}
+const emptyCapabilities:CapabilityPrincipal={actions:[],adapterIds:[],rightsPolicyIds:[]};
+function apiPrincipals(config:KnowledgeApiConfig):readonly ApiPrincipal[]{
+  if(!config.principals){
+    if(!config.token||config.token.length<24)throw new Error('KNOWLEDGE_API_TOKEN must be a nonempty random secret of at least 24 characters');
+    if(!config.principal)throw new Error('Explicit principal required');
+    return [{tokenSha256:tokenSha256(config.token),principal:config.principal,capabilities:config.capabilities??emptyCapabilities}];
+  }
+  const entries=config.principals;
+  if(!entries.length||entries.length>50)throw new Error('Configure 1..50 API principals');
+  const ids=new Set<string>(),tokens=new Set<string>();
+  for(const entry of entries){
+    if(!/^[a-f0-9]{64}$/.test(entry.tokenSha256))throw new Error('Each principal needs a lowercase SHA-256 token digest');
+    if(!entry.principal.id.trim()||ids.has(entry.principal.id))throw new Error('Principal ids must be nonempty and distinct');
+    if(tokens.has(entry.tokenSha256))throw new Error('Principals must not share a token');
+    ids.add(entry.principal.id);tokens.add(entry.tokenSha256);
+  }
+  return entries;
+}
 const message=(error:unknown)=>error instanceof Error?error.message:'Unexpected error';
 
 /** Standalone knowledge-only API. No AnalysisHost, Foundation, video, or model construction. */
 export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<KnowledgeApi>{
-  if(!config.token||config.token.length<24)throw new Error('KNOWLEDGE_API_TOKEN must be a nonempty random secret of at least 24 characters');
-  if(!config.principal.projectId||!config.principal.spaceIds.length||!config.principal.purposes.length)throw new Error('Explicit project, space and purpose scope required');
+  const principals=apiPrincipals(config);
+  for(const {principal} of principals)
+    if(!principal.projectId||!principal.spaceIds.length||!principal.purposes.length)throw new Error('Explicit project, space and purpose scope required');
+  const capabilitiesOf=new Map(principals.map(entry=>[entry.principal.id,entry.capabilities]));
   // Core tables and guard functions must exist before any adapter installs its triggers. Migration does not activate a writer.
   await migrateKnowledge(config.pool);
   await migrateKnowledgeReadReceipts(config.pool);
@@ -64,7 +90,7 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
   const smallJson=express.json({limit:'1mb'}),modelCallJson=express.json({limit:'8mb'});
   app.use((req,res,next)=>(req.method==='POST'&&/\/knowledge\/model-calls$/.test(req.path)?modelCallJson:smallJson)(req,res,next));
   const store=createKnowledgeStore(config.pool,{writerGrant:config.writerGrant}),receipts=createPgKnowledgeReceiptPort(config.pool);
-  const sourceRegistry=createPgSourceRegistry(config.pool,{writerGrant:config.writerGrant,readerIds:config.sourceReaderIds??[config.principal.id]});
+  const sourceRegistry=createPgSourceRegistry(config.pool,{writerGrant:config.writerGrant,readerIds:config.sourceReaderIds??principals.map(entry=>entry.principal.id)});
   const sources=createSourceApplication(sourceRegistry);
   const useFeedback=createUseFeedbackApplication(createPgUseFeedbackPort(config.pool,{writerGrant:config.writerGrant}));
   const reviews=config.writerGrant?createReviewApplication(createPgReviewPort(config.pool,config.writerGrant,sourceRegistry)):null;
@@ -97,13 +123,18 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
     feedback:createPgFeedbackResearchPort(config.pool),provider:config.researchProvider}):null;
   const profiles=listWikiPageProfiles().map(profile=>({id:profile.id,version:profile.version,digest:wikiPageProfileFingerprint(profile)}));
   app.use((req,res,next)=>{const bearer=/^Bearer (.+)$/.exec(req.header('authorization')??'');
-    if(!bearer||!equalSecret(bearer[1],config.token)){res.status(401).json({requestId:randomUUID(),code:'UNAUTHORIZED',message:'Authenticated token required',retryable:false,commitStatus:'not_committed'});return;}next();});
+    const presented=bearer?tokenSha256(bearer[1]):'';
+    // Compare against every principal so timing does not reveal which entry matched.
+    let found:ApiPrincipal|undefined;for(const entry of principals)if(bearer&&equalDigest(presented,entry.tokenSha256))found=entry;
+    if(!found){res.status(401).json({requestId:randomUUID(),code:'UNAUTHORIZED',message:'Authenticated token required',retryable:false,commitStatus:'not_committed'});return;}
+    res.locals.principal=found.principal;next();});
   const base='/api/v1/projects/:projectId/spaces/:spaceId/knowledge';
   const route=(handler:(context:ReadContext,req:express.Request)=>Promise<{data:unknown;coverage?:unknown;receiptId?:string}>|{data:unknown;coverage?:unknown;receiptId?:string})=>
     async(req:express.Request,res:express.Response)=>{const requestId=randomUUID();try{
       const projectId=String(req.params.projectId),spaceId=String(req.params.spaceId),purpose=String(req.body?.purpose??req.query.purpose??'exploration_reading');
-      const context:ReadContext={scope:{projectId,spaceId},principal:config.principal,purpose};
-      if(projectId!==config.principal.projectId||!config.principal.spaceIds.includes(spaceId)||!config.principal.purposes.includes(purpose))
+      const principal=res.locals.principal as Principal;
+      const context:ReadContext={scope:{projectId,spaceId},principal,purpose};
+      if(projectId!==principal.projectId||!principal.spaceIds.includes(spaceId)||!principal.purposes.includes(purpose))
         throw new KnowledgeError('SCOPE_FORBIDDEN','Project, space or purpose is not authorized',403);
       const result=await handler(context,req);
       res.setHeader('cache-control','no-store');res.json({contractVersion:CONTRACT_VERSION,requestId,effectiveScope:context.scope,
@@ -118,34 +149,34 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
         commitStatus:typeof error==='object'&&error&&'commitStatus' in error?error.commitStatus:'not_committed',
         ...(typeof error==='object'&&error&&'operationId' in error?{operationId:error.operationId}:{})});
     }};
-  app.get(`${base}/capabilities`,route(async(context,req)=>({data:{permittedActions:['query','catalog','wikiCatalog','exact','history','compare','graph','read_receipt',
-    ...config.writerGrant&&config.capabilities?.actions.includes('sources:write')?['registerSource']:[],
-    ...config.writerGrant&&config.capabilities?.actions.includes('uses:write')?['recordUse']:[],
-    ...config.writerGrant&&config.capabilities?.actions.includes('feedback:write')?['recordFeedback']:[],
-    ...feedbackSources&&config.capabilities?.actions.includes('feedback:source')?['registerFeedbackSource']:[],
-    ...config.enableSyntheticResearch&&config.writerGrant&&config.capabilities?.actions.includes('research:write')?['research']:[],
-    ...config.writerGrant&&config.capabilities?.actions.includes('review:request')?['requestReview']:[],
-    ...config.writerGrant&&config.capabilities?.actions.includes('review:decide')?['decideReview']:[],
-    ...config.writerGrant&&config.capabilities?.actions.some(action=>['review:read','review:request','review:decide'].includes(action))?['reviewTicket']:[],
-    ...askWiki&&config.capabilities?.actions.includes('ask:write')?['ask','answer','askSelection']:[],
-    ...sourceIntake&&config.capabilities?.actions.includes('ingest:write')?['registerSourceEvent']:[],
-    ...maintenance&&config.capabilities?.actions.includes('maintenance:read')?['maintenanceTasks','maintenanceFindings','searchProjectionStatus']:[],
-    ...sourcePlan&&config.capabilities?.actions.includes('source-plans:read')&&config.capabilities.actions.includes('ingest:read')?['sourcePlan']:[],
-    ...sourcePlan&&config.capabilities?.actions.includes('source-plans:write')&&config.capabilities.actions.includes('source-plans:read')&&config.capabilities.actions.includes('ingest:read')?['planSource']:[],
-    ...coordination&&config.capabilities?.actions.includes('maintenance:read')?['coordinationRun','semanticSweep']:[],
-    ...coordination&&config.capabilities?.actions.includes('maintenance:write')?['processMaintenance','runSemanticSweep']:[],
-    ...maintenance&&config.capabilities?.actions.includes('maintenance:write')?['collectMaintenance','lintWiki','cancelMaintenance','rebuildSearchProjection']:[],
-    ...judgment&&config.capabilities?.actions.includes('judgments:write')&&config.capabilities.actions.includes('judgments:read')?['judgeRelation']:[],
-    ...judgment&&config.capabilities?.actions.includes('judgments:read')?['judgment']:[],
-    ...sourceIntake&&config.capabilities?.actions.includes('ingest:read')?['sourceEvent']:[],
-    ...wikiCompile&&config.capabilities?.actions.includes('compile:write')&&config.capabilities.actions.includes('compile:read')?['compileWiki']:[],
-    ...wikiCompile&&config.capabilities?.actions.includes('compile:read')?['compilation']:[],
-    ...answerResearch&&config.capabilities?.actions.includes('compile:write')&&config.capabilities.actions.includes('compile:read')?['researchAnswer']:[],
-    ...config.modelCalls&&config.capabilities?.actions.includes('model:call')?['modelCall']:[],
-    ...sourceIntake&&config.capabilities?.actions.includes('ingest:mentions')&&config.capabilities.actions.includes('ingest:read')?['recordEntityMentions']:[]],
-    purposes:config.principal.purposes,profiles,mode:config.writerGrant?'ready':'read_only',contractVersion:CONTRACT_VERSION,policyVersion:service.policyVersion,
+  app.get(`${base}/capabilities`,route(async(context,req)=>{const caps=capabilitiesOf.get(context.principal.id)??emptyCapabilities;return {data:{permittedActions:['query','catalog','wikiCatalog','exact','history','compare','graph','read_receipt',
+    ...config.writerGrant&&caps.actions.includes('sources:write')?['registerSource']:[],
+    ...config.writerGrant&&caps.actions.includes('uses:write')?['recordUse']:[],
+    ...config.writerGrant&&caps.actions.includes('feedback:write')?['recordFeedback']:[],
+    ...feedbackSources&&caps.actions.includes('feedback:source')?['registerFeedbackSource']:[],
+    ...config.enableSyntheticResearch&&config.writerGrant&&caps.actions.includes('research:write')?['research']:[],
+    ...config.writerGrant&&caps.actions.includes('review:request')?['requestReview']:[],
+    ...config.writerGrant&&caps.actions.includes('review:decide')?['decideReview']:[],
+    ...config.writerGrant&&caps.actions.some(action=>['review:read','review:request','review:decide'].includes(action))?['reviewTicket']:[],
+    ...askWiki&&caps.actions.includes('ask:write')?['ask','answer','askSelection']:[],
+    ...sourceIntake&&caps.actions.includes('ingest:write')?['registerSourceEvent']:[],
+    ...maintenance&&caps.actions.includes('maintenance:read')?['maintenanceTasks','maintenanceFindings','searchProjectionStatus']:[],
+    ...sourcePlan&&caps.actions.includes('source-plans:read')&&caps.actions.includes('ingest:read')?['sourcePlan']:[],
+    ...sourcePlan&&caps.actions.includes('source-plans:write')&&caps.actions.includes('source-plans:read')&&caps.actions.includes('ingest:read')?['planSource']:[],
+    ...coordination&&caps.actions.includes('maintenance:read')?['coordinationRun','semanticSweep']:[],
+    ...coordination&&caps.actions.includes('maintenance:write')?['processMaintenance','runSemanticSweep']:[],
+    ...maintenance&&caps.actions.includes('maintenance:write')?['collectMaintenance','lintWiki','cancelMaintenance','rebuildSearchProjection']:[],
+    ...judgment&&caps.actions.includes('judgments:write')&&caps.actions.includes('judgments:read')?['judgeRelation']:[],
+    ...judgment&&caps.actions.includes('judgments:read')?['judgment']:[],
+    ...sourceIntake&&caps.actions.includes('ingest:read')?['sourceEvent']:[],
+    ...wikiCompile&&caps.actions.includes('compile:write')&&caps.actions.includes('compile:read')?['compileWiki']:[],
+    ...wikiCompile&&caps.actions.includes('compile:read')?['compilation']:[],
+    ...answerResearch&&caps.actions.includes('compile:write')&&caps.actions.includes('compile:read')?['researchAnswer']:[],
+    ...config.modelCalls&&caps.actions.includes('model:call')?['modelCall']:[],
+    ...sourceIntake&&caps.actions.includes('ingest:mentions')&&caps.actions.includes('ingest:read')?['recordEntityMentions']:[]],
+    purposes:context.principal.purposes,profiles,mode:config.writerGrant?'ready':'read_only',contractVersion:CONTRACT_VERSION,policyVersion:service.policyVersion,
     ...(req.query.recovery==='1'?{recoveryScope:digest({principalId:context.principal.id,clientInstallationId:context.principal.clientInstallationId,projectId:context.scope.projectId,spaceId:context.scope.spaceId})}:{}),
-    limits:{queryItems:100,graphNodes:200,receiptTtlSeconds:900,queryIdentityLexicalVersion:2}}})));
+    limits:{queryItems:100,graphNodes:200,receiptTtlSeconds:900,queryIdentityLexicalVersion:2}}};}));
   app.get(`${base}/profiles`,route(async()=>({data:profiles})));
   app.post(`${base}/query`,route((context,req)=>service.query(context,QueryRequestSchema.parse(req.body))));
   app.get(`${base}/catalog`,route((context,req)=>service.catalog(context,CatalogRequestSchema.parse({
@@ -162,7 +193,7 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
   app.get(`${base}/sources/:objectId/versions/:versionId/content`,route(async(context,req)=>({data:await service.sourceContent(context,KnowledgeRefSchema.parse({
     ...context.scope,domain:req.query.domain??'source',objectId:req.params.objectId,versionId:req.params.versionId,contentDigest:req.query.digest??null}),
     typeof req.query.anchor==='string'?JSON.parse(req.query.anchor):null)})));
-  const capability=(context:ReadContext):CapabilityContext=>({...context,authorization:config.capabilities??{actions:[],adapterIds:[],rightsPolicyIds:[]}});
+  const capability=(context:ReadContext):CapabilityContext=>({...context,authorization:capabilitiesOf.get(context.principal.id)??emptyCapabilities});
   const intake=()=>{if(!sourceIntake)throw new KnowledgeError('SOURCE_INTAKE_DISABLED','Source intake is not configured',503);return sourceIntake;};
   app.post(`${base}/source-events`,route(async(context,req)=>{
     const input=SourceEventRequestSchema.parse(req.body);
@@ -290,7 +321,11 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
   const databaseUrl=process.env.KNOWLEDGE_DATABASE_URL,token=process.env.KNOWLEDGE_API_TOKEN,
     projectId=process.env.KNOWLEDGE_API_PROJECT_ID,spaceIds=process.env.KNOWLEDGE_API_SPACE_IDS?.split(',').map(x=>x.trim()).filter(Boolean);
-  if(!databaseUrl||!token||!projectId||!spaceIds?.length)throw new Error('Set KNOWLEDGE_DATABASE_URL, KNOWLEDGE_API_TOKEN, KNOWLEDGE_API_PROJECT_ID, KNOWLEDGE_API_SPACE_IDS');
+  const principalsFile=process.env.KNOWLEDGE_API_PRINCIPALS_FILE?.trim();
+  if(!databaseUrl||!(token||principalsFile)||!projectId||!spaceIds?.length)
+    throw new Error('Set KNOWLEDGE_DATABASE_URL, KNOWLEDGE_API_TOKEN or KNOWLEDGE_API_PRINCIPALS_FILE, KNOWLEDGE_API_PROJECT_ID, KNOWLEDGE_API_SPACE_IDS');
+  if(token&&principalsFile)throw new Error('Use either KNOWLEDGE_API_TOKEN or KNOWLEDGE_API_PRINCIPALS_FILE, not both');
+  const principals=principalsFile?readPrincipalsFile(principalsFile,{projectId,spaceIds}):undefined;
   const syntheticWrites=process.env.KNOWLEDGE_SYNTHETIC_WRITES==='1';
   const sourceIntakeFlag=process.env.KNOWLEDGE_SOURCE_INTAKE_ENABLED;
   if(sourceIntakeFlag!==undefined&&!['0','1'].includes(sourceIntakeFlag))throw new Error('KNOWLEDGE_SOURCE_INTAKE_ENABLED must be 0 or 1');
@@ -318,7 +353,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
       ...has('model_call')?{modelCalls:createModelCallService({port,store:createPgModelCallStore(pool)})}:{}};
     process.stdout.write(`Claude providers enabled: model=${claude.model.model} roles=${[...claude.roles].join(',')} perCallUsd=${claude.model.maxCallUsd} dailyUsd=${claude.model.dailyCapUsd}\n`);
   }
-  const api=await createKnowledgeApi({pool,token,principal:{id:process.env.KNOWLEDGE_API_PRINCIPAL_ID??'local-owner',
+  const api=await createKnowledgeApi({pool,...principals?{principals}:{token},principal:{id:process.env.KNOWLEDGE_API_PRINCIPAL_ID??'local-owner',
     clientInstallationId:process.env.KNOWLEDGE_API_CLIENT_INSTALLATION_ID?.trim()||'local-api',projectId,spaceIds,purposes:['exploration_reading']},
     ...(grant?{writerGrant:grant as KnowledgeWriterGrant,enableSyntheticResearch:syntheticWrites,enableSourceIngest:sourceIntakeEnabled,
       capabilities:{actions:list(process.env.KNOWLEDGE_API_ACTIONS),adapterIds:list(process.env.KNOWLEDGE_API_ADAPTER_IDS),

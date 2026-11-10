@@ -7,7 +7,9 @@ import {evaluateKnowledgeRevision,knowledgeRevisionSpace} from './status-policy.
 import type { CatalogRequest, CompareRequest, Coverage, GraphRequest, HistoryRequest, KnowledgeCitation, KnowledgeDocument, KnowledgeRef, QueryRequest, ReadReceipt, Relation, Scope, SourceContent, SourceRecord } from '@commerce/knowledge-contracts';
 import { fromVersionRef, toVersionRef } from '@commerce/knowledge-contracts';
 
-export interface Principal { id:string; clientInstallationId:string; projectId:string; spaceIds:readonly string[]; purposes:readonly string[] }
+/** Server-attested kind of the authenticated party; a caller can never assert it in a request. */
+export interface PrincipalActor { kind:'human'|'agent'|'service'; model:string|null }
+export interface Principal { id:string; clientInstallationId:string; projectId:string; spaceIds:readonly string[]; purposes:readonly string[]; actor?:PrincipalActor }
 export interface ReadContext { scope:Scope; principal:Principal; purpose:string }
 export interface ReceiptPort {
   save(receipt:ReadReceipt, expectedEpoch:number):Promise<void>;

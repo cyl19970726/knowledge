@@ -173,7 +173,7 @@ function createPgResearchReviewPort(pool:Pool,writerGrant:KnowledgeWriterGrant,s
       }
       const final:FinalizeReceipt={reviewReceiptId:decisionId,target:ticket.payload.target,publication,result:cognitiveOutcome};
       await client.query(`UPDATE ccl_knowledge_review_tickets SET state='finalized',payload=$2,final_receipt=$3,reviewer_id=$4,decision=$5,decided_at=now() WHERE id=$1`,
-        [id,{...ticket.payload,status:'finalized'},final,context.principal.id,input]);
+        [id,{...ticket.payload,status:'finalized',reviewer:{principalId:context.principal.id,kind:context.principal.actor?.kind??'unspecified',model:context.principal.actor?.model??null}},final,context.principal.id,input]);
       const researchId=ticket.target_kind==='candidate'?ticket.target_id:ticket.target_id;
       await client.query(`UPDATE ccl_knowledge_operations SET result=jsonb_set(jsonb_set(jsonb_set(result,'{reviewState}',$2::jsonb),'{reviewReceiptId}',$3::jsonb),'{publication}',$4::jsonb),
         state='succeeded',updated_at=now() WHERE id=$1 AND result IS NOT NULL`,

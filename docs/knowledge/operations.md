@@ -80,6 +80,26 @@ Worker 的维护模式须显式开启，并提供确定的项目、空间、用�
 
 真实付费调用、价格表更新和上限取值都需要使用者另行批准；仓库测试只用假 transport，不访问网络。
 
+## 配置多个调用主体（K5 开发工作树候选）
+
+一个独立 API 可以同时服务多个主体，各有自己的令牌、用途、动作和安装标识。设 `KNOWLEDGE_API_PRINCIPALS_FILE` 指向主体文件后，不再使用 `KNOWLEDGE_API_TOKEN`（两者不能同时设置）；项目与空间仍取 `KNOWLEDGE_API_PROJECT_ID` 和 `KNOWLEDGE_API_SPACE_IDS`，主体的 `spaceIds` 只能是其子集。
+
+主体文件只存令牌的 SHA-256。用 `node scripts/runtime/knowledge-principal-token.mjs` 生成一个随机令牌和它的摘要：令牌只交给对应客户端，摘要写入文件。主体 ID 由部署方自行命名，要求稳定且互不相同，例如 `commerce-analysis`、`commerce-publishing`、`review-agent-1`；审阅记录、来源读者和幂等键都按这个 ID 区分，改名等于换一个新主体。
+
+```json
+{"principals":[
+  {"id":"commerce-analysis","tokenSha256":"<sha256>","clientInstallationId":"commerce-analysis",
+   "purposes":["exploration_reading"],"actions":["sources:write","ingest:read","ingest:write","compile:read","compile:write","review:request","review:read","ask:write","model:call"],
+   "adapterIds":["commerce-analysis"],"rightsPolicyIds":[],"actor":{"kind":"service","model":null}},
+  {"id":"review-agent-1","tokenSha256":"<sha256>","clientInstallationId":"knowledge-review-agent",
+   "purposes":["exploration_reading"],"actions":["review:read","review:decide","compile:read"],"actor":{"kind":"agent","model":"claude-opus-5-5"}},
+  {"id":"commerce-publishing","tokenSha256":"<sha256>","clientInstallationId":"commerce-publishing",
+   "purposes":["publication_feedback"],"actions":["uses:write","feedback:write"],"adapterIds":["commerce-publishing"],"actor":{"kind":"service","model":null}}
+]}
+```
+
+`actor` 由部署方在服务端声明，调用方不能在请求里自称是人或 agent；只有 `agent` 主体可以写 `model`。独立审阅规则不变：审阅人必须是提议人以外的主体（`SELF_REVIEW_FORBIDDEN`），这个主体可以是审阅 agent。审阅完成后，审阅票据带 `reviewer: {principalId, kind, model}`，便于把 AI 审阅和人工审阅分开统计。未单独设置 `KNOWLEDGE_SOURCE_READER_IDS` 时，所有已配置主体都是新登记来源的读者，审阅主体因此能读取被引用的原文。
+
 ## 推进当前 Wiki 语义扫描（开发工作树候选）
 
 `SemanticSweep` 只读取当前已发表 Wiki 页头的元数据，不读正文、不执行判断。API 需显式装配编纂器、source intake、协调策略、维护能力与 active writer grant，并授予 `maintenance:read` / `maintenance:write`；`POST /maintenance/semantic-sweeps` 一次仅推进**一个分片的一页**，`GET /maintenance/semantic-sweeps/:passId?purpose=...` 按原范围读取。SDK 对应 `runSemanticSweep({purpose,cycleKey,shard,shardCount,limit,maxTasksPerShard,methodVersion,rubricVersion}, writeOpts)` 与 `semanticSweep(passId,purpose)`。`limit` 为 1–100，`maxTasksPerShard` 为 1–10000；跨页沿用相同周期、分片和方法版本，写入调用使用自己的 header，不能把原写入键当成下一页游标。

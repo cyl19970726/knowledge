@@ -156,7 +156,9 @@ export const CandidateViewSchema = z.strictObject({candidateId:IdSchema,contentH
     nextQuestions:List(Text(1000),100),sourceGroups:List(SourceGroupSchema,100)}),100)});
 export const ReviewTargetSchema = z.discriminatedUnion('kind',[z.strictObject({kind:z.literal('candidate'),candidateId:IdSchema,contentHash:Sha256Schema}),z.strictObject({kind:z.literal('research_result'),researchId:IdSchema,resultDigest:Sha256Schema})]);
 export const ReviewRequestSchema = z.strictObject({target:ReviewTargetSchema,purpose:Purpose});
-export const ReviewTicketSchema = z.strictObject({id:IdSchema,target:ReviewTargetSchema,status:Text(100),purpose:Purpose});
+export const ReviewerSchema = z.strictObject({principalId:Text(200),kind:z.enum(['human','agent','service','unspecified']),model:Text(200).nullable()});
+/** reviewer appears once a ticket is finalized; kind and model come from the reviewer's server-side principal configuration. */
+export const ReviewTicketSchema = z.strictObject({id:IdSchema,target:ReviewTargetSchema,status:Text(100),purpose:Purpose,reviewer:ReviewerSchema.optional()});
 export const ReviewDecisionSchema = z.strictObject({expectedDigest:Sha256Schema,decision:z.enum(['approved_for_purpose','exploration_only','rejected']),reason:Text(5000),conditions:List(Text(1000),100),gaps:List(Text(1000),100)});
 export const FinalizeReceiptSchema = z.strictObject({reviewReceiptId:IdSchema,target:ReviewTargetSchema,publication:PublicationSchema.nullable(),result:CognitiveOutcomeSchema.nullable()});
 export const ExternalContextSchema = z.strictObject({adapterId:Text(100),externalId:Text(500),contextVersion:Text(200),inputDigest:Sha256Schema,authority:z.enum(['caller_reported','knowledge_internal']),description:Text(1000)});
