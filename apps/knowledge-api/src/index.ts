@@ -25,7 +25,7 @@ import {createPgReviewPort,migrateKnowledgeReviews,lookupCapabilityOperation,get
 import {createModelDisclosureAuthorizer,type ModelDisclosurePolicy,createModelCallService,readClaudeRuntimeConfig,readApiKeyFile,createAnthropicTransport,
   createPgSpendLedger,migrateModelSpend,createClaudeModelPort,createClaudeAnswerer,createClaudeSourcePlanner,createClaudeWikiCompiler,createClaudeDecisionProvider,
   createPgModelCallStore,migrateModelCalls} from '@commerce/knowledge-claude-adapter';
-import {ModelCallRequestSchema,CONTRACT_VERSION,CatalogRequestSchema,CompareRequestSchema,GraphRequestSchema,HistoryRequestSchema,KnowledgeRefSchema,QueryRequestSchema,ReadReceiptSchema,
+import {ModelCallRequestSchema,ReviewQueueRequestSchema,CONTRACT_VERSION,CatalogRequestSchema,CompareRequestSchema,GraphRequestSchema,HistoryRequestSchema,KnowledgeRefSchema,QueryRequestSchema,ReadReceiptSchema,
   SourceUpsertSchema,ResearchRequestSchema,CancelRequestSchema,OperationLookupSchema,UseInputSchema,FeedbackInputSchema,ChangesRequestSchema,
   ReviewRequestSchema,ReviewDecisionSchema,FeedbackSourceRequestSchema,AskRequestSchema,SourceEventRequestSchema,EntityMentionExtractionSchema,WikiCompileRequestSchema,MaintenanceCollectRequestSchema,LintRequestSchema,RelationJudgmentRequestSchema,SearchProjectionBuildRequestSchema,SourcePlanRequestSchema,SemanticSweepApiRequestSchema,AnswerResearchRequestSchema} from '@commerce/knowledge-contracts';
 
@@ -309,6 +309,11 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
     return {data:page.data};}));
   app.post(`${base}/review-requests`,route(async(context,req)=>{if(!reviews)throw new KnowledgeError('REVIEW_DISABLED','Review writes are disabled',503);
     return {data:await reviews.request(capability(context),ReviewRequestSchema.parse(req.body),String(req.header('Idempotency-Key')??''))};}));
+  app.get(`${base}/review-requests`,route(async(context,req)=>{if(!reviews)throw new KnowledgeError('REVIEW_DISABLED','Reviews are disabled',503);
+    const q=ReviewQueueRequestSchema.parse({purpose:context.purpose,escalated:req.query.escalated,limit:req.query.limit===undefined?undefined:Number(req.query.limit)});
+    return {data:{items:await reviews.queue(capability(context),{escalated:q.escalated,limit:q.limit})}};}));
+  app.post(`${base}/review-requests/:reviewRequestId/escalations`,route(async(context,req)=>{if(!reviews)throw new KnowledgeError('REVIEW_DISABLED','Review writes are disabled',503);
+    return {data:await reviews.escalate(capability(context),String(req.params.reviewRequestId),req.body,String(req.header('Idempotency-Key')??''))};}));
   app.get(`${base}/review-requests/:reviewRequestId`,route(async(context,req)=>{if(!reviews)throw new KnowledgeError('REVIEW_DISABLED','Reviews are disabled',503);
     const found=await reviews.ticket(capability(context),String(req.params.reviewRequestId));if(!found)throw new KnowledgeError('NOT_FOUND','Review ticket unavailable',404);return {data:found};}));
   app.post(`${base}/review-requests/:reviewRequestId/decisions`,route(async(context,req)=>{if(!reviews)throw new KnowledgeError('REVIEW_DISABLED','Reviews are disabled',503);

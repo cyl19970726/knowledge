@@ -158,7 +158,14 @@ export const ReviewTargetSchema = z.discriminatedUnion('kind',[z.strictObject({k
 export const ReviewRequestSchema = z.strictObject({target:ReviewTargetSchema,purpose:Purpose});
 export const ReviewerSchema = z.strictObject({principalId:Text(200),kind:z.enum(['human','agent','service','unspecified']),model:Text(200).nullable()});
 /** reviewer appears once a ticket is finalized; kind and model come from the reviewer's server-side principal configuration. */
-export const ReviewTicketSchema = z.strictObject({id:IdSchema,target:ReviewTargetSchema,status:Text(100),purpose:Purpose,reviewer:ReviewerSchema.optional()});
+export const ReviewEscalationCategorySchema = z.enum(['private_person','legal_risk','source_conflict','low_confidence','other']);
+/** A reviewer hands a ticket to a person instead of deciding it; the ticket stays pending. */
+export const ReviewEscalationRequestSchema = z.strictObject({purpose:Purpose,categories:z.array(ReviewEscalationCategorySchema).min(1).max(5),note:Text(2000)});
+export type ReviewEscalationRequest = z.infer<typeof ReviewEscalationRequestSchema>;
+export const ReviewEscalationSchema = ReviewEscalationRequestSchema.omit({purpose:true}).extend({by:ReviewerSchema,at:TimestampSchema});
+export const ReviewTicketSchema = z.strictObject({id:IdSchema,target:ReviewTargetSchema,status:Text(100),purpose:Purpose,reviewer:ReviewerSchema.optional(),escalation:ReviewEscalationSchema.optional()});
+export const ReviewQueueRequestSchema = z.strictObject({purpose:Purpose,escalated:z.enum(['exclude','only','include']).default('exclude'),limit:z.int().min(1).max(50).default(20)});
+export const ReviewQueueSchema = z.strictObject({items:List(ReviewTicketSchema,50)});
 export const ReviewDecisionSchema = z.strictObject({expectedDigest:Sha256Schema,decision:z.enum(['approved_for_purpose','exploration_only','rejected']),reason:Text(5000),conditions:List(Text(1000),100),gaps:List(Text(1000),100)});
 export const FinalizeReceiptSchema = z.strictObject({reviewReceiptId:IdSchema,target:ReviewTargetSchema,publication:PublicationSchema.nullable(),result:CognitiveOutcomeSchema.nullable()});
 export const ExternalContextSchema = z.strictObject({adapterId:Text(100),externalId:Text(500),contextVersion:Text(200),inputDigest:Sha256Schema,authority:z.enum(['caller_reported','knowledge_internal']),description:Text(1000)});

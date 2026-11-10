@@ -100,6 +100,26 @@ Worker 的维护模式须显式开启，并提供确定的项目、空间、用�
 
 `actor` 由部署方在服务端声明，调用方不能在请求里自称是人或 agent；只有 `agent` 主体可以写 `model`。独立审阅规则不变：审阅人必须是提议人以外的主体（`SELF_REVIEW_FORBIDDEN`），这个主体可以是审阅 agent。审阅完成后，审阅票据带 `reviewer: {principalId, kind, model}`，便于把 AI 审阅和人工审阅分开统计。未单独设置 `KNOWLEDGE_SOURCE_READER_IDS` 时，所有已配置主体都是新登记来源的读者，审阅主体因此能读取被引用的原文。
 
+## 运行审阅 agent（开发工作树候选）
+
+审阅 agent 是独立进程，以自己的主体（`actor.kind` 为 `agent`）通过 HTTP 访问知识 API，没有数据库权限。每一轮它取出可审的待审票据（`GET /review-requests`：不含自己提议的、不含已转人工的），逐条读取候选页和候选实际读过的每份原文，在全新的模型上下文里判断，然后二选一：
+
+- 全部陈述都有原文支持时作出决定：`approved_for_purpose`、`exploration_only` 或 `rejected`。决定不能新增条件或缺口，agent 的缺口写进理由。
+- 否则转人工（`POST /review-requests/:id/escalations`）：涉及非公众人物、法律风险、来源互相矛盾、把握不高，“批准”但有不受支持的陈述，原文不允许发给模型，模型拒答或输出无效。票据保持待审，带上 `escalation: {categories, note, by, at}`；人工在 `GET /review-requests?escalated=only` 里处理。转人工后 agent 不再处理这张票据，失败不会反复计费。
+
+agent 发原文给模型时遵守与服务相同的外发规则（`KNOWLEDGE_MODEL_DISCLOSURE_RIGHTS_POLICY_IDS`、`KNOWLEDGE_MODEL_DISCLOSURE_WIKI`）。它可以使用与编纂不同的模型和上限：Claude 配置沿用同一格式，前缀改为 `KNOWLEDGE_REVIEW_AGENT_CLAUDE_`（例如 `KNOWLEDGE_REVIEW_AGENT_CLAUDE_MODEL`、`..._API_KEY_FILE`、`..._MAX_CALL_USD`、`..._DAILY_USD`）。其余设置：
+
+| 环境变量 | 作用 |
+| --- | --- |
+| `KNOWLEDGE_REVIEW_AGENT_API_URL` | 知识 API 地址。 |
+| `KNOWLEDGE_REVIEW_AGENT_TOKEN_FILE` | agent 主体的令牌文件，权限须为 600。 |
+| `KNOWLEDGE_API_PROJECT_ID` / `KNOWLEDGE_REVIEW_AGENT_SPACE_ID` | 审阅范围。 |
+| `KNOWLEDGE_REVIEW_AGENT_PURPOSE` | 默认 `exploration_reading`。 |
+| `KNOWLEDGE_REVIEW_AGENT_SPEND_FILE` | agent 自己的费用账本（JSONL，单进程使用）。 |
+| `KNOWLEDGE_REVIEW_AGENT_INTERVAL_SECONDS` | 轮询间隔，默认 60；加 `--once` 只跑一轮。 |
+
+构建后用 `node apps/knowledge-api/dist/review-agent.js --once` 运行。agent 主体至少需要 `review:read`、`review:decide`、`compile:read`，并且必须是相关来源的读者；来源登记时就要把它纳入读者名单（多主体模式下默认已纳入）。
+
 ## 推进当前 Wiki 语义扫描（开发工作树候选）
 
 `SemanticSweep` 只读取当前已发表 Wiki 页头的元数据，不读正文、不执行判断。API 需显式装配编纂器、source intake、协调策略、维护能力与 active writer grant，并授予 `maintenance:read` / `maintenance:write`；`POST /maintenance/semantic-sweeps` 一次仅推进**一个分片的一页**，`GET /maintenance/semantic-sweeps/:passId?purpose=...` 按原范围读取。SDK 对应 `runSemanticSweep({purpose,cycleKey,shard,shardCount,limit,maxTasksPerShard,methodVersion,rubricVersion}, writeOpts)` 与 `semanticSweep(passId,purpose)`。`limit` 为 1–100，`maxTasksPerShard` 为 1–10000；跨页沿用相同周期、分片和方法版本，写入调用使用自己的 header，不能把原写入键当成下一页游标。
