@@ -227,3 +227,14 @@ test('review fixes: a surface the model copied from the escaped body is located 
   const out=await planner.plan({operationId:'p',source:evidence('s',body),methodVersion:'m',budget:{maxModelCalls:1,maxReadBytes:1,deadline:new Date().toISOString(),maxMoney:null},signal});
   assert.deepEqual(out.proposal.mentions.map(m=>Buffer.from(body).subarray(m.startByte,m.endByte).toString()),['AT&T','<Acme>']);
 });
+
+test('a ledger failure after a billed dispatch keeps the model-call key blocked',async()=>{
+  const ledger=createMemorySpendLedger(),{transport,sent}=fakeTransport(()=>({text:'billed'}));
+  const {KnowledgeError}=await import('@commerce/knowledge-core/types');
+  const broken={...ledger,settle:async()=>{throw new KnowledgeError('MODEL_SPEND_STATE_CONFLICT','Model spend reservation is not in an expected state',409);}};
+  const service=createModelCallService({port:createClaudeModelPort({transport,ledger:broken,config}),store:createMemoryModelCallStore()});
+  const request={purpose:'exploration_reading',label:'eval',system:'s',cachedPrefix:null,prompt:'p',maxOutputTokens:null,maxMoney:{amount:0.3,currency:'USD' as const}};
+  await assert.rejects(service.call(context(['model:call']),request,'eval-key-0003'),(error:{code?:string})=>error.code==='MODEL_SPEND_STATE_CONFLICT');
+  await assert.rejects(service.call(context(['model:call']),request,'eval-key-0003'),(error:{code?:string})=>error.code==='MODEL_CALL_IN_PROGRESS');
+  assert.equal(sent.length,1,'the billed request is never sent a second time');
+});
