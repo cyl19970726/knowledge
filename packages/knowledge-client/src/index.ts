@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import {
-  CONTRACT_VERSION, ScopeSchema, ModelCallRequestSchema, ModelCallResultSchema, KnowledgeRefSchema, EnvelopeSchema, ApiErrorSchema,
+  CONTRACT_VERSION, ScopeSchema, ModelCallRequestSchema, ModelCallResultSchema, ReviewQueueRequestSchema, ReviewQueueSchema, ReviewEscalationRequestSchema, KnowledgeRefSchema, EnvelopeSchema, ApiErrorSchema,
   CapabilitiesSchema, ProfileRefSchema, QueryRequestSchema, QueryResultSchema, AskRequestSchema, AskResultSchema, AskLookupResultSchema, CatalogRequestSchema, CatalogResultSchema,
   KnowledgeDocumentSchema, GraphRequestSchema, GraphResultSchema, HistoryRequestSchema, HistoryResultSchema,
   CompareRequestSchema, CompareResultSchema, SourceRecordSchema, SourceContentSchema, SourceUpsertSchema,
@@ -222,6 +222,9 @@ export function createKnowledgeClient(options: KnowledgeClientOptions) {
     candidateView: (candidateId:string,purpose='exploration_reading',opts:ReadOptions={}) => request('GET',
       `/candidates/${encode(parseLocal(idSchema,candidateId))}${queryString({purpose:parseLocal(purposeSchema,purpose)})}`,CandidateViewSchema,undefined,opts),
     requestReview: (data:z.input<typeof ReviewRequestSchema>,opts:WriteOptions) => post('/review-requests',ReviewTicketSchema,ReviewRequestSchema,data,opts),
+    /** Pending tickets this principal may decide; escalated tickets are excluded unless asked for. */
+    reviewQueue: (data:z.input<typeof ReviewQueueRequestSchema>,opts:ReadOptions={}) => {const q=parseLocal(ReviewQueueRequestSchema,data);return request('GET',`/review-requests${queryString(q)}`,ReviewQueueSchema,undefined,{...opts,purpose:q.purpose});},
+    escalateReview: (reviewRequestId:string,data:z.input<typeof ReviewEscalationRequestSchema>,opts:WriteOptions) => post(`/review-requests/${encode(parseLocal(idSchema,reviewRequestId))}/escalations`,ReviewTicketSchema,ReviewEscalationRequestSchema,data,opts),
     reviewTicket: (reviewRequestId:string,opts:ReadOptions={}) => request('GET',`/review-requests/${encode(parseLocal(idSchema,reviewRequestId))}`,ReviewTicketSchema,undefined,opts),
     decideReview: (reviewRequestId:string,data:z.input<typeof ReviewDecisionSchema>,opts:WriteOptions) => post(`/review-requests/${encode(parseLocal(idSchema,reviewRequestId))}/decisions`,FinalizeReceiptSchema,ReviewDecisionSchema,data,opts),
     recordUse: (data:z.input<typeof UseInputSchema>,opts:WriteOptions) => post('/uses',UseRecordSchema,UseInputSchema,data,opts),

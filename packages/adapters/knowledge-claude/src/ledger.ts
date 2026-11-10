@@ -1,4 +1,5 @@
 import {randomUUID} from 'node:crypto';
+import {readFile,appendFile} from 'node:fs/promises';
 import type {Pool} from 'pg';
 import {KnowledgeError} from '@commerce/knowledge-core/types';
 import type {TokenUsage} from './pricing.ts';
@@ -81,5 +82,38 @@ export function createPgSpendLedger(pool:Pool):SpendLedger{
     release:(id,reason)=>transition(id,['reserved'],`state='released',reason=$3`,[reason.slice(0,1000)]),
     markUnknown:(id,reason)=>transition(id,['reserved'],`state='unknown',reason=$3`,[reason.slice(0,1000)]),
     async spentToday(now){return Number((await pool.query(`SELECT ${COUNTED} AS used FROM ccl_knowledge_model_spend WHERE day=$1`,[spendDay(now)])).rows[0].used);},
+  };
+}
+
+/**
+ * Append-only JSONL ledger for a single process without database access (the review agent).
+ * Each line is a full entry snapshot; the latest line per id wins. Run one agent process per file.
+ */
+export function createFileSpendLedger(path:string):SpendLedger{
+  let queue:Promise<unknown>=Promise.resolve();
+  const serial=<T>(work:()=>Promise<T>)=>{const next=queue.then(work,work);queue=next.catch(()=>undefined);return next;};
+  async function load():Promise<Map<string,SpendEntry>>{
+    let text='';
+    try{text=await readFile(path,'utf8');}catch(error){if((error as {code?:string}).code!=='ENOENT')throw error;}
+    const entries=new Map<string,SpendEntry>();
+    for(const line of text.split('\n'))if(line.trim()){const entry=JSON.parse(line) as SpendEntry;entries.set(entry.id,entry);}
+    return entries;
+  }
+  const append=async(entry:SpendEntry)=>{await appendFile(path,`${JSON.stringify(entry)}\n`,{mode:0o600});};
+  const counted=(entry:SpendEntry)=>entry.state==='released'?0:entry.state==='settled'?entry.actualUsd??0:entry.reservedUsd;
+  const spent=(entries:Map<string,SpendEntry>,day:string)=>[...entries.values()].filter(entry=>entry.day===day).reduce((sum,entry)=>sum+counted(entry),0);
+  const update=(id:string,change:Partial<SpendEntry>)=>serial(async()=>{const entry=(await load()).get(id);
+    if(!entry||entry.state!=='reserved')throw new KnowledgeError('MODEL_SPEND_STATE_CONFLICT','Model spend reservation is not in an expected state',409);
+    await append({...entry,...change});});
+  return {
+    reserve:input=>serial(async()=>{const entries=await load(),day=spendDay(input.now),used=spent(entries,day);
+      if(used+input.reservedUsd>input.dailyCapUsd)throw exceeded(used,input.reservedUsd,input.dailyCapUsd);
+      const entry:SpendEntry={id:randomUUID(),day,role:input.role,operationId:input.operationId,model:input.model,state:'reserved',reservedUsd:input.reservedUsd,
+        actualUsd:null,usage:null,requestId:null,reason:null,createdAt:input.now.toISOString()};
+      await append(entry);return {id:entry.id,day,reservedUsd:input.reservedUsd};}),
+    settle:(id,s)=>update(id,{state:'settled',actualUsd:s.actualUsd,usage:s.usage,requestId:s.requestId}),
+    release:(id,reason)=>update(id,{state:'released',reason}),
+    markUnknown:(id,reason)=>update(id,{state:'unknown',reason}),
+    spentToday:now=>serial(async()=>spent(await load(),spendDay(now))),
   };
 }
