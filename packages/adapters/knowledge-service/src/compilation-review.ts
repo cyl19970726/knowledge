@@ -391,7 +391,7 @@ export function createPgCompilationReviewPort(pool:Pool,grant:KnowledgeWriterGra
         const finalized=await client.query(`UPDATE ccl_knowledge_review_tickets SET state='finalized',payload=$2,
           final_receipt=$3,reviewer_id=$4,decision=$5,decided_at=now()
           WHERE id=$1 AND project_id=$6 AND space_id=$7 AND state='pending'`,
-          [id,{...ticket.payload,status:'finalized'},final,context.principal.id,input,
+          [id,{...ticket.payload,status:'finalized',reviewer:{principalId:context.principal.id,kind:context.principal.actor?.kind??'unspecified',model:context.principal.actor?.model??null}},final,context.principal.id,input,
             context.scope.projectId,context.scope.spaceId]);
         if(finalized.rowCount!==1)fail('REVIEW_ALREADY_FINALIZED','Review was finalized concurrently');
         await finalizeCoordinationReview(client,row,{state:publication?'published':'rejected',completedAt:next.completedAt!});

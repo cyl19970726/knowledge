@@ -1,0 +1,31 @@
+{
+  "name": "@commerce/knowledge-claude-adapter",
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.2.0",
+    "@commerce/knowledge-core": "0.1.0",
+    "@commerce/knowledge-application": "0.1.0",
+    "@commerce/knowledge-contracts": "0.1.0",
+    "pg": "^8.0.0",
+    "zod": "4.6.7"
+  },
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/types/packages/adapters/knowledge-claude/src/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node ../../../scripts/build-knowledge-server.mjs"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "esbuild": "0.28.2",
+    "tsx": "^4.0.0"
+  }
+}

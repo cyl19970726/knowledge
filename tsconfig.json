@@ -26,6 +26,7 @@
     "packages/knowledge-client/**/*.ts",
     "packages/knowledge-application/**/*.ts",
     "packages/adapters/knowledge-service/**/*.ts",
+    "packages/adapters/knowledge-claude/**/*.ts",
     "packages/adapters/knowledge-document/**/*.ts",
     "apps/knowledge-api/**/*.ts",
     "apps/knowledge-worker/**/*.ts",

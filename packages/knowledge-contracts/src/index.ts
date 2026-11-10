@@ -177,7 +177,16 @@ export const CandidateViewSchema = z.strictObject({candidateId:IdSchema,contentH
     nextQuestions:List(Text(1000),100),sourceGroups:List(SourceGroupSchema,100)}),100)});
 export const ReviewTargetSchema = z.discriminatedUnion('kind',[z.strictObject({kind:z.literal('candidate'),candidateId:IdSchema,contentHash:Sha256Schema}),z.strictObject({kind:z.literal('research_result'),researchId:IdSchema,resultDigest:Sha256Schema})]);
 export const ReviewRequestSchema = z.strictObject({target:ReviewTargetSchema,purpose:Purpose});
-export const ReviewTicketSchema = z.strictObject({id:IdSchema,target:ReviewTargetSchema,status:Text(100),purpose:Purpose});
+export const ReviewerSchema = z.strictObject({principalId:Text(200),kind:z.enum(['human','agent','service','unspecified']),model:Text(200).nullable()});
+/** reviewer appears once a ticket is finalized; kind and model come from the reviewer's server-side principal configuration. */
+export const ReviewEscalationCategorySchema = z.enum(['private_person','legal_risk','source_conflict','low_confidence','other']);
+/** A reviewer hands a ticket to a person instead of deciding it; the ticket stays pending. */
+export const ReviewEscalationRequestSchema = z.strictObject({purpose:Purpose,categories:z.array(ReviewEscalationCategorySchema).min(1).max(5),note:Text(2000)});
+export type ReviewEscalationRequest = z.infer<typeof ReviewEscalationRequestSchema>;
+export const ReviewEscalationSchema = ReviewEscalationRequestSchema.omit({purpose:true}).extend({by:ReviewerSchema,at:TimestampSchema});
+export const ReviewTicketSchema = z.strictObject({id:IdSchema,target:ReviewTargetSchema,status:Text(100),purpose:Purpose,reviewer:ReviewerSchema.optional(),escalation:ReviewEscalationSchema.optional()});
+export const ReviewQueueRequestSchema = z.strictObject({purpose:Purpose,escalated:z.enum(['exclude','only','include']).default('exclude'),targetKind:z.enum(['candidate','research_result']).optional(),limit:z.int().min(1).max(50).default(20)});
+export const ReviewQueueSchema = z.strictObject({items:List(ReviewTicketSchema,50)});
 export const ReviewDecisionSchema = z.strictObject({expectedDigest:Sha256Schema,decision:z.enum(['approved_for_purpose','exploration_only','rejected']),reason:Text(5000),conditions:List(Text(1000),100),gaps:List(Text(1000),100)});
 export const FinalizeReceiptSchema = z.strictObject({reviewReceiptId:IdSchema,target:ReviewTargetSchema,publication:PublicationSchema.nullable(),result:CognitiveOutcomeSchema.nullable()});
 export const ExternalContextSchema = z.strictObject({adapterId:Text(100),externalId:Text(500),contextVersion:Text(200),inputDigest:Sha256Schema,authority:z.enum(['caller_reported','knowledge_internal']),description:Text(1000)});
@@ -358,3 +367,16 @@ export type CoordinationRun=z.infer<typeof CoordinationRunSchema>;
 
 export type Budget=z.infer<typeof BudgetSchema>;
 export type Cost=z.infer<typeof CostSchema>;
+
+/** Generic budgeted model call for evaluation arms that must share the knowledge service's model, settings and spend ledger. */
+export const ModelCallRequestSchema=z.strictObject({purpose:Purpose,label:Text(200),system:z.string().min(1).max(100_000),
+  cachedPrefix:z.string().min(1).max(3_000_000).nullable(),prompt:z.string().min(1).max(200_000),
+  maxOutputTokens:z.int().min(1024).max(128_000).nullable(),maxMoney:z.strictObject({amount:z.number().finite().positive(),currency:z.literal('USD')})});
+export type ModelCallRequest=z.infer<typeof ModelCallRequestSchema>;
+export const ModelCallResultSchema=z.strictObject({id:IdSchema,label:Text(200),requestDigest:Sha256Schema,
+  outcome:z.enum(['completed','refused','truncated']),text:z.string().max(2_000_000),
+  usage:z.strictObject({inputTokens:Int(Number.MAX_SAFE_INTEGER),outputTokens:Int(Number.MAX_SAFE_INTEGER),cacheCreationInputTokens:Int(Number.MAX_SAFE_INTEGER),cacheReadInputTokens:Int(Number.MAX_SAFE_INTEGER)}),
+  cost:CostSchema,reservedMoney:z.strictObject({amount:z.number().finite().min(0),currency:z.literal('USD')}),
+  provider:z.strictObject({id:Text(100),modelRequested:Text(200),modelReturned:Text(200).nullable(),requestId:Text(200).nullable(),effort:Text(20)}),
+  createdAt:TimestampSchema});
+export type ModelCallResult=z.infer<typeof ModelCallResultSchema>;
