@@ -332,3 +332,16 @@ export type CoordinationRun=z.infer<typeof CoordinationRunSchema>;
 
 export type Budget=z.infer<typeof BudgetSchema>;
 export type Cost=z.infer<typeof CostSchema>;
+
+/** Generic budgeted model call for evaluation arms that must share the knowledge service's model, settings and spend ledger. */
+export const ModelCallRequestSchema=z.strictObject({purpose:Purpose,label:Text(200),system:z.string().min(1).max(100_000),
+  cachedPrefix:z.string().min(1).max(3_000_000).nullable(),prompt:z.string().min(1).max(200_000),
+  maxOutputTokens:z.int().min(1024).max(128_000).nullable(),maxMoney:z.strictObject({amount:z.number().finite().positive(),currency:z.literal('USD')})});
+export type ModelCallRequest=z.infer<typeof ModelCallRequestSchema>;
+export const ModelCallResultSchema=z.strictObject({id:IdSchema,label:Text(200),requestDigest:Sha256Schema,
+  outcome:z.enum(['completed','refused','truncated']),text:z.string().max(2_000_000),
+  usage:z.strictObject({inputTokens:Int(Number.MAX_SAFE_INTEGER),outputTokens:Int(Number.MAX_SAFE_INTEGER),cacheCreationInputTokens:Int(Number.MAX_SAFE_INTEGER),cacheReadInputTokens:Int(Number.MAX_SAFE_INTEGER)}),
+  cost:CostSchema,reservedMoney:z.strictObject({amount:z.number().finite().min(0),currency:z.literal('USD')}),
+  provider:z.strictObject({id:Text(100),modelRequested:Text(200),modelReturned:Text(200).nullable(),requestId:Text(200).nullable(),effort:Text(20)}),
+  createdAt:TimestampSchema});
+export type ModelCallResult=z.infer<typeof ModelCallResultSchema>;

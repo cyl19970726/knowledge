@@ -1,9 +1,10 @@
 {
   "name": "@commerce/knowledge-api",
   "dependencies": {
-    "@commerce/knowledge-core": "0.1.0",
     "@commerce/knowledge-application": "0.1.0",
+    "@commerce/knowledge-claude-adapter": "0.1.0",
     "@commerce/knowledge-contracts": "0.1.0",
+    "@commerce/knowledge-core": "0.1.0",
     "@commerce/knowledge-service-adapter": "0.1.0",
     "express": "^5.3.0",
     "pg": "^8.0.0",

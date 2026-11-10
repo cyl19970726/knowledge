@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import {
-  CONTRACT_VERSION, ScopeSchema, KnowledgeRefSchema, EnvelopeSchema, ApiErrorSchema,
+  CONTRACT_VERSION, ScopeSchema, ModelCallRequestSchema, ModelCallResultSchema, KnowledgeRefSchema, EnvelopeSchema, ApiErrorSchema,
   CapabilitiesSchema, ProfileRefSchema, QueryRequestSchema, QueryResultSchema, AskRequestSchema, AskResultSchema, AskLookupResultSchema, CatalogRequestSchema, CatalogResultSchema,
   KnowledgeDocumentSchema, GraphRequestSchema, GraphResultSchema, HistoryRequestSchema, HistoryResultSchema,
   CompareRequestSchema, CompareResultSchema, SourceRecordSchema, SourceContentSchema, SourceUpsertSchema,
@@ -176,6 +176,8 @@ export function createKnowledgeClient(options: KnowledgeClientOptions) {
     cancelMaintenance: (id:string,purpose:string,opts:WriteOptions) => post(`/maintenance/tasks/${encode(parseLocal(idSchema,id))}/cancel`,MaintenanceTaskSchema,z.strictObject({purpose:purposeSchema}),{purpose},opts),
     maintenanceFindings: (purpose:string,params:{limit?:number;cursor?:string;status?:'open'|'superseded'|'resolved'}={},opts:ReadOptions={}) => request('GET',`/maintenance/findings${queryString({purpose:parseLocal(purposeSchema,purpose),...params})}`,MaintenanceFindingPageSchema,undefined,opts),
     judgeRelation: (data:z.input<typeof RelationJudgmentRequestSchema>,opts:WriteOptions) => post('/judgments',RelationJudgmentSchema,RelationJudgmentRequestSchema,data,opts),
+    /** Budgeted call to the knowledge service's configured model; replays by Idempotency-Key. */
+    modelCall: (data:z.input<typeof ModelCallRequestSchema>,opts:WriteOptions) => post('/model-calls',ModelCallResultSchema,ModelCallRequestSchema,data,opts),
     judgment: (id:string,purpose:string,opts:ReadOptions={}) => request('GET',`/judgments/${encode(parseLocal(idSchema,id))}${queryString({purpose:parseLocal(purposeSchema,purpose)})}`,RelationJudgmentSchema,undefined,opts),
     judgmentLookup: (key:string,purpose:string,opts:ReadOptions={}) => request('GET',`/judgments/lookup${queryString({key:parseLocal(keySchema,key),purpose:parseLocal(purposeSchema,purpose)})}`,RelationJudgmentLookupSchema,undefined,opts),
     researchAnswer: (answerId:string,data:z.input<typeof AnswerResearchRequestSchema>,opts:WriteOptions) => post(`/answers/${encode(parseLocal(idSchema,answerId))}/research`,WikiCompileResultSchema,AnswerResearchRequestSchema,data,opts),

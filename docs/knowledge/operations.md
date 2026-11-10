@@ -59,6 +59,27 @@ Worker 的维护模式须显式开启，并提供确定的项目、空间、用�
 
 检查一个 Lint 周期时，先看 `complete`、`scanned`、`startEpoch`、`observedEpoch` 和 `omittedReasons`，再看累计 `findingCount`。`findingIds` 仅是最近一页、最多 1000 个的预览；完整发现用 `maintenanceFindings` 分页核对。`incremental_current_heads` 不是时间点快照，周期内页头变化可能使旧 key 未覆盖；新周期才重扫。发现是待审提示，不自动改变知识或触发编纂。完整构建和独立审查以[当前状态](current-state.md)所指的对应回执为准。
 
+## 接入 Claude 模型（K1 开发工作树候选）
+
+独立 API 默认不连接任何模型；规划、编纂、Ask、关系判断和通用模型调用在未配置时返回 503。设 `KNOWLEDGE_CLAUDE_ENABLED=1` 后，CLI 用同一个 Claude 配置装配 `answerer`、`sourcePlanner`、`compiler`、`decisionProvider` 和 `POST /model-calls`。规划和编纂另需 `KNOWLEDGE_SOURCE_INTAKE_ENABLED=1`，所有写路径仍需可信写者资格。
+
+| 环境变量 | 作用 |
+| --- | --- |
+| `KNOWLEDGE_CLAUDE_API_KEY_FILE` | 私有密钥文件路径，权限须为 600；密钥本身不进环境变量、日志或错误信息。 |
+| `KNOWLEDGE_CLAUDE_MODEL` | 默认 `claude-opus-5-5`；只接受价格表内的模型，否则无法限定花费。 |
+| `KNOWLEDGE_CLAUDE_EFFORT` | 默认 `high`。 |
+| `KNOWLEDGE_CLAUDE_MAX_CALL_USD` / `KNOWLEDGE_CLAUDE_DAILY_USD` | 单次与每日上限，必填、无默认值；单次不得超过每日。 |
+| `KNOWLEDGE_CLAUDE_MAX_OUTPUT_TOKENS` | 输出上限，默认 32000。 |
+| `KNOWLEDGE_CLAUDE_ROLES` | 只启用部分角色：`ask,source_plan,wiki_compile,relation_judgment,model_call`；默认全部。 |
+| `KNOWLEDGE_MODEL_DISCLOSURE_RIGHTS_POLICY_IDS` | 允许发给外部模型的来源权利策略；未列出的来源原文一律不外发。 |
+| `KNOWLEDGE_MODEL_DISCLOSURE_WIKI` | `1` 时允许把已发表 Wiki 页发给模型；默认不允许。 |
+
+每次调用先用免费的 token 计数得到准确输入量，按“输入全部按缓存写入价、输出按上限”计算最坏费用，据此压低 `max_tokens`，并在 `ccl_knowledge_model_spend` 中预留；返回后按实际用量结算。被拒绝且未计费的请求释放预留；结果不明的调用保留全额预留，所以每日上限只会被多算、不会被突破。SDK 自动重试已关闭，避免重试在预留之外重复计费。服务端拒答兜底（fallbacks）未启用：拒答作为 `refused` 结果返回，费用仍可预先限定。
+
+`POST /model-calls` 供评测对照组使用同一模型、同一 effort 与同一账本。调用方需要 `model:call` 能力和认证安装，必须带 `Idempotency-Key` 与美元 `maxMoney`；同键同请求重放返回原结果且不再计费，同键不同请求返回 409，结果不明的键保持占用。路由单独允许 8 MB 请求体，其余路由仍为 1 MB。
+
+真实付费调用、价格表更新和上限取值都需要使用者另行批准；仓库测试只用假 transport，不访问网络。
+
 ## 推进当前 Wiki 语义扫描（开发工作树候选）
 
 `SemanticSweep` 只读取当前已发表 Wiki 页头的元数据，不读正文、不执行判断。API 需显式装配编纂器、source intake、协调策略、维护能力与 active writer grant，并授予 `maintenance:read` / `maintenance:write`；`POST /maintenance/semantic-sweeps` 一次仅推进**一个分片的一页**，`GET /maintenance/semantic-sweeps/:passId?purpose=...` 按原范围读取。SDK 对应 `runSemanticSweep({purpose,cycleKey,shard,shardCount,limit,maxTasksPerShard,methodVersion,rubricVersion}, writeOpts)` 与 `semanticSweep(passId,purpose)`。`limit` 为 1–100，`maxTasksPerShard` 为 1–10000；跨页沿用相同周期、分片和方法版本，写入调用使用自己的 header，不能把原写入键当成下一页游标。
