@@ -4,6 +4,7 @@ import type {CandidateView,KnowledgeRef,ReviewTicket,ReviewDecision,ReviewEscala
 import {KnowledgeError} from '@commerce/knowledge-core/types';
 import type {ClaudeModelPort} from './model-port.ts';
 import type {ModelDisclosurePolicy} from './disclosure.ts';
+import {escapeUntrusted as escape} from './providers.ts';
 
 /** The narrow slice of the knowledge client an independent reviewer needs. It authenticates as its own principal. */
 export interface ReviewAgentClient {
@@ -15,6 +16,8 @@ export interface ReviewAgentClient {
   decide(ticketId:string,decision:ReviewDecision,key:string,purpose:string):Promise<void>;
   escalate(ticketId:string,escalation:ReviewEscalationRequest,key:string,purpose:string):Promise<void>;
 }
+const PERSISTENT_FAILURES=new Set(['PROVIDER_OUTPUT_INVALID','PROVIDER_OUTPUT_TRUNCATED','MODEL_BUDGET_EXCEEDED','MODEL_CALL_REJECTED',
+  'REVIEW_CONTENT_CHANGE_REQUIRED','COMPILATION_SOURCE_ASSURANCE_REQUIRED','SOURCE_PROOF_UNAVAILABLE']);
 export const HUMAN_REVIEW_CATEGORIES=['private_person','legal_risk','source_conflict','low_confidence','other'] as const;
 
 const Verdict=z.object({
@@ -34,7 +37,6 @@ Verdicts:
 - needs_human: a person must decide. Use it whenever the pages identify or describe a private individual (anyone who is not a public figure acting publicly), carry legal risk such as defamation or allegations of crime, rest on originals that conflict with each other, or you are not confident. List every applicable category.
 Be strict: prefer needs_human or rejected over approval when unsure. Write the reason in the language of the candidate.`;
 
-const escape=(value:string)=>value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 function renderCandidate(view:CandidateView){
   return view.changes.map((change,index)=>[`<candidate index="${index+1}">`,`<title>${escape(change.title)}</title>`,`<profile>${escape(change.profile.id)}</profile>`,
     `<body>\n${escape(change.body)}\n</body>`,`<conditions>\n${escape(change.conditions.join('\n'))}\n</conditions>`,
@@ -51,8 +53,12 @@ export function createReviewAgent(options:{client:ReviewAgentClient;port:ClaudeM
   async function reviewOne(ticket:ReviewTicket):Promise<ReviewAgentResult>{
     if(ticket.target.kind!=='candidate')return {ticketId:ticket.id,action:'skipped',verdict:null,note:'Only compiled candidates are reviewed by the agent'};
     const view=await options.client.candidateView(ticket.target.candidateId,options.purpose);
-    if(view.contentHash!==ticket.target.contentHash||view.state!=='waiting_for_review')
-      return {ticketId:ticket.id,action:'skipped',verdict:null,note:'Candidate changed or is no longer waiting for review'};
+    if(view.contentHash!==ticket.target.contentHash||view.state!=='waiting_for_review'){
+      // Without this hand-off a stale ticket would stay at the head of the queue and starve newer ones.
+      await options.client.escalate(ticket.id,{purpose:options.purpose,categories:['other'],note:`Candidate is ${view.state} or changed since the review request; a person should close this ticket.`},
+        `review-agent:stale:${ticket.id}`,options.purpose);
+      return {ticketId:ticket.id,action:'escalated',verdict:null,note:'stale candidate'};
+    }
     const key=(kind:string)=>`review-agent:${kind}:${ticket.id}:${view.contentHash.slice(0,16)}`;
     const originals:string[]=[];let bytes=0,omitted=0,undisclosable=0;
     for(const ref of view.exactReadset){
@@ -103,8 +109,10 @@ export function createReviewAgent(options:{client:ReviewAgentClient;port:ClaudeM
       for(const ticket of await options.client.pendingReviews({purpose:options.purpose,limit})){
         try{results.push(await reviewOne(ticket));}
         catch(error){
-          // Hand a failing ticket to a person so the next pass does not pay to fail on it again.
           const code=error!==null&&typeof error==='object'&&'code' in error&&typeof error.code==='string'?error.code.slice(0,100):'REVIEW_AGENT_FAILED';
+          // Outages, rate limits and spent budgets clear on their own: leave the ticket for a later pass.
+          if(!PERSISTENT_FAILURES.has(code)){results.push({ticketId:ticket.id,action:'skipped',verdict:null,note:code});continue;}
+          // A failure that would repeat is handed to a person so the next pass does not pay to fail on it again.
           try{await options.client.escalate(ticket.id,{purpose:options.purpose,categories:['low_confidence'],note:`Review agent could not finish (${code}); a person must decide.`},
             `review-agent:failed:${ticket.id}`,options.purpose);results.push({ticketId:ticket.id,action:'escalated',verdict:null,note:code});}
           catch{results.push({ticketId:ticket.id,action:'skipped',verdict:null,note:code});}

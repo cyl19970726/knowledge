@@ -89,3 +89,20 @@ test('the file ledger survives restarts and enforces the daily cap',async()=>{
   await assert.rejects(restarted.reserve({role:'review_agent',operationId:'t3',model,reservedUsd:0.5,dailyCapUsd:1,now}),/Daily model budget/);
   await assert.rejects(restarted.settle(a.id,{actualUsd:0,usage:{inputTokens:0,outputTokens:0,cacheCreationInputTokens:0,cacheReadInputTokens:0},modelReturned:null,requestId:null,stopReason:null}),/expected state/);
 });
+
+test('review fixes: transient failures leave the ticket for a later pass; stale candidates are handed off',async()=>{
+  const calls={escalate:[] as unknown[],decide:0};
+  const base:ReviewAgentClient={async pendingReviews(){return [ticket];},async candidateView(){return view;},
+    async sourceText(){return {text:'t',rightsPolicyRef:'report-copy'};},async wikiText(){return '';},
+    async decide(){calls.decide++;},async escalate(id,escalation){calls.escalate.push(escalation);}};
+  const transport:ClaudeTransport={async countTokens(){throw Object.assign(new Error('overloaded'),{status:529});},async send(){throw new Error('unreachable');}};
+  const port=createClaudeModelPort({transport,ledger:createMemorySpendLedger(),config:{model,effort:'high',maxCallUsd:1,dailyCapUsd:5,maxOutputTokens:16000}});
+  const disclosure={rightsPolicyIds:['report-copy'],allowWikiPages:false};
+  const [transient]=await createReviewAgent({client:base,port,purpose:'exploration_reading',disclosure}).runOnce();
+  assert.equal(transient.action,'skipped');
+  assert.equal(transient.note,'MODEL_UNAVAILABLE');
+  assert.equal(calls.escalate.length,0,'an outage does not send the ticket to a person');
+  const stale=createReviewAgent({client:{...base,async candidateView(){return {...view,state:'cancelled'};}},port,purpose:'exploration_reading',disclosure});
+  assert.equal((await stale.runOnce())[0].action,'escalated');
+  assert.match((calls.escalate.at(-1) as {note:string}).note,/cancelled/);
+});

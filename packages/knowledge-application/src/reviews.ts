@@ -7,7 +7,7 @@ export interface ReviewPort {
   viewCandidate(context:CapabilityContext,id:string):Promise<CandidateView|null>;
   decide(context:CapabilityContext,id:string,input:ReviewDecision,key:string):Promise<FinalizeReceipt>;
   /** Pending tickets the caller may decide (never its own proposals), oldest first. */
-  queue?(context:CapabilityContext,input:{escalated:'exclude'|'only'|'include';limit:number}):Promise<ReviewTicket[]>;
+  queue?(context:CapabilityContext,input:{escalated:'exclude'|'only'|'include';targetKind?:'candidate'|'research_result';limit:number}):Promise<ReviewTicket[]>;
   escalate?(context:CapabilityContext,id:string,input:ReviewEscalationRequest,key:string):Promise<ReviewTicket>;
 }
 export function createReviewApplication(port:ReviewPort){return{
@@ -18,7 +18,7 @@ export function createReviewApplication(port:ReviewPort){return{
   viewCandidate:(context:CapabilityContext,id:string)=>port.viewCandidate(context,id),
   decide(context:CapabilityContext,id:string,input:unknown,key:string){authorizeCapability(context,'review:decide');
     return port.decide(context,id,ReviewDecisionSchema.parse(input),key);},
-  queue(context:CapabilityContext,input:{escalated:'exclude'|'only'|'include';limit:number}){
+  queue(context:CapabilityContext,input:{escalated:'exclude'|'only'|'include';targetKind?:'candidate'|'research_result';limit:number}){
     if(!context.authorization.actions.includes('review:decide')&&!context.authorization.actions.includes('review:read'))
       throw new KnowledgeError('CAPABILITY_FORBIDDEN','Review queue needs review:read or review:decide',403);
     if(!port.queue)throw new KnowledgeError('REVIEW_QUEUE_UNAVAILABLE','Review queue is unavailable',503);

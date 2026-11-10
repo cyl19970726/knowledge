@@ -86,9 +86,6 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
   if(config.sourcePlanner){if(!config.writerGrant||!config.enableSourceIngest)throw new Error('Source planner requires explicit source intake and writer');await migrateSourcePlans(config.pool);}
   if(config.coordinationPolicy){if(!config.compiler||!config.enableMaintenance)throw new Error('Coordination requires explicit compiler and maintenance');await migrateCoordinationRuns(config.pool);await migrateSemanticSweeps(config.pool);}
   const app=express();app.disable('x-powered-by');
-  // Model-call evaluation arms may carry a full source text; every other route keeps the 1 MB body limit.
-  const smallJson=express.json({limit:'1mb'}),modelCallJson=express.json({limit:'8mb'});
-  app.use((req,res,next)=>(req.method==='POST'&&/\/knowledge\/model-calls$/.test(req.path)?modelCallJson:smallJson)(req,res,next));
   const store=createKnowledgeStore(config.pool,{writerGrant:config.writerGrant}),receipts=createPgKnowledgeReceiptPort(config.pool);
   const sourceRegistry=createPgSourceRegistry(config.pool,{writerGrant:config.writerGrant,readerIds:config.sourceReaderIds??principals.map(entry=>entry.principal.id)});
   const sources=createSourceApplication(sourceRegistry);
@@ -128,6 +125,9 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
     let found:ApiPrincipal|undefined;for(const entry of principals)if(bearer&&equalDigest(presented,entry.tokenSha256))found=entry;
     if(!found){res.status(401).json({requestId:randomUUID(),code:'UNAUTHORIZED',message:'Authenticated token required',retryable:false,commitStatus:'not_committed'});return;}
     res.locals.principal=found.principal;next();});
+  // Bodies are parsed only after authentication. Model-call evaluation arms may carry a full source text; every other route keeps 1 MB.
+  const smallJson=express.json({limit:'1mb'}),modelCallJson=express.json({limit:'8mb'});
+  app.use((req,res,next)=>(req.method==='POST'&&/\/knowledge\/model-calls$/.test(req.path)?modelCallJson:smallJson)(req,res,next));
   const base='/api/v1/projects/:projectId/spaces/:spaceId/knowledge';
   const route=(handler:(context:ReadContext,req:express.Request)=>Promise<{data:unknown;coverage?:unknown;receiptId?:string}>|{data:unknown;coverage?:unknown;receiptId?:string})=>
     async(req:express.Request,res:express.Response)=>{const requestId=randomUUID();try{
@@ -310,8 +310,8 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
   app.post(`${base}/review-requests`,route(async(context,req)=>{if(!reviews)throw new KnowledgeError('REVIEW_DISABLED','Review writes are disabled',503);
     return {data:await reviews.request(capability(context),ReviewRequestSchema.parse(req.body),String(req.header('Idempotency-Key')??''))};}));
   app.get(`${base}/review-requests`,route(async(context,req)=>{if(!reviews)throw new KnowledgeError('REVIEW_DISABLED','Reviews are disabled',503);
-    const q=ReviewQueueRequestSchema.parse({purpose:context.purpose,escalated:req.query.escalated,limit:req.query.limit===undefined?undefined:Number(req.query.limit)});
-    return {data:{items:await reviews.queue(capability(context),{escalated:q.escalated,limit:q.limit})}};}));
+    const q=ReviewQueueRequestSchema.parse({purpose:context.purpose,escalated:req.query.escalated,targetKind:req.query.targetKind,limit:req.query.limit===undefined?undefined:Number(req.query.limit)});
+    return {data:{items:await reviews.queue(capability(context),{escalated:q.escalated,targetKind:q.targetKind,limit:q.limit})}};}));
   app.post(`${base}/review-requests/:reviewRequestId/escalations`,route(async(context,req)=>{if(!reviews)throw new KnowledgeError('REVIEW_DISABLED','Review writes are disabled',503);
     return {data:await reviews.escalate(capability(context),String(req.params.reviewRequestId),req.body,String(req.header('Idempotency-Key')??''))};}));
   app.get(`${base}/review-requests/:reviewRequestId`,route(async(context,req)=>{if(!reviews)throw new KnowledgeError('REVIEW_DISABLED','Reviews are disabled',503);

@@ -12,7 +12,7 @@ import {createReviewAgent,createClaudeModelPort,createAnthropicTransport,createF
 
 export function reviewAgentClient(client:ReturnType<typeof createKnowledgeClient>):ReviewAgentClient{
   return {
-    pendingReviews:async input=>(await client.reviewQueue({purpose:input.purpose,limit:input.limit,escalated:'exclude'})).data.items,
+    pendingReviews:async input=>(await client.reviewQueue({purpose:input.purpose,limit:input.limit,escalated:'exclude',targetKind:'candidate'})).data.items,
     candidateView:async(id,purpose)=>(await client.candidateView(id,purpose)).data,
     async sourceText(ref,purpose){
       const record=(await client.source(ref,purpose)).data;

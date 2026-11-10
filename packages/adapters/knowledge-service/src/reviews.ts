@@ -217,8 +217,8 @@ export function createPgReviewPort(pool:Pool,writerGrant:KnowledgeWriterGrant,so
     throw new KnowledgeError('REVIEW_READ_FORBIDDEN','Review context forbidden',403);
    const escalated=input.escalated==='only'?"AND payload ? 'escalation'":input.escalated==='exclude'?"AND NOT payload ? 'escalation'":'';
    const rows=await pool.query<{payload:ReviewTicket}>(`SELECT payload FROM ccl_knowledge_review_tickets
-     WHERE project_id=$1 AND space_id=$2 AND purpose=$3 AND state='pending' AND proposer_id<>$4 ${escalated}
-     ORDER BY created_at,id LIMIT $5`,[context.scope.projectId,context.scope.spaceId,context.purpose,context.principal.id,input.limit]);
+     WHERE project_id=$1 AND space_id=$2 AND purpose=$3 AND state='pending' AND proposer_id<>$4 AND ($6::text IS NULL OR target_kind=$6) ${escalated}
+     ORDER BY created_at,id LIMIT $5`,[context.scope.projectId,context.scope.spaceId,context.purpose,context.principal.id,input.limit,input.targetKind??null]);
    return rows.rows.map(row=>ReviewTicketSchema.parse(row.payload));},
   async escalate(context,id,input,key){return capabilityTransaction(pool,context,'review:escalate',key,{id,input},writerGrant,async client=>{
    const row=(await client.query<{payload:ReviewTicket;proposer_id:string;purpose:string;state:string}>(`SELECT payload,proposer_id,purpose,state FROM ccl_knowledge_review_tickets

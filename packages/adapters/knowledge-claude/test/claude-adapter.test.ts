@@ -195,3 +195,35 @@ test('disclosure allows only listed source rights policies and opted-in Wiki pag
   await assert.rejects(authorize(context([]),[src('missing')]),/rights policy/);
   await assert.rejects(authorize(context([]),[evidence('w','b','wiki_page')]),/Wiki pages/);
 });
+
+test('review fixes: a failed token count is unbilled and frees the model-call key; rate limits keep their code',async()=>{
+  let fail:Error|null=new ClaudeDispatchError('Anthropic returned 429','no',429);
+  const ledger=createMemorySpendLedger();
+  const transport:ClaudeTransport={async countTokens(){if(fail)throw fail;return 1000;},
+    async send(){return {requestId:'r',message:{id:'m',type:'message',role:'assistant',model,content:[{type:'text',text:'ok',citations:null}],stop_reason:'end_turn',stop_sequence:null,
+      usage:{input_tokens:1000,output_tokens:10,cache_creation_input_tokens:0,cache_read_input_tokens:0}} as unknown as Message};}};
+  const service=createModelCallService({port:createClaudeModelPort({transport,ledger,config}),store:createMemoryModelCallStore()});
+  const request={purpose:'exploration_reading',label:'eval',system:'s',cachedPrefix:null,prompt:'p',maxOutputTokens:null,maxMoney:{amount:0.3,currency:'USD' as const}};
+  await assert.rejects(service.call(context(['model:call']),request,'eval-key-0002'),(error:{code?:string})=>error.code==='MODEL_RATE_LIMITED');
+  fail=new ClaudeDispatchError('Anthropic connection failed','unknown',null);
+  await assert.rejects(service.call(context(['model:call']),request,'eval-key-0002'),(error:{code?:string})=>error.code==='MODEL_UNAVAILABLE');
+  fail=null;
+  assert.equal((await service.call(context(['model:call']),request,'eval-key-0002')).text,'ok','the same key works once counting succeeds');
+  assert.equal(ledger.entries.length,1);
+});
+
+test('review fixes: Haiku is priced by prompt tier and mentions with escaped characters are placed',()=>{
+  const small={inputTokens:10_000,outputTokens:1000,cacheCreationInputTokens:0,cacheReadInputTokens:0};
+  assert.equal(usageCost('claude-haiku-5-5',small),0.0015);
+  assert.equal(usageCost('claude-haiku-5-5',{...small,inputTokens:150_000}),0.0775);
+  assert.ok(worstCaseCost('claude-haiku-5-5',10_000,1000)<worstCaseCost('claude-haiku-5-5',150_000,1000));
+});
+
+test('review fixes: a surface the model copied from the escaped body is located in the raw body',async()=>{
+  const body='AT&T 与 <Acme> 合作。';
+  const {transport}=fakeTransport(()=>({text:JSON.stringify({outcome:'planned',question:'合作内容？',queries:['AT&T 合作'],
+    mentions:[{entityType:'organization',surface:'AT&amp;T',occurrence:1},{entityType:'organization',surface:'&lt;Acme&gt;',occurrence:1}],reason:'r',gaps:[]})}));
+  const planner=createClaudeSourcePlanner(createClaudeModelPort({transport,ledger:createMemorySpendLedger(),config}));
+  const out=await planner.plan({operationId:'p',source:evidence('s',body),methodVersion:'m',budget:{maxModelCalls:1,maxReadBytes:1,deadline:new Date().toISOString(),maxMoney:null},signal});
+  assert.deepEqual(out.proposal.mentions.map(m=>Buffer.from(body).subarray(m.startByte,m.endByte).toString()),['AT&T','<Acme>']);
+});

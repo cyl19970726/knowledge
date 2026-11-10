@@ -3316,6 +3316,7 @@ make docs-knowledge-check
 </tr>
 </tbody>
 </table></div>
+<p>调用被拒时的错误码：Anthropic 明确拒绝的请求（4xx）为 <code>MODEL_CALL_REJECTED</code>，限流为 <code>MODEL_RATE_LIMITED</code>，网络或服务故障为 <code>MODEL_UNAVAILABLE</code>，这三种都没有计费，可以用同一个键重试；已发出但结果不明的为 <code>PROVIDER_OUTCOME_UNKNOWN</code>。Haiku 5.5 按实际提示长度分两档计价。请求体在认证通过后才解析。</p>
 <p>每次调用先用免费的 token 计数得到准确输入量，按“输入全部按缓存写入价、输出按上限”计算最坏费用，据此压低 <code>max_tokens</code>，并在 <code>ccl_knowledge_model_spend</code> 中预留；返回后按实际用量结算。被拒绝且未计费的请求释放预留；结果不明的调用保留全额预留，所以每日上限只会被多算、不会被突破。SDK 自动重试已关闭，避免重试在预留之外重复计费。服务端拒答兜底（fallbacks）未启用：拒答作为 <code>refused</code> 结果返回，费用仍可预先限定。</p>
 <p><code>POST /model-calls</code> 供评测对照组使用同一模型、同一 effort 与同一账本。调用方需要 <code>model:call</code> 能力和认证安装，必须带 <code>Idempotency-Key</code> 与美元 <code>maxMoney</code>；同键同请求重放返回原结果且不再计费，同键不同请求返回 409，结果不明的键保持占用。路由单独允许 8 MB 请求体，其余路由仍为 1 MB。</p>
 <p>真实付费调用、价格表更新和上限取值都需要使用者另行批准；仓库测试只用假 transport，不访问网络。</p>
@@ -3337,7 +3338,8 @@ make docs-knowledge-check
 <p>审阅 agent 是独立进程，以自己的主体（<code>actor.kind</code> 为 <code>agent</code>）通过 HTTP 访问知识 API，没有数据库权限。每一轮它取出可审的待审票据（<code>GET /review-requests</code>：不含自己提议的、不含已转人工的），逐条读取候选页和候选实际读过的每份原文，在全新的模型上下文里判断，然后二选一：</p>
 <ul>
 <li>全部陈述都有原文支持时作出决定：<code>approved_for_purpose</code>、<code>exploration_only</code> 或 <code>rejected</code>。决定不能新增条件或缺口，agent 的缺口写进理由。</li>
-<li>否则转人工（<code>POST /review-requests/:id/escalations</code>）：涉及非公众人物、法律风险、来源互相矛盾、把握不高，“批准”但有不受支持的陈述，原文不允许发给模型，模型拒答或输出无效。票据保持待审，带上 <code>escalation: {categories, note, by, at}</code>；人工在 <code>GET /review-requests?escalated=only</code> 里处理。转人工后 agent 不再处理这张票据，失败不会反复计费。</li>
+<li>否则转人工（<code>POST /review-requests/:id/escalations</code>）：涉及非公众人物、法律风险、来源互相矛盾、把握不高，“批准”但有不受支持的陈述，原文不允许发给模型，模型拒答或输出无效，以及候选已取消或已变化的过期票据。票据保持待审，带上 <code>escalation: {categories, note, by, at}</code>；人工在 <code>GET /review-requests?escalated=only</code> 里处理。转人工后 agent 不再处理这张票据，失败不会反复计费。</li>
+<li>限流（<code>MODEL_RATE_LIMITED</code>）、服务不可用（<code>MODEL_UNAVAILABLE</code>）、结果不明或当日额度用完属于暂时性问题：票据留在队列里，下一轮再审，不转人工。agent 只取 <code>targetKind=candidate</code> 的票据。</li>
 </ul>
 <p>agent 发原文给模型时遵守与服务相同的外发规则（<code>KNOWLEDGE_MODEL_DISCLOSURE_RIGHTS_POLICY_IDS</code>、<code>KNOWLEDGE_MODEL_DISCLOSURE_WIKI</code>）。它可以使用与编纂不同的模型和上限：Claude 配置沿用同一格式，前缀改为 <code>KNOWLEDGE_REVIEW_AGENT_CLAUDE_</code>（例如 <code>KNOWLEDGE_REVIEW_AGENT_CLAUDE_MODEL</code>、<code>..._API_KEY_FILE</code>、<code>..._MAX_CALL_USD</code>、<code>..._DAILY_USD</code>）。其余设置：</p>
 <div class="table-scroll"><table>

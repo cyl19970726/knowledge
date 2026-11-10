@@ -1,4 +1,5 @@
 import {randomUUID} from 'node:crypto';
+import {readFile,appendFile} from 'node:fs/promises';
 import type {Pool} from 'pg';
 import {KnowledgeError} from '@commerce/knowledge-core/types';
 import type {TokenUsage} from './pricing.ts';
@@ -89,17 +90,16 @@ export function createPgSpendLedger(pool:Pool):SpendLedger{
  * Each line is a full entry snapshot; the latest line per id wins. Run one agent process per file.
  */
 export function createFileSpendLedger(path:string):SpendLedger{
-  const fs=import('node:fs/promises');
   let queue:Promise<unknown>=Promise.resolve();
   const serial=<T>(work:()=>Promise<T>)=>{const next=queue.then(work,work);queue=next.catch(()=>undefined);return next;};
   async function load():Promise<Map<string,SpendEntry>>{
-    const {readFile}=await fs;let text='';
+    let text='';
     try{text=await readFile(path,'utf8');}catch(error){if((error as {code?:string}).code!=='ENOENT')throw error;}
     const entries=new Map<string,SpendEntry>();
     for(const line of text.split('\n'))if(line.trim()){const entry=JSON.parse(line) as SpendEntry;entries.set(entry.id,entry);}
     return entries;
   }
-  const append=async(entry:SpendEntry)=>{const {appendFile}=await fs;await appendFile(path,`${JSON.stringify(entry)}\n`,{mode:0o600});};
+  const append=async(entry:SpendEntry)=>{await appendFile(path,`${JSON.stringify(entry)}\n`,{mode:0o600});};
   const counted=(entry:SpendEntry)=>entry.state==='released'?0:entry.state==='settled'?entry.actualUsd??0:entry.reservedUsd;
   const spent=(entries:Map<string,SpendEntry>,day:string)=>[...entries.values()].filter(entry=>entry.day===day).reduce((sum,entry)=>sum+counted(entry),0);
   const update=(id:string,change:Partial<SpendEntry>)=>serial(async()=>{const entry=(await load()).get(id);
