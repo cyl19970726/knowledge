@@ -1,4 +1,11 @@
 import {KnowledgeError} from '@commerce/knowledge-core/types';
+import type {Cost} from '@commerce/knowledge-contracts';
+/** The provider answered and was billed, but its output is unusable. The outcome is known: the operation failed,
+ * with this cost. Only an unanswered dispatch is an unknown outcome. */
+export class ProviderOutputError extends KnowledgeError{
+ constructor(code:'PROVIDER_OUTPUT_INVALID'|'PROVIDER_OUTPUT_TRUNCATED',message:string,
+  readonly receipt:{cost:Cost;modelReturned:string|null;requestId:string|null}){super(code,message,502);}
+}
 /** Only controls an injected operation; this helper contains no provider transport. */
 export async function executeWithDeadline<T>(deadline:string,run:(signal:AbortSignal)=>Promise<T>,parent?:AbortSignal,now=Date.now):Promise<T>{
  parent?.throwIfAborted();const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined;

@@ -6,6 +6,7 @@ import {digest} from '@commerce/knowledge-core/utils';
 import type {KnowledgeApplication,ReadContext,BoundedWikiPage} from './index.ts';
 import {fromVersionRef} from '@commerce/knowledge-contracts';
 import {authorizeCapability,type CapabilityContext} from './sources.ts';
+import {ProviderOutputError} from './provider-execution.ts';
 type Cost=AskResult['cost'];
 
 export interface AskOperationPort {
@@ -269,7 +270,13 @@ export function createAskWikiService(options:{reader:AskReader;operations:AskOpe
         let execution:Awaited<ReturnType<QueryAnswerer['answer']>>;
         try{execution=await Promise.race([options.provider.answer({operationId:result.id,question:request.question,purpose:request.purpose,
           evidence:structuredClone(evidence),budget:structuredClone(request.budget),signal:controller.signal,
-          gaps:[...result.gaps],coverage:structuredClone(result.coverage)}),timeout]);}finally{if(timer)clearTimeout(timer);}
+          gaps:[...result.gaps],coverage:structuredClone(result.coverage)}),timeout]);}
+        catch(error){
+          // An answered but unusable reply is a known failure with a known cost, not an outcome to reconcile.
+          if(error instanceof ProviderOutputError){acknowledged=true;
+            result={...result,cost:CostSchema.parse(error.receipt.cost),provider:{...result.provider!,modelReturned:error.receipt.modelReturned,requestId:error.receipt.requestId}};}
+          throw error;
+        }finally{if(timer)clearTimeout(timer);}
         acknowledged=true;
         result={...result,cost:CostSchema.parse(execution.cost),provider:{...result.provider!,modelReturned:execution.modelReturned,requestId:execution.requestId}};
         const answer=AskProviderAnswerSchema.parse(execution.answer),ids=new Set(evidence.map(item=>item.id));

@@ -1,4 +1,4 @@
-import {executeWithDeadline} from './provider-execution.ts';
+import {executeWithDeadline,ProviderOutputError} from './provider-execution.ts';
 import type {KnowledgeRevision} from '@commerce/knowledge-core/types';
 import type {WikiCompileRequest,WikiCompileResult,WikiCompileProposal,SourceAccessProof,CandidateReceipt,ProfileRef,RelationJudgment,DecisionAnswer,KnowledgeRef,AskClaim} from '@commerce/knowledge-contracts';
 import type {AskEvidence,AskAnswerReader} from './ask.ts';
@@ -263,7 +263,9 @@ export function createWikiCompileApplication(options:{reader:Pick<KnowledgeAppli
     result={...result,cost:pending(),provider:{id:providerIdentity.id,modelRequested:providerIdentity.model,modelReturned:null,requestId:null}};
     await committed(options.operations.checkpoint(context,id,result),id);check();await validate(context,result);await options.reader.assertReadEpoch(context,epoch);check();
     parentSignal?.throwIfAborted();invoked=true;
-    const execution=await executeWithDeadline(request.budget.deadline,signal=>options.provider.compile({operationId:id,...structuredClone(prepared),budget:structuredClone(request.budget),signal}),parentSignal,()=>now().getTime());
+    const execution=await executeWithDeadline(request.budget.deadline,signal=>options.provider.compile({operationId:id,...structuredClone(prepared),budget:structuredClone(request.budget),signal}),parentSignal,()=>now().getTime())
+     .catch(error=>{if(error instanceof ProviderOutputError){acknowledged=true;
+      result={...result,cost:CostSchema.parse(error.receipt.cost),provider:{...result.provider!,modelReturned:error.receipt.modelReturned,requestId:error.receipt.requestId}};}throw error;});
     acknowledged=true;result={...result,cost:CostSchema.parse(execution.cost),provider:{...result.provider!,modelReturned:execution.modelReturned,requestId:execution.requestId}};
     await committed(options.operations.checkpoint(context,id,result),id);
     if(result.cost.modelCalls.state==='known'&&result.cost.modelCalls.value>request.budget.maxModelCalls)throw new KnowledgeError('MODEL_BUDGET_EXCEEDED','Compiler reported excess calls',422);

@@ -74,7 +74,7 @@ Worker 的维护模式须显式开启，并提供确定的项目、空间、用�
 | `KNOWLEDGE_MODEL_DISCLOSURE_RIGHTS_POLICY_IDS` | 允许发给外部模型的来源权利策略；未列出的来源原文一律不外发。 |
 | `KNOWLEDGE_MODEL_DISCLOSURE_WIKI` | `1` 时允许把已发表 Wiki 页发给模型；默认不允许。 |
 
-调用被拒时的错误码：Anthropic 明确拒绝的请求（4xx）为 `MODEL_CALL_REJECTED`，限流为 `MODEL_RATE_LIMITED`，网络或服务故障为 `MODEL_UNAVAILABLE`，这三种都没有计费，可以用同一个键重试；已发出但结果不明的为 `PROVIDER_OUTCOME_UNKNOWN`。只有上述未计费错误和预算、价格错误会释放 `/model-calls` 的幂等键；其他任何错误（包括发送后账本结算冲突）都可能已经计费，键保持占用，不能重发。Haiku 5.5 按实际提示长度分两档计价。请求体在认证通过后才解析。
+调用被拒时的错误码：Anthropic 明确拒绝的请求（4xx）为 `MODEL_CALL_REJECTED`，限流为 `MODEL_RATE_LIMITED`，网络或服务故障为 `MODEL_UNAVAILABLE`，这三种都没有计费，可以用同一个键重试；已发出但结果不明的为 `PROVIDER_OUTCOME_UNKNOWN`。模型已经返回、也已计费，但输出不可用（不是 JSON、不符合契约、引用未提供的证据、输出被截断）时，提供方抛出带费用回执的 `ProviderOutputError`（`PROVIDER_OUTPUT_INVALID` 或 `PROVIDER_OUTPUT_TRUNCATED`）；Ask、规划、编纂和关系判断都把它记为 `failed` 并保留已知费用，只有调用本身没有回音时才是 `outcome_unknown`。只有上述未计费错误和预算、价格错误会释放 `/model-calls` 的幂等键；其他任何错误（包括发送后账本结算冲突）都可能已经计费，键保持占用，不能重发。Haiku 5.5 按实际提示长度分两档计价。请求体在认证通过后才解析。
 
 每次调用先用免费的 token 计数得到准确输入量，按“输入全部按缓存写入价、输出按上限”计算最坏费用，据此压低 `max_tokens`，并在 `ccl_knowledge_model_spend` 中预留；返回后按实际用量结算。被拒绝且未计费的请求释放预留；结果不明的调用保留全额预留，所以每日上限只会被多算、不会被突破。SDK 自动重试已关闭，避免重试在预留之外重复计费。服务端拒答兜底（fallbacks）未启用：拒答作为 `refused` 结果返回，费用仍可预先限定。
 

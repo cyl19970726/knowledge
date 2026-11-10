@@ -1,4 +1,4 @@
-import {executeWithDeadline} from './provider-execution.ts';
+import {executeWithDeadline,ProviderOutputError} from './provider-execution.ts';
 import {randomUUID} from 'node:crypto';
 import {RelationJudgmentRequestSchema,RelationJudgmentSchema,DecisionBatchResultSchema,CostSchema,type RelationJudgment,type RelationJudgmentRequest,type DecisionQuestion,type DecisionBatchResult} from '@commerce/knowledge-contracts';
 import type {AskEvidence} from './ask.ts';
@@ -92,7 +92,8 @@ export function createRelationJudgmentApplication(options:{reader:Pick<Knowledge
     }
     result={...result,cost:pending(),provider};await options.operations.checkpoint(context,id,result);check();await validate(context,result);check();
     parentSignal?.throwIfAborted();invoked=true;
-    const execution=await executeWithDeadline(request.budget.deadline,signal=>options.provider.decide({operationId:id,state:structuredClone(state),questions:structuredClone(request.questions),rubricVersion:request.rubricVersion,budget:structuredClone(request.budget),signal}),parentSignal,()=>now().getTime());
+    const execution=await executeWithDeadline(request.budget.deadline,signal=>options.provider.decide({operationId:id,state:structuredClone(state),questions:structuredClone(request.questions),rubricVersion:request.rubricVersion,budget:structuredClone(request.budget),signal}),parentSignal,()=>now().getTime())
+     .catch(error=>{if(error instanceof ProviderOutputError){acknowledged=true;result={...result,cost:CostSchema.parse(error.receipt.cost)};}throw error;});
     acknowledged=true;result={...result,cost:CostSchema.parse(execution.cost)};
     await options.operations.checkpoint(context,id,RelationJudgmentSchema.parse(result));
     if(Buffer.byteLength(JSON.stringify(execution.result),'utf8')>1_000_000)throw new KnowledgeError('JUDGMENT_OUTPUT_LIMIT','Decision response exceeds byte bound',422);

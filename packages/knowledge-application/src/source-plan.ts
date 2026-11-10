@@ -8,6 +8,7 @@ import type {AskEvidence} from './ask.ts';
 import type {KnowledgeApplication,ReadContext} from './index.ts';
 import type {CapabilityContext} from './sources.ts';
 import {authorizeCapability} from './sources.ts';
+import {ProviderOutputError} from './provider-execution.ts';
 import type {createSourceIntakeApplication} from './source-intake.ts';
 import {validateEntityMentionSpans} from './entity-mentions.ts';
 
@@ -170,6 +171,10 @@ export function createSourcePlanApplication(options:{
       try{execution=await Promise.race([options.provider.plan({operationId:id,source:structuredClone(source),
         methodVersion:request.methodVersion,budget:structuredClone(request.budget),signal:controller.signal}),
         timeout,parentAbort]);}
+      catch(error){
+        if(error instanceof ProviderOutputError){acknowledged=true;result={...result,cost:CostSchema.parse(error.receipt.cost)};}
+        throw error;
+      }
       finally{if(timer)clearTimeout(timer);if(parentSignal&&parentAbortListener)
         parentSignal.removeEventListener('abort',parentAbortListener);}
       check();
