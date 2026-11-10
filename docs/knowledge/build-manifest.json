@@ -3,7 +3,7 @@
   "updated": "2026-11-03",
   "documents": 44,
   "diagrams": 0,
-  "output_sha256": "d2e902f96daa7582be8d1266475a076bfb7926740a3e04306e1e05fae735fc28",
+  "output_sha256": "169c3dd9af1d903ea24955819496492bdb39d26d7b81618418416fb7ccb75a93",
   "source_sha256": {
     "../_site/mermaid.bundle.js": "ace4ee4658ac7ecdb9a53096dfa379ad76a921228ea143f5e994389af76b662f",
     "../_site/reader.js": "6330c20c6fb9d6b41ab26e0c27027d80764aa15da90eca75be632a6e8b3d106a",
@@ -139,7 +139,7 @@
     "maintenance.md": "e8505b69e49e529606602ea8f30b6664453e8ad01e316c20eeea6bc22e22f256",
     "migration.md": "80a3c6d091c9624cc1847bc977dd1322c7130a181a1ed80d55832f56caa3ca82",
     "model.md": "7f571b635c046ed44720e764d2dd1deeff3b3e0c261e28441d50d5541a8db6b9",
-    "operations.md": "ec49014672e115d1cb1b51b6606da04dea85f89084113acfefd14a82bc08aad0",
+    "operations.md": "39c041524a547af340e592c09b8b29c0539b31c3fc9f0760cc704ca655ebc6f1",
     "ownership.md": "beec4c278aa2fc767c9bbba50555991d1db619d50677fc4bf58bd401d8f62f32",
     "product.md": "63652d303febc9398b302d1c99f4f0ceaabb847f3e986fdc8483e63cf0865d04",
     "reference/commerce-architecture.md": "f37872e496846682ad44238ed703446a75ed281a7806f70f5f419ff1da6257e6",
