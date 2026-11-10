@@ -184,6 +184,12 @@ console.log(source.data.ref, result.data.items, receipt.data.orderedItems);
 
 恢复不会再次调用提供方。未知返回后先用原 key lookup；若已存在 stage receipt，服务核验共享 request hash 与实际 changeset，再补齐账本关联。此处是恢复本地记录，不是重新 stage 或发表；没有已存候选时保持原未知/草稿状态。模型提供方本身的请求身份、原始响应及账单对账仍需真实 adapter 配套实现。
 
+### 使用内置 Claude 提供方与通用模型调用
+
+独立 CLI 可通过环境变量一次装配四个端口的 Claude 实现，配置、费用预留与外发规则见[运行手册](operations.md)。程序宿主也可直接使用 `@commerce/knowledge-claude-adapter`：`createClaudeModelPort` 包装预算与账本，`createClaudeAnswerer`、`createClaudeSourcePlanner`、`createClaudeWikiCompiler`、`createClaudeDecisionProvider` 产出现有端口，`createModelDisclosureAuthorizer` 产出四个 `authorize*Dispatch`。Ask 的外部提供方现在同样必须经过外发授权。规划把模型给出的逐字提及和出现序号换算为 UTF-8 字节 span，找不到原文的提及丢弃并写入 gaps；编纂按事件断言约定在首个条件写 `claim_status:verified|attributed|disputed_allegation|unsupported`。
+
+评测对照组用 SDK 的 `modelCall`（`POST /model-calls`）：请求含 `purpose`、`label`、`system`、可缓存的 `cachedPrefix`（如全文）、`prompt`、可选 `maxOutputTokens` 和美元 `maxMoney`，结果给出文本、token 用量、实际费用、预留金额、请求与返回模型、effort 和 Anthropic request id。DTO 以共享 `ModelCallRequestSchema` / `ModelCallResultSchema` 为准。
+
 ### 从回答派生新的研究问题
 
 先从当前有权读取的 `answered` 结果取 `answerFingerprint`，让用户选择 claim 索引并填写新问题、Wiki 页数 `limit`、分页范围和预算。调用 SDK `researchAnswer(answerId, {purpose,expectedAnswerFingerprint,claimIndexes,question,limit,maxPages,budget}, {idempotencyKey})`，对应 `POST /answers/:id/research`。服务需同时声明 `researchAnswer` 写能力与 `compilation` 读能力；请求必须具备 `compile:write`、`compile:read`，不要求调用者创建 API key。旧服务响应没有指纹时禁用此入口。

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import {
-  CONTRACT_VERSION, ScopeSchema, KnowledgeRefSchema, EnvelopeSchema, ApiErrorSchema,
+  CONTRACT_VERSION, ScopeSchema, ModelCallRequestSchema, ModelCallResultSchema, ReviewQueueRequestSchema, ReviewQueueSchema, ReviewEscalationRequestSchema, KnowledgeRefSchema, EnvelopeSchema, ApiErrorSchema,
   CapabilitiesSchema, ProfileRefSchema, QueryRequestSchema, QueryResultSchema, AskRequestSchema, AskResultSchema, AskLookupResultSchema, CatalogRequestSchema, CatalogResultSchema,
   KnowledgeDocumentSchema, GraphRequestSchema, GraphResultSchema, HistoryRequestSchema, HistoryResultSchema,
   CompareRequestSchema, CompareResultSchema, SourceRecordSchema, SourceContentSchema, SourceUpsertSchema,
@@ -176,6 +176,8 @@ export function createKnowledgeClient(options: KnowledgeClientOptions) {
     cancelMaintenance: (id:string,purpose:string,opts:WriteOptions) => post(`/maintenance/tasks/${encode(parseLocal(idSchema,id))}/cancel`,MaintenanceTaskSchema,z.strictObject({purpose:purposeSchema}),{purpose},opts),
     maintenanceFindings: (purpose:string,params:{limit?:number;cursor?:string;status?:'open'|'superseded'|'resolved'}={},opts:ReadOptions={}) => request('GET',`/maintenance/findings${queryString({purpose:parseLocal(purposeSchema,purpose),...params})}`,MaintenanceFindingPageSchema,undefined,opts),
     judgeRelation: (data:z.input<typeof RelationJudgmentRequestSchema>,opts:WriteOptions) => post('/judgments',RelationJudgmentSchema,RelationJudgmentRequestSchema,data,opts),
+    /** Budgeted call to the knowledge service's configured model; replays by Idempotency-Key. */
+    modelCall: (data:z.input<typeof ModelCallRequestSchema>,opts:WriteOptions) => post('/model-calls',ModelCallResultSchema,ModelCallRequestSchema,data,opts),
     judgment: (id:string,purpose:string,opts:ReadOptions={}) => request('GET',`/judgments/${encode(parseLocal(idSchema,id))}${queryString({purpose:parseLocal(purposeSchema,purpose)})}`,RelationJudgmentSchema,undefined,opts),
     judgmentLookup: (key:string,purpose:string,opts:ReadOptions={}) => request('GET',`/judgments/lookup${queryString({key:parseLocal(keySchema,key),purpose:parseLocal(purposeSchema,purpose)})}`,RelationJudgmentLookupSchema,undefined,opts),
     researchAnswer: (answerId:string,data:z.input<typeof AnswerResearchRequestSchema>,opts:WriteOptions) => post(`/answers/${encode(parseLocal(idSchema,answerId))}/research`,WikiCompileResultSchema,AnswerResearchRequestSchema,data,opts),
@@ -220,6 +222,9 @@ export function createKnowledgeClient(options: KnowledgeClientOptions) {
     candidateView: (candidateId:string,purpose='exploration_reading',opts:ReadOptions={}) => request('GET',
       `/candidates/${encode(parseLocal(idSchema,candidateId))}${queryString({purpose:parseLocal(purposeSchema,purpose)})}`,CandidateViewSchema,undefined,opts),
     requestReview: (data:z.input<typeof ReviewRequestSchema>,opts:WriteOptions) => post('/review-requests',ReviewTicketSchema,ReviewRequestSchema,data,opts),
+    /** Pending tickets this principal may decide; escalated tickets are excluded unless asked for. */
+    reviewQueue: (data:z.input<typeof ReviewQueueRequestSchema>,opts:ReadOptions={}) => {const q=parseLocal(ReviewQueueRequestSchema,data);return request('GET',`/review-requests${queryString(q)}`,ReviewQueueSchema,undefined,{...opts,purpose:q.purpose});},
+    escalateReview: (reviewRequestId:string,data:z.input<typeof ReviewEscalationRequestSchema>,opts:WriteOptions) => post(`/review-requests/${encode(parseLocal(idSchema,reviewRequestId))}/escalations`,ReviewTicketSchema,ReviewEscalationRequestSchema,data,opts),
     reviewTicket: (reviewRequestId:string,opts:ReadOptions={}) => request('GET',`/review-requests/${encode(parseLocal(idSchema,reviewRequestId))}`,ReviewTicketSchema,undefined,opts),
     decideReview: (reviewRequestId:string,data:z.input<typeof ReviewDecisionSchema>,opts:WriteOptions) => post(`/review-requests/${encode(parseLocal(idSchema,reviewRequestId))}/decisions`,FinalizeReceiptSchema,ReviewDecisionSchema,data,opts),
     recordUse: (data:z.input<typeof UseInputSchema>,opts:WriteOptions) => post('/uses',UseRecordSchema,UseInputSchema,data,opts),

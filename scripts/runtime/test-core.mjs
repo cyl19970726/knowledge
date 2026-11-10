@@ -8,6 +8,7 @@ const suites = [
   ['packages/knowledge-contracts/test', new Set()],
   ['packages/knowledge-client/test', new Set()],
   ['packages/knowledge-application/test', new Set()],
+  ['packages/adapters/knowledge-claude/test', new Set()],
   ['apps/knowledge-api/test', new Set()],
   ['apps/knowledge-web/test', new Set()],
 ];

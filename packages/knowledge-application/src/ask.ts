@@ -27,6 +27,8 @@ export type AskReader=Pick<KnowledgeApplication,'queryCandidates'|'readCandidate
 export interface QueryAnswerer {
   id:string;
   model:string;
+  /** External answerers disclose evidence to another processor and need explicit dispatch authorization. */
+  execution?:'local_deterministic'|'external';
   supportsMoneyLimit?:boolean;
   answer(input:{operationId:string;question:string;purpose:string;evidence:readonly AskEvidence[];
     budget:AskRequest['budget'];signal:AbortSignal;gaps?:readonly string[];coverage?:AskResult['coverage']}):Promise<{answer:AskProviderAnswer;cost:Cost;
@@ -93,7 +95,8 @@ export function createAskAnswerReader(options:{reader:AskReadVerifier;operations
 }
 
 /** A temporary answer has a durable readset, but no knowledge publication capability. */
-export function createAskWikiService(options:{reader:AskReader;operations:AskOperationPort;provider:QueryAnswerer;now?:()=>Date}){
+export function createAskWikiService(options:{reader:AskReader;operations:AskOperationPort;provider:QueryAnswerer;now?:()=>Date;
+  authorizeExternalDispatch?:(context:ReadContext,evidence:readonly AskEvidence[],provider:QueryAnswerer)=>Promise<void>}){
   const clock=()=>options.now?.()??new Date();
   const {get,lookup}=createAskAnswerReader(options);
   const validateReadset=(context:ReadContext,result:AskResult)=>validateAskReadset(options.reader,context,result);
@@ -255,6 +258,10 @@ export function createAskWikiService(options:{reader:AskReader;operations:AskOpe
         // Checkpoint persistence is an await boundary: rights may have changed while it ran.
         await validateReadset(context,result);
         await options.reader.assertReadEpoch(context,result.coverage.snapshot.publicationEpoch);
+        if(options.provider.execution==='external'){
+          if(!options.authorizeExternalDispatch)throw new KnowledgeError('MODEL_DISCLOSURE_PERMISSION_REQUIRED','External answer disclosure is not authorized',403);
+          await options.authorizeExternalDispatch(context,evidence,options.provider);
+        }
         checkDeadline();
         const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined;
         const timeout=new Promise<never>((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(new KnowledgeError('PROVIDER_OUTCOME_UNKNOWN','Provider deadline exceeded; reconcile this operation',504));},Math.max(1,Date.parse(request.budget.deadline)-clock().getTime()));});
