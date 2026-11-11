@@ -8,7 +8,7 @@ import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {createKnowledgeClient} from '@commerce/knowledge-client';
 import {createReviewAgent,createClaudeModelPort,createAnthropicTransport,createFileSpendLedger,readApiKeyFile,readClaudeRuntimeConfig,
-  type ReviewAgentClient} from '@commerce/knowledge-claude-adapter';
+  readRedactionFile,createRedactor,type ReviewAgentClient} from '@commerce/knowledge-claude-adapter';
 
 export function reviewAgentClient(client:ReturnType<typeof createKnowledgeClient>):ReviewAgentClient{
   return {
@@ -37,7 +37,8 @@ export function reviewAgentEnv(env:Record<string,string|undefined>){
     .map(([key,value])=>[key.replace('KNOWLEDGE_REVIEW_AGENT_CLAUDE_','KNOWLEDGE_CLAUDE_'),value]));
   let claude;
   try{claude=readClaudeRuntimeConfig({...prefixed,KNOWLEDGE_CLAUDE_ENABLED:'1',
-    KNOWLEDGE_MODEL_DISCLOSURE_RIGHTS_POLICY_IDS:env.KNOWLEDGE_MODEL_DISCLOSURE_RIGHTS_POLICY_IDS,KNOWLEDGE_MODEL_DISCLOSURE_WIKI:env.KNOWLEDGE_MODEL_DISCLOSURE_WIKI})!;}
+    KNOWLEDGE_MODEL_DISCLOSURE_RIGHTS_POLICY_IDS:env.KNOWLEDGE_MODEL_DISCLOSURE_RIGHTS_POLICY_IDS,KNOWLEDGE_MODEL_DISCLOSURE_WIKI:env.KNOWLEDGE_MODEL_DISCLOSURE_WIKI,
+    KNOWLEDGE_MODEL_REDACTION_FILE:env.KNOWLEDGE_MODEL_REDACTION_FILE})!;}
   catch(error){throw new Error((error instanceof Error?error.message:'Invalid review agent model settings').replaceAll('KNOWLEDGE_CLAUDE_','KNOWLEDGE_REVIEW_AGENT_CLAUDE_'));}
   const required=(name:string)=>{const value=env[name]?.trim();if(!value)throw new Error(`${name} is required`);return value;};
   return {claude,baseUrl:required('KNOWLEDGE_REVIEW_AGENT_API_URL'),tokenFile:required('KNOWLEDGE_REVIEW_AGENT_TOKEN_FILE'),
@@ -50,10 +51,12 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   const config=reviewAgentEnv(process.env),once=process.argv.includes('--once');
   const client=createKnowledgeClient({baseUrl:config.baseUrl,scope:{projectId:config.projectId,spaceId:config.spaceId},
     headers:{Authorization:`Bearer ${readPrivateToken(config.tokenFile)}`}});
+  const redactor=config.claude.redactionFile?createRedactor(readRedactionFile(config.claude.redactionFile)):undefined;
   const port=createClaudeModelPort({transport:createAnthropicTransport({apiKey:readApiKeyFile(config.claude.apiKeyFile)}),
-    ledger:createFileSpendLedger(config.spendFile),config:config.claude.model});
-  const agent=createReviewAgent({client:reviewAgentClient(client),port,purpose:config.purpose,disclosure:config.claude.disclosure});
-  process.stdout.write(`Review agent: model=${config.claude.model.model} perCallUsd=${config.claude.model.maxCallUsd} dailyUsd=${config.claude.model.dailyCapUsd}\n`);
+    ledger:createFileSpendLedger(config.spendFile),config:config.claude.model,redactor,
+    onRedaction:event=>process.stdout.write(`${JSON.stringify({redaction:event.count,ticketId:event.operationId})}\n`)});
+  const agent=createReviewAgent({client:reviewAgentClient(client),port,purpose:config.purpose,disclosure:config.claude.disclosure,redactor});
+  process.stdout.write(`Review agent: model=${config.claude.model.model} redaction=${redactor?'on':'off'} perCallUsd=${config.claude.model.maxCallUsd} dailyUsd=${config.claude.model.dailyCapUsd}\n`);
   for(;;){
     try{for(const result of await agent.runOnce())process.stdout.write(`${JSON.stringify({ticketId:result.ticketId,action:result.action,note:result.note})}\n`);}
     catch(error){process.stderr.write(`Review pass failed: ${error instanceof Error?error.message:'unknown error'}\n`);}

@@ -4,6 +4,7 @@ import type {CandidateView,KnowledgeRef,ReviewTicket,ReviewDecision,ReviewEscala
 import {KnowledgeError} from '@commerce/knowledge-core/types';
 import type {ClaudeModelPort} from './model-port.ts';
 import type {ModelDisclosurePolicy} from './disclosure.ts';
+import type {Redactor} from './redaction.ts';
 import {escapeUntrusted as escape} from './providers.ts';
 
 /** The narrow slice of the knowledge client an independent reviewer needs. It authenticates as its own principal. */
@@ -47,7 +48,9 @@ function renderCandidate(view:CandidateView){
 export interface ReviewAgentResult {ticketId:string;action:'decided'|'escalated'|'skipped';verdict:ReviewVerdict|null;note:string}
 /** Reviews pending tickets one at a time: fresh context per ticket, originals read by the agent itself, nothing inherited from the compiler. */
 export function createReviewAgent(options:{client:ReviewAgentClient;port:ClaudeModelPort;purpose:string;disclosure:ModelDisclosurePolicy;
-  maxOriginalBytes?:number;maxMoneyUsd?:number}){
+  maxOriginalBytes?:number;maxMoneyUsd?:number;
+  /** A candidate that still contains a protected name goes to a person before any model call. */
+  redactor?:Redactor}){
   const allowed=new Set(options.disclosure.rightsPolicyIds);
   const maxBytes=options.maxOriginalBytes??400_000;
   async function reviewOne(ticket:ReviewTicket):Promise<ReviewAgentResult>{
@@ -60,6 +63,12 @@ export function createReviewAgent(options:{client:ReviewAgentClient;port:ClaudeM
       return {ticketId:ticket.id,action:'escalated',verdict:null,note:'stale candidate'};
     }
     const key=(kind:string)=>`review-agent:${kind}:${ticket.id}:${view.contentHash.slice(0,16)}`;
+    if(options.redactor&&view.changes.some(change=>[change.title,change.body,...change.conditions,...change.counterexamples,...change.unknowns,...change.nextQuestions]
+      .some(text=>options.redactor!.contains(text)))){
+      await options.client.escalate(ticket.id,{purpose:options.purpose,categories:['private_person'],note:'Candidate contains a protected personal name; a person must decide. The name is not repeated here.'},
+        key('protected-name'),options.purpose);
+      return {ticketId:ticket.id,action:'escalated',verdict:null,note:'protected name'};
+    }
     const originals:string[]=[];let bytes=0,omitted=0,undisclosable=0;
     for(const ref of view.exactReadset){
       let text:string;
