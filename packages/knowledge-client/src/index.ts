@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import {
-  CONTRACT_VERSION, ScopeSchema, ModelCallRequestSchema, ModelCallResultSchema, ReviewQueueRequestSchema, ReviewQueueSchema, ReviewEscalationRequestSchema, KnowledgeRefSchema, EnvelopeSchema, ApiErrorSchema,
+  CONTRACT_VERSION, ScopeSchema, ExactSetReadSchema, ExactSetResultSchema, ModelCallRequestSchema, ModelCallResultSchema, ReviewQueueRequestSchema, ReviewQueueSchema, ReviewEscalationRequestSchema, KnowledgeRefSchema, EnvelopeSchema, ApiErrorSchema,
   CapabilitiesSchema, ProfileRefSchema, QueryRequestSchema, QueryResultSchema, AskRequestSchema, AskResultSchema, AskLookupResultSchema, CatalogRequestSchema, CatalogResultSchema,
   KnowledgeDocumentSchema, GraphRequestSchema, GraphResultSchema, HistoryRequestSchema, HistoryResultSchema,
   CompareRequestSchema, CompareResultSchema, SourceRecordSchema, SourceContentSchema, SourceUpsertSchema,
@@ -152,6 +152,8 @@ export function createKnowledgeClient(options: KnowledgeClientOptions) {
     },
     catalog: (data:z.input<typeof CatalogRequestSchema>,opts:ReadOptions={}) => { const q=parseLocal(CatalogRequestSchema,data); return request('GET',`/catalog${queryString(q)}`,CatalogResultSchema,undefined,opts); },
     document: (ref:KnowledgeRef,purpose:string,opts:ReadOptions={}) => { const r=exactRef(ref,'knowledge'); if (!r.contentDigest) throw new KnowledgeClientError({code:'CLIENT_VALIDATION_ERROR',message:'Knowledge exact read requires contentDigest',commitStatus:'not_committed',retryable:false}); return request('GET',`/objects/${encode(r.objectId)}/versions/${encode(r.versionId)}${queryString({purpose:parseLocal(purposeSchema,purpose),digest:r.contentDigest})}`,KnowledgeDocumentSchema,undefined,opts).then(result=>{assertReturnedRef(r,result.data.ref);return result;}); },
+    /** Reads up to 20 exact knowledge versions under one read receipt, so one use can consider every cited page. */
+    documents: (data:z.input<typeof ExactSetReadSchema>,opts:ReadOptions={}) => request('POST','/reads/exact',ExactSetResultSchema,{schema:ExactSetReadSchema,data},{...opts,purpose:opts.purpose??data.purpose}),
     history: (data:z.input<typeof HistoryRequestSchema>,opts:ReadOptions={}) => { const q=parseLocal(HistoryRequestSchema,data); const {objectId,...params}=q; return request('GET',`/objects/${encode(objectId)}/history${queryString(params)}`,HistoryResultSchema,undefined,opts); },
     compare: (data:z.input<typeof CompareRequestSchema>,opts:ReadOptions={}) => request('POST','/compare',CompareResultSchema,{schema:CompareRequestSchema,data},opts),
     graph: (data:z.input<typeof GraphRequestSchema>,opts:ReadOptions={}) => request('POST','/graph',GraphResultSchema,{schema:GraphRequestSchema,data},opts),

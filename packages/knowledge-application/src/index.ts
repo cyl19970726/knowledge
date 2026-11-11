@@ -4,7 +4,7 @@ import { KnowledgeError } from '@commerce/knowledge-core/types';
 import { digest } from '@commerce/knowledge-core/utils';
 import { planWikiLexicalQuery } from '@commerce/knowledge-core/wiki-lexical-query';
 import {evaluateKnowledgeRevision,knowledgeRevisionSpace} from './status-policy.ts';
-import type { CatalogRequest, CompareRequest, Coverage, GraphRequest, HistoryRequest, KnowledgeCitation, KnowledgeDocument, KnowledgeRef, QueryRequest, ReadReceipt, Relation, Scope, SourceContent, SourceRecord } from '@commerce/knowledge-contracts';
+import type { CatalogRequest, CompareRequest, Coverage, ExactSetRead, GraphRequest, HistoryRequest, KnowledgeCitation, KnowledgeDocument, KnowledgeRef, QueryRequest, ReadReceipt, Relation, Scope, SourceContent, SourceRecord } from '@commerce/knowledge-contracts';
 import { fromVersionRef, toVersionRef } from '@commerce/knowledge-contracts';
 
 /** Server-attested kind of the authenticated party; a caller can never assert it in a request. */
@@ -317,6 +317,18 @@ export function createKnowledgeApplication(options:KnowledgeApplicationOptions){
     const saved=await receipt(context,{kind:'exact',payload:{ref,purpose:context.purpose}},[item],epoch,coverage);
     return {data:item,coverage,receiptId:saved.id};
   }
+  /** All-or-nothing: every version must be published at its digest, and one receipt covers them in request order. */
+  async function exactSet(context:ReadContext,request:ExactSetRead){
+    assertContext(context);if(request.purpose!==context.purpose)throw new KnowledgeError('PURPOSE_MISMATCH','Requested purpose differs from authenticated context',403);
+    const epoch=await options.store.epoch(context.scope.projectId),items:KnowledgeDocument[]=[];
+    for(const ref of request.refs){assertRef(context,ref);
+      const view=await options.store.get(context.scope.projectId,version(ref));
+      if(!view?.published||digest(view.revision)!==ref.contentDigest)throw new KnowledgeError('NOT_FOUND','Exact knowledge version or digest is unavailable',404);
+      items.push(await document(context,view));}
+    const coverage=pageCoverage(context.scope,epoch,items.length);
+    const saved=await receipt(context,{kind:'exact_set',payload:request},items,epoch,coverage);
+    return {data:{items},coverage,receiptId:saved.id};
+  }
   async function history(context:ReadContext,request:HistoryRequest){
     assertContext(context);if(request.purpose!==context.purpose)throw new KnowledgeError('PURPOSE_MISMATCH','Purpose mismatch',403);
     if(request.asOf)throw new KnowledgeError('HISTORICAL_CUTOFF_UNSUPPORTED','Historical cutoff is unavailable for this history view',422);
@@ -439,7 +451,7 @@ export function createKnowledgeApplication(options:KnowledgeApplicationOptions){
       throw new KnowledgeError('SOURCE_READ_BUDGET_EXCEEDED','Source owner exceeded the admitted content limit',422);
     return content;
   }
-  return {query,queryCandidates,readCandidate,inspectWikiCandidate,readWikiExactBounded,readRepairTarget,validateRepairTarget,currentWikiRef,validateFrozenWiki,validateHistoricalWiki,assertReadEpoch,catalog,exact,history,compare,graph,readReceipt,sourceRecord,sourceContent,sourceContentBounded,policyVersion};
+  return {query,queryCandidates,readCandidate,inspectWikiCandidate,readWikiExactBounded,readRepairTarget,validateRepairTarget,currentWikiRef,validateFrozenWiki,validateHistoricalWiki,assertReadEpoch,catalog,exact,exactSet,history,compare,graph,readReceipt,sourceRecord,sourceContent,sourceContentBounded,policyVersion};
 }
 export type KnowledgeApplication=ReturnType<typeof createKnowledgeApplication>;
 export * from './sources.ts';
