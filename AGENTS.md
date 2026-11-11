@@ -22,6 +22,7 @@ This repository contains only the standalone knowledge product and its generic d
 
 ## Branch and release handoff
 
+- When submission or a cross-machine handoff is requested, commit and push every task-related working branch to its canonical GitHub remote, configure its upstream, and verify matching remote commit IDs. A local-clone remote is not an online handoff. Pin cross-repository dependencies and validate normal installation; do not rely on uncommitted files or machine-local package links.
 - Isolate concurrent implementation in a dedicated worktree or clone and a feature branch. Preserve other tasks' changes and do not commit unless requested.
 - Integrate releases through pull requests. Report implementation, review, merge, deployment, and business acceptance as separate states.
 - Every handoff lists changed behavior, commands actually run, results, remaining limitations, and any database or semantic acceptance still needed.
