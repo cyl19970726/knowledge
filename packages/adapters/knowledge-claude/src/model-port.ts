@@ -4,6 +4,7 @@ import type {Message,MessageCreateParamsNonStreaming,MessageCountTokensParams,Ou
 import {KnowledgeError} from '@commerce/knowledge-core/types';
 import {modelPrice,outputAllowance,usageCost,worstCaseCost,PRICE_TABLE_VERSION,type TokenUsage} from './pricing.ts';
 import type {SpendLedger} from './ledger.ts';
+import type {Redactor} from './redaction.ts';
 
 export type Effort=NonNullable<OutputConfig['effort']>;
 export type ClaudeRequest=Omit<MessageCreateParamsNonStreaming,'stream'>;
@@ -63,6 +64,8 @@ export interface ModelCallInput {
 }
 export interface ModelCallResult {
   outcome:'completed'|'refused'|'truncated';text:string;usage:TokenUsage;costUsd:number;reservedUsd:number;
+  /** Protected-name replacements made in this output; never the names themselves. */
+  redactions:number;
   modelRequested:string;modelReturned:string|null;requestId:string|null;stopReason:string|null;priceTable:string;
 }
 export interface ClaudeModelPort {
@@ -94,14 +97,17 @@ function rejected(error:unknown,fallback:string):KnowledgeError{
   return new KnowledgeError('MODEL_UNAVAILABLE',message,503);
 }
 /** Generic, budgeted Claude call shared by every knowledge provider and the HTTP model-call route. */
-export function createClaudeModelPort(options:{transport:ClaudeTransport;ledger:SpendLedger;config:ClaudeModelConfig;now?:()=>Date}):ClaudeModelPort{
+export function createClaudeModelPort(options:{transport:ClaudeTransport;ledger:SpendLedger;config:ClaudeModelConfig;now?:()=>Date;
+  /** Every call is told the rule, and every output is redacted before anyone parses or stores it. */
+  redactor?:Redactor;onRedaction?:(event:{role:string;operationId:string;count:number})=>void}):ClaudeModelPort{
   const config=Object.freeze(validateModelConfig({...options.config}));
   const now=()=>options.now?.()??new Date();
   return {config,
     async call(input){
       const cap=Math.min(config.maxCallUsd,input.maxMoneyUsd??Number.POSITIVE_INFINITY);
       if(!(cap>0))throw new KnowledgeError('MODEL_BUDGET_EXCEEDED','Model call has no money allowance',422);
-      const system:TextBlockParam[]=[{type:'text',text:input.system,cache_control:{type:'ephemeral'}}];
+      const systemText=options.redactor?`${input.system}\n\n${options.redactor.instruction}`:input.system;
+      const system:TextBlockParam[]=[{type:'text',text:systemText,cache_control:{type:'ephemeral'}}];
       const content:TextBlockParam[]=[...input.cachedPrefix?[{type:'text' as const,text:input.cachedPrefix,cache_control:{type:'ephemeral' as const}}]:[],
         {type:'text',text:input.prompt}];
       const output_config:OutputConfig={effort:config.effort,...input.outputFormat?{format:input.outputFormat}:{}};
@@ -130,9 +136,11 @@ export function createClaudeModelPort(options:{transport:ClaudeTransport;ledger:
         cacheCreationInputTokens:message.usage.cache_creation_input_tokens??0,cacheReadInputTokens:message.usage.cache_read_input_tokens??0};
       const costUsd=usageCost(config.model,usage);
       await options.ledger.settle(reservation.id,{actualUsd:costUsd,usage,modelReturned:message.model,requestId,stopReason:message.stop_reason});
-      const text=message.content.flatMap(block=>block.type==='text'?[block.text]:[]).join('');
+      const raw=message.content.flatMap(block=>block.type==='text'?[block.text]:[]).join('');
+      const {text,count:redactions}=options.redactor?options.redactor.redact(raw):{text:raw,count:0};
+      if(redactions)options.onRedaction?.({role:input.role,operationId:input.operationId,count:redactions});
       const outcome=message.stop_reason==='refusal'?'refused':message.stop_reason==='max_tokens'?'truncated':'completed';
-      return {outcome,text,usage,costUsd,reservedUsd,modelRequested:config.model,modelReturned:message.model,requestId,stopReason:message.stop_reason,priceTable:PRICE_TABLE_VERSION};
+      return {outcome,text,redactions,usage,costUsd,reservedUsd,modelRequested:config.model,modelReturned:message.model,requestId,stopReason:message.stop_reason,priceTable:PRICE_TABLE_VERSION};
     },
   };
 }

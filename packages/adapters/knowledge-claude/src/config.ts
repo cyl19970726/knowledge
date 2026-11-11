@@ -4,7 +4,7 @@ import {supportedModels} from './pricing.ts';
 
 export const CLAUDE_ROLES=['ask','source_plan','wiki_compile','relation_judgment','model_call'] as const;
 export type ClaudeRole=typeof CLAUDE_ROLES[number];
-export interface ClaudeRuntimeConfig {apiKeyFile:string;model:ClaudeModelConfig;roles:ReadonlySet<ClaudeRole>;disclosure:ModelDisclosurePolicy}
+export interface ClaudeRuntimeConfig {apiKeyFile:string;model:ClaudeModelConfig;roles:ReadonlySet<ClaudeRole>;disclosure:ModelDisclosurePolicy;redactionFile:string|null}
 
 const list=(value:string|undefined)=>value?.split(',').map(item=>item.trim()).filter(Boolean)??[];
 function usd(env:Record<string,string|undefined>,name:string):number{
@@ -32,5 +32,6 @@ export function readClaudeRuntimeConfig(env:Record<string,string|undefined>):Cla
   return {apiKeyFile,
     model:{model,effort,maxCallUsd:usd(env,'KNOWLEDGE_CLAUDE_MAX_CALL_USD'),dailyCapUsd:usd(env,'KNOWLEDGE_CLAUDE_DAILY_USD'),maxOutputTokens},
     roles:new Set((roleNames.length?roleNames:CLAUDE_ROLES) as ClaudeRole[]),
-    disclosure:{rightsPolicyIds:list(env.KNOWLEDGE_MODEL_DISCLOSURE_RIGHTS_POLICY_IDS),allowWikiPages:wiki==='1'}};
+    disclosure:{rightsPolicyIds:list(env.KNOWLEDGE_MODEL_DISCLOSURE_RIGHTS_POLICY_IDS),allowWikiPages:wiki==='1'},
+    redactionFile:env.KNOWLEDGE_MODEL_REDACTION_FILE?.trim()||null};
 }
