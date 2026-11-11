@@ -25,7 +25,7 @@ import {createPgReviewPort,migrateKnowledgeReviews,lookupCapabilityOperation,get
 import {createModelDisclosureAuthorizer,type ModelDisclosurePolicy,createModelCallService,readClaudeRuntimeConfig,readApiKeyFile,createAnthropicTransport,
   createPgSpendLedger,migrateModelSpend,createClaudeModelPort,createClaudeAnswerer,createClaudeSourcePlanner,createClaudeWikiCompiler,createClaudeDecisionProvider,
   createPgModelCallStore,migrateModelCalls} from '@commerce/knowledge-claude-adapter';
-import {ModelCallRequestSchema,ReviewQueueRequestSchema,CONTRACT_VERSION,CatalogRequestSchema,CompareRequestSchema,GraphRequestSchema,HistoryRequestSchema,KnowledgeRefSchema,QueryRequestSchema,ReadReceiptSchema,
+import {ExactSetReadSchema,ModelCallRequestSchema,ReviewQueueRequestSchema,CONTRACT_VERSION,CatalogRequestSchema,CompareRequestSchema,GraphRequestSchema,HistoryRequestSchema,KnowledgeRefSchema,QueryRequestSchema,ReadReceiptSchema,
   SourceUpsertSchema,ResearchRequestSchema,CancelRequestSchema,OperationLookupSchema,UseInputSchema,FeedbackInputSchema,ChangesRequestSchema,
   ReviewRequestSchema,ReviewDecisionSchema,FeedbackSourceRequestSchema,AskRequestSchema,SourceEventRequestSchema,EntityMentionExtractionSchema,WikiCompileRequestSchema,MaintenanceCollectRequestSchema,LintRequestSchema,RelationJudgmentRequestSchema,SearchProjectionBuildRequestSchema,SourcePlanRequestSchema,SemanticSweepApiRequestSchema,AnswerResearchRequestSchema} from '@commerce/knowledge-contracts';
 
@@ -149,7 +149,7 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
         commitStatus:typeof error==='object'&&error&&'commitStatus' in error?error.commitStatus:'not_committed',
         ...(typeof error==='object'&&error&&'operationId' in error?{operationId:error.operationId}:{})});
     }};
-  app.get(`${base}/capabilities`,route(async(context,req)=>{const caps=capabilitiesOf.get(context.principal.id)??emptyCapabilities;return {data:{permittedActions:['query','catalog','wikiCatalog','exact','history','compare','graph','read_receipt',
+  app.get(`${base}/capabilities`,route(async(context,req)=>{const caps=capabilitiesOf.get(context.principal.id)??emptyCapabilities;return {data:{permittedActions:['query','catalog','wikiCatalog','exact','exactSet','history','compare','graph','read_receipt',
     ...config.writerGrant&&caps.actions.includes('sources:write')?['registerSource']:[],
     ...config.writerGrant&&caps.actions.includes('uses:write')?['recordUse']:[],
     ...config.writerGrant&&caps.actions.includes('feedback:write')?['recordFeedback']:[],
@@ -181,6 +181,7 @@ export async function createKnowledgeApi(config:KnowledgeApiConfig):Promise<Know
   app.post(`${base}/query`,route((context,req)=>service.query(context,QueryRequestSchema.parse(req.body))));
   app.get(`${base}/catalog`,route((context,req)=>service.catalog(context,CatalogRequestSchema.parse({
     purpose:req.query.purpose,query:req.query.query,kinds:req.query.kinds===undefined?undefined:Array.isArray(req.query.kinds)?req.query.kinds:[req.query.kinds],limit:Number(req.query.limit??50),cursor:req.query.cursor}))));
+  app.post(`${base}/reads/exact`,route((context,req)=>service.exactSet(context,ExactSetReadSchema.parse(req.body))));
   app.get(`${base}/objects/:objectId/versions/:versionId`,route((context,req)=>service.exact(context,KnowledgeRefSchema.parse({
     ...context.scope,domain:'knowledge',objectId:req.params.objectId,versionId:req.params.versionId,contentDigest:req.query.digest}))));
   app.get(`${base}/objects/:objectId/history`,route((context,req)=>service.history(context,HistoryRequestSchema.parse({
