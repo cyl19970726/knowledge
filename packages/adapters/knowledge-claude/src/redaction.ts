@@ -16,9 +16,9 @@ import {z} from 'zod';
  * - Matching is on NFKC-normalised, case-folded text with invisible characters (zero-width, bidi marks,
  *   variation selectors, U+034F, soft hyphen) removed. Wherever a term has a space or separator, and between
  *   the characters of a CJK term, any run of spaces or separators (·・•‧-_ and similar) also matches, as does
- *   none. Alphabetic terms match whole words, where only Latin, Cyrillic and Greek letters and digits count as
- *   word characters: a name written right against Han, kana or hangul still matches. Nothing outside the
- *   listed names is generalised.
+ *   none. Each edge of a term only refuses a neighbour of its own class (a letter edge refuses Latin, Cyrillic
+ *   and Greek letters; a digit edge refuses digits), so a name written right against Han, kana, hangul or a
+ *   number still matches while a longer Latin word does not. Nothing outside the listed names is generalised.
  * - The replacement is chosen per occurrence: "zh" when Han characters surround it, otherwise "default".
  */
 const Term=z.string().trim().min(1).max(200);
@@ -48,18 +48,23 @@ export function readRedactionFile(path:string):RedactionPolicy{
 const SEPARATORS='\\s\\u00B7\\u2027\\u2022\\u30FB\\uFF65\\u2010-\\u2015\\u002D\\u005F\\u02D1\\u0387';
 const SEP=`[${SEPARATORS}]*`;
 const han=/\p{Script=Han}/u;
-/** Word characters for alphabetic names: Latin, Cyrillic and Greek letters and digits. Han, kana and hangul are not. */
-const WORD='[\\p{Script=Latin}\\p{Script=Cyrillic}\\p{Script=Greek}\\p{N}]';
+/** Boundary classes: a term edge only refuses a neighbour of its own class, so "Jane Doe3月" matches but "Jane Doex" does not.
+ * Letters are Latin, Cyrillic and Greek; Han, kana and hangul never bound a word. */
+const LETTER='[\\p{Script=Latin}\\p{Script=Cyrillic}\\p{Script=Greek}]';
+const DIGIT='\\p{N}';
 const escapeRegExp=(value:string)=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+function edgeClass(char:string):string|null{
+  if(new RegExp(LETTER,'u').test(char))return LETTER;
+  if(new RegExp(DIGIT,'u').test(char))return DIGIT;
+  return null;
+}
 function termPattern(term:string):string{
   const parts=fold(term).split(new RegExp(`[${SEPARATORS}]+`,'u')).filter(Boolean);
   // CJK names may be written with separators between any characters; Latin names only where the term has one.
   const body=parts.map(part=>han.test(part)?[...part].map(escapeRegExp).join(SEP):escapeRegExp(part)).join(SEP);
-  const wordChar=new RegExp(WORD,'u');
-  const latinStart=wordChar.test((parts[0]??'')[0]??'');
-  const lastPart=parts.at(-1)??'';
-  const latinEnd=wordChar.test(lastPart.at(-1)??'');
-  return `${latinStart?`(?<!${WORD})`:''}(?:${body})${latinEnd?`(?!${WORD})`:''}`;
+  const first=[...(parts[0]??'')][0]??'',last=[...(parts.at(-1)??'')].at(-1)??'';
+  const before=edgeClass(first),after=edgeClass(last);
+  return `${before?`(?<!${before})`:''}(?:${body})${after?`(?!${after})`:''}`;
 }
 function compile(terms:readonly string[]):RegExp|null{
   const unique=[...new Set(terms.map(term=>term.trim()).filter(Boolean))].sort((a,b)=>b.length-a.length);
