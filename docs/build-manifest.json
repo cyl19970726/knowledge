@@ -3,7 +3,7 @@
   "updated": "2026-10-29",
   "documents": 45,
   "diagrams": 0,
-  "output_sha256": "d09a55d7bfc0cd016f1ff76c4333b39d2d4c09d2ffc65454a1c0e8454a6db17a",
+  "output_sha256": "5d55d5db26eeb7925cce2df8bf3b31e4550dd97bafbfc5b984f2e93dd6568acf",
   "source_sha256": {
     "README.md": "720da5c490933452fbe82bf87ef1ee3b49bc9cc9fb68427add66ea392dd227dd",
     "_site/mermaid.bundle.js": "ace4ee4658ac7ecdb9a53096dfa379ad76a921228ea143f5e994389af76b662f",
@@ -141,7 +141,7 @@
     "knowledge/maintenance.md": "e8505b69e49e529606602ea8f30b6664453e8ad01e316c20eeea6bc22e22f256",
     "knowledge/migration.md": "80a3c6d091c9624cc1847bc977dd1322c7130a181a1ed80d55832f56caa3ca82",
     "knowledge/model.md": "7f571b635c046ed44720e764d2dd1deeff3b3e0c261e28441d50d5541a8db6b9",
-    "knowledge/operations.md": "8ab897a316f905b8ab41bc709c5a239ab5d6676d1d524c5bc5093c2495224863",
+    "knowledge/operations.md": "c162957947506758bea7871ec2181f1b07ea18e805e5570d696c39ea783ce06d",
     "knowledge/ownership.md": "beec4c278aa2fc767c9bbba50555991d1db619d50677fc4bf58bd401d8f62f32",
     "knowledge/product.md": "63652d303febc9398b302d1c99f4f0ceaabb847f3e986fdc8483e63cf0865d04",
     "knowledge/reference/commerce-architecture.md": "f37872e496846682ad44238ed703446a75ed281a7806f70f5f419ff1da6257e6",

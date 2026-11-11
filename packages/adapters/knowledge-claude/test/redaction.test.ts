@@ -46,6 +46,16 @@ test('matching is NFKC, case-insensitive, separator-tolerant and whole-word, wit
   assert.equal(r.redact('全角，标点：保持不变').text,'全角，标点：保持不变','text outside the names is untouched');
 });
 
+test('alphabetic names written right against Han text, CJK punctuation or invisible characters still match',()=>{
+  const r=createRedactor(policy);
+  assert.deepEqual(r.redact('据报道Wang Xiaomei表示不知情。'),{text:'据报道当事女性表示不知情。',count:1},'Han on both sides, no spaces');
+  assert.deepEqual(r.redact('当事方Wang Xiaomei，以及（Xiaomei Wang）均未回应。'),{text:'当事方当事女性，以及（当事女性）均未回应。',count:2},'CJK comma and full-width brackets');
+  assert.deepEqual(r.redact('媒体称wangxiaomei已离职'),{text:'媒体称当事女性已离职',count:1},'concatenated pinyin between Han');
+  assert.deepEqual(r.redact('王小梅表示，Xiaomei本人不再回应。'),{text:'当事女性表示，当事女性本人不再回应。',count:2},'secondary form against Han, with a primary in the same text');
+  assert.equal(r.redact('Wang\u200BXiao\u200Emei 与 王\u034F小\uFE0F梅').count,2,'zero-width, bidi mark, CGJ and variation selector are ignored');
+  assert.equal(r.redact('Wang Xiaomeiya and ВангXiaomei').count,0,'Latin and Cyrillic letters still bound a word');
+});
+
 test('a secondary form is replaced only when a primary name appears in the output or in the call input',()=>{
   const r=createRedactor(policy);
   assert.deepEqual(r.redact('Xiaomei said no.'),{text:'Xiaomei said no.',count:0});

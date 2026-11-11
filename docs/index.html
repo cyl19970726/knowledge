@@ -3319,7 +3319,7 @@ make docs-knowledge-check
 </tr>
 <tr>
 <td><code>KNOWLEDGE_MODEL_REDACTION_FILE</code></td>
-<td>可选。私有文件（权限 600）：<code>{&quot;terms&quot;:[...],&quot;secondaryTerms&quot;:[...],&quot;replacement&quot;:{&quot;zh&quot;:&quot;当事女性&quot;,&quot;default&quot;:&quot;the woman&quot;}}</code>。<code>terms</code> 中的名字一律替换；<code>secondaryTerms</code>（容易与他人重名的简短写法）只在同一次输出或这次调用的输入里出现了 <code>terms</code> 中的名字时才替换。匹配前对文本做 NFKC 规范化，拉丁字母不区分大小写，只匹配整词；名字中间有空格或间隔号，或者没有分隔，都能匹配；不会泛化到名单以外的词。中文上下文用 <code>zh</code> 替换词，其他用 <code>default</code>。规划、编纂、问答和关系判断的每次调用都带上规则，输出在解析前替换，替换次数按调用记入账本的 <code>redactions</code> 列，不记录名字。<code>POST /model-calls</code> 不做替换，供评测对照。审阅 agent 读同一个文件，候选页里只要出现任一写法就转人工（<code>private_person</code>）。</td>
+<td>可选。私有文件（权限 600）：<code>{&quot;terms&quot;:[...],&quot;secondaryTerms&quot;:[...],&quot;replacement&quot;:{&quot;zh&quot;:&quot;当事女性&quot;,&quot;default&quot;:&quot;the woman&quot;}}</code>。<code>terms</code> 中的名字一律替换；<code>secondaryTerms</code>（容易与他人重名的简短写法）只在同一次输出或这次调用的输入里出现了 <code>terms</code> 中的名字时才替换。匹配前对文本做 NFKC 规范化并去掉不可见字符（零宽字符、双向标记、变体选择符、U+034F、软连字符），拉丁字母不区分大小写，只匹配整词：只有拉丁、西里尔、希腊字母和数字算作词字符，名字紧挨汉字、假名、谚文或中文标点时仍能匹配；名字中间有空格或间隔号，或者没有分隔，都能匹配；不会泛化到名单以外的词。中文上下文用 <code>zh</code> 替换词，其他用 <code>default</code>。规划、编纂、问答和关系判断的每次调用都带上规则，输出在解析前替换，替换次数按调用记入账本的 <code>redactions</code> 列，不记录名字。<code>POST /model-calls</code> 不做替换，供评测对照。审阅 agent 读同一个文件，候选页里只要出现任一写法就转人工（<code>private_person</code>）。</td>
 </tr>
 </tbody>
 </table></div>
