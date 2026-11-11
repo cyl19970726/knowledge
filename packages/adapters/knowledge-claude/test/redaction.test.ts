@@ -56,6 +56,16 @@ test('alphabetic names written right against Han text, CJK punctuation or invisi
   assert.equal(r.redact('Wang Xiaomeiya and ВангXiaomei').count,0,'Latin and Cyrillic letters still bound a word');
 });
 
+test('a letter edge only refuses letters, so names followed or preceded by numbers still match',()=>{
+  const r=createRedactor(policy);
+  assert.deepEqual(r.redact('据悉Wang Xiaomei3月已离职。'),{text:'据悉当事女性3月已离职。',count:1},'digit right after the name');
+  assert.deepEqual(r.redact('Wang Xiaomei2024年称'),{text:'当事女性2024年称',count:1});
+  assert.deepEqual(r.redact('2024Wang Xiaomei称'),{text:'2024当事女性称',count:1},'digit right before the name');
+  assert.equal(r.redact('Wang Xiaomeix said').count,0,'a longer Latin word containing the name is not matched');
+  assert.equal(r.redact('xWang Xiaomei said').count,0);
+  assert.equal(r.redact('王小梅3月表示').count,1,'CJK names are unaffected');
+});
+
 test('a secondary form is replaced only when a primary name appears in the output or in the call input',()=>{
   const r=createRedactor(policy);
   assert.deepEqual(r.redact('Xiaomei said no.'),{text:'Xiaomei said no.',count:0});
