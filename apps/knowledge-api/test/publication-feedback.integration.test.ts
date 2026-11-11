@@ -96,6 +96,24 @@ dbTest('publication feedback without a use: accepted for agent-reviewed explorat
       assert.equal(replay.id,record.id,'same key and input replay the same record');
     });
 
+    await t.test('K7: one exact-set read gives one receipt, so one use can adopt every cited page of a draft',async()=>{
+      assert.ok((await analysis.capabilities()).data.permittedActions.includes('exactSet'));
+      const read=await analysis.documents({refs:[first.page,second.page],purpose});
+      assert.deepEqual(read.data.items.map(item=>item.ref.objectId),[first.page.objectId,second.page.objectId],'items keep request order');
+      const receipt=(await analysis.receipt(read.readReceiptId!,{purpose})).data;
+      assert.equal(receipt.request.kind,'exact_set');
+      assert.equal(receipt.orderedItems.length,2);
+      const draft=`draft-${randomUUID()}`;
+      const use=(await analysis.recordUse({context:{adapterId:'commerce-analysis',externalId:draft,contextVersion:'1',inputDigest:createHash('sha256').update(draft).digest('hex'),
+        authority:'caller_reported',description:'Synthetic multi-citation draft'},readReceiptId:read.readReceiptId!,purpose,
+        considered:[first.page,second.page].map(ref=>({ref,decision:'adopted' as const,reason:'cited in draft',before:null,after:null})),gaps:[],cost:zero},{idempotencyKey:randomUUID(),purpose})).data;
+      assert.equal(use.considered.length,2);
+      // All-or-nothing: an unknown version fails the whole read and issues no receipt.
+      const missing={...first.page,versionId:randomUUID()};
+      await assert.rejects(analysis.documents({refs:[first.page,missing],purpose}),(error:unknown)=>codeOf(error)==='NOT_FOUND');
+      await assert.rejects(analysis.documents({refs:[first.page,first.page],purpose}),(error:unknown)=>codeOf(error)==='CLIENT_VALIDATION_ERROR');
+      await assert.rejects(analysis.documents({refs:[{...first.page,contentDigest:null}],purpose}),(error:unknown)=>codeOf(error)==='CLIENT_VALIDATION_ERROR');
+    });
     await t.test('a page whose source was revoked is rejected with FEEDBACK_ACCESS_REVOKED, and so is a feedback mixing it with a valid page',async()=>{
       await analysis.revokeSource({...second.source,contentDigest:null},{expectedGeneration:1,contentDigest:null},{idempotencyKey:randomUUID(),purpose});
       const status=(await analysis.document(second.page,purpose)).data.status;
