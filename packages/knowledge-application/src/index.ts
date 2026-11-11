@@ -24,6 +24,9 @@ export interface SourceOwnerPort {
 export interface WikiCandidate {ref:Pick<KnowledgeRef,'objectId'|'versionId'>;title:string;payloadBytes:number;storageDigest:string}
 export interface BoundedWikiPage {ref:KnowledgeRef;title:string;body:string;conditions:string[];counterexamples:string[];unknowns:string[];
   citations:KnowledgeCitation[];sourceGroups:string[];storageDigest:string;payloadBytes:number;admitted:boolean;frozenRevision?:import('@commerce/knowledge-core/types').KnowledgeRevision}
+/** A current head read for repair. Invalidity is reported, never hidden; the page itself is not admitted as support. */
+export interface RepairTargetPage extends BoundedWikiPage {validity:{valid:boolean;issues:Array<{domain:string;ref:Pick<KnowledgeRef,'objectId'|'versionId'>;reason:string}>};
+  reviewDueAt:string|null;dependencies:Array<{domain:'knowledge'|'source'|'analysis'|'evidence'|'context';ref:Pick<KnowledgeRef,'objectId'|'versionId'>;critical:boolean;valid:boolean}>}
 export interface KnowledgeApplicationOptions {store:KnowledgeStore; receipts:ReceiptPort; sources?:SourceOwnerPort; now?:()=>Date; policyVersion?:string; receiptTtlMs?:number}
 
 const sameScope=(a:Scope,b:Scope)=>a.projectId===b.projectId&&a.spaceId===b.spaceId;
@@ -202,6 +205,59 @@ export function createKnowledgeApplication(options:KnowledgeApplicationOptions){
     const page=await readCandidate(context,{ref:{objectId:ref.objectId,versionId:ref.versionId},title:'',payloadBytes:state.payloadBytes,storageDigest:state.storageDigest},maxBytes);
     if(page.ref.contentDigest!==ref.contentDigest)throw new KnowledgeError('EXACT_REF_MISMATCH','Frozen Wiki digest differs from requested version',409);
     return page;
+  }
+  /** Reads the current head for comparison even when it is invalid or due. Current source rights still apply. */
+  async function readRepairTarget(context:ReadContext,ref:KnowledgeRef,maxBytes:number):Promise<RepairTargetPage>{
+    assertContext(context);assertRef(context,ref);
+    if(!options.store.getBounded||!options.store.inspectFrozen)throw new KnowledgeError('BOUNDED_WIKI_READ_UNSUPPORTED','Bounded Wiki content reader is unavailable',503);
+    if(!Number.isSafeInteger(maxBytes)||maxBytes<0||maxBytes>10_000_000)throw new KnowledgeError('READ_BUDGET_INVALID','Bounded content byte limit is invalid',422);
+    const metadata=await options.store.inspectFrozen(context.scope.projectId,version(ref));
+    if(!metadata||metadata.spaceId!==context.scope.spaceId||metadata.kind!=='wiki_page'||!metadata.published)
+      throw new KnowledgeError('NOT_FOUND','Repair target is not visible in this space',404);
+    if(!metadata.current)throw new KnowledgeError('REPAIR_TARGET_STALE','Repair target is no longer the current head',409);
+    const review=metadata.review;
+    if(review?.purpose!==context.purpose||!(review.decision==='approved_for_purpose'||review.decision==='exploration_only'&&context.purpose==='exploration_reading'))
+      throw new KnowledgeError('REPAIR_TARGET_NOT_REVIEWED','Repair target was not reviewed for this purpose',403);
+    await authorizeCriticalSources(context,metadata);
+    if(metadata.payloadBytes>maxBytes)throw new KnowledgeError('KNOWLEDGE_READ_BUDGET_EXCEEDED','Repair target exceeds the remaining content budget',422);
+    const found=await options.store.getBounded(context.scope.projectId,version(ref),maxBytes);
+    if(!found||found.view.revision.kind!=='wiki_page'||!found.view.published||spaceOf(found.view)!==context.scope.spaceId)
+      throw new KnowledgeError('NOT_FOUND','Repair target version is unavailable in this space',404);
+    if(found.storageDigest!==metadata.storageDigest)throw new KnowledgeError('READSET_CHANGED','Repair target storage changed before content read',409);
+    const revision=found.view.revision,exact=refOf(context,found.view);
+    if(ref.contentDigest&&exact.contentDigest!==ref.contentDigest)throw new KnowledgeError('EXACT_REF_MISMATCH','Repair target digest differs from the requested version',409);
+    const dependencies:RepairTargetPage['dependencies']=[];
+    for(const dependency of revision.dependencies.slice(0,100)){
+      const valid=!dependency.critical||(await options.store.validate(context.scope.projectId,[dependency])).valid;
+      dependencies.push({domain:dependency.domain,ref:dependency.ref,critical:dependency.critical,valid});
+    }
+    const content=revision.content;
+    return {ref:exact,title:revision.title,body:revision.body,conditions:content.conditions,counterexamples:content.counterexamples,unknowns:content.unknowns,
+      citations:[],sourceGroups:revision.sourceGroups,storageDigest:found.storageDigest,payloadBytes:found.payloadBytes,admitted:false,frozenRevision:revision,
+      validity:{valid:metadata.validity.valid,issues:metadata.validity.issues.map(issue=>({domain:issue.domain,ref:issue.ref,reason:issue.reason}))},
+      reviewDueAt:revision.scope.reviewDueAt,dependencies};
+  }
+  /** Confirms a frozen repair target is still the unchanged current head; it does not require validity. */
+  async function validateRepairTarget(context:ReadContext,ref:KnowledgeRef,storageDigest:string){
+    assertContext(context);assertRef(context,ref);
+    if(!options.store.inspectFrozen||!/^[0-9a-f]{64}$/.test(storageDigest))throw new KnowledgeError('BOUNDED_WIKI_READ_UNSUPPORTED','Frozen Wiki metadata verifier is unavailable',503);
+    const state=await options.store.inspectFrozen(context.scope.projectId,version(ref)),review=state?.review;
+    if(!state||state.storageDigest!==storageDigest||state.spaceId!==context.scope.spaceId||state.kind!=='wiki_page'||!state.published||!state.current||
+      review?.purpose!==context.purpose||!(review.decision==='approved_for_purpose'||review.decision==='exploration_only'&&context.purpose==='exploration_reading'))
+      throw new KnowledgeError('REPAIR_TARGET_STALE','Repair target is no longer the unchanged current head',409);
+    await authorizeCriticalSources(context,state);
+  }
+  /** The exact current head of an object when it is valid and admitted; otherwise null. */
+  async function currentWikiRef(context:ReadContext,objectId:string):Promise<KnowledgeRef|null>{
+    assertContext(context);
+    if(!options.store.inspectFrozen)throw new KnowledgeError('BOUNDED_WIKI_READ_UNSUPPORTED','Frozen Wiki inspection is unavailable',503);
+    const head=await options.store.head(context.scope.projectId,objectId);if(!head)return null;
+    const state=await options.store.inspectFrozen(context.scope.projectId,head),review=state?.review;
+    if(!state||state.kind!=='wiki_page'||state.spaceId!==context.scope.spaceId||!state.published||!state.current||!state.validity.valid||
+      review?.purpose!==context.purpose||!(review.decision==='approved_for_purpose'||review.decision==='exploration_only'&&context.purpose==='exploration_reading'))
+      return null;
+    const view=await options.store.get(context.scope.projectId,head);
+    return view?.published?refOf(context,view):null;
   }
   async function validateFrozenWiki(context:ReadContext,ref:KnowledgeRef,storageDigest:string){
     assertContext(context);assertRef(context,ref);
@@ -395,7 +451,7 @@ export function createKnowledgeApplication(options:KnowledgeApplicationOptions){
       throw new KnowledgeError('SOURCE_READ_BUDGET_EXCEEDED','Source owner exceeded the admitted content limit',422);
     return content;
   }
-  return {query,queryCandidates,readCandidate,inspectWikiCandidate,readWikiExactBounded,validateFrozenWiki,validateHistoricalWiki,assertReadEpoch,catalog,exact,exactSet,history,compare,graph,readReceipt,sourceRecord,sourceContent,sourceContentBounded,policyVersion};
+  return {query,queryCandidates,readCandidate,inspectWikiCandidate,readWikiExactBounded,readRepairTarget,validateRepairTarget,currentWikiRef,validateFrozenWiki,validateHistoricalWiki,assertReadEpoch,catalog,exact,exactSet,history,compare,graph,readReceipt,sourceRecord,sourceContent,sourceContentBounded,policyVersion};
 }
 export type KnowledgeApplication=ReturnType<typeof createKnowledgeApplication>;
 export * from './sources.ts';

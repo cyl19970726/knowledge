@@ -99,6 +99,14 @@ export function createPgCompilationReviewPort(pool:Pool,grant:KnowledgeWriterGra
           item.actualReadCoverage.some(read=>read.coverage!=='full'||refKey(read.sourceRef)!==refKey(item.ref)||
             read.sourceRef.contentDigest!==item.ref.contentDigest))))
       fail('COMPILATION_REVIEW_READSET_INVALID','Compilation readset is not exact or locally publishable');
+    const repairTarget=row.request.repairTarget;
+    const repairEvidence=result.evidence.filter(item=>item.role==='repair_target');
+    if(repairTarget?(change.changes.length!==1||repairEvidence.length!==1||refKey(repairEvidence[0].ref)!==refKey(repairTarget)||
+      result.drafts[0]?.targetEvidenceId!==repairEvidence[0].id||!result.drafts[0]?.repair):
+      repairEvidence.length||result.drafts.some(draft=>draft.repair))
+      fail('COMPILATION_REVIEW_ORIGIN_INVALID','Repair target, draft and candidate are not bound together');
+    if(result.drafts.some(draft=>draft.supportEvidenceIds.some(id=>repairEvidence.some(item=>item.id===id))))
+      fail('COMPILATION_REVIEW_READSET_INVALID','A repair target cannot support its own repair');
     if(change.baseHeads.length!==change.changes.length||new Set(change.baseHeads.map(base=>base.objectId)).size!==change.baseHeads.length||
       canonical(change.inputManifest)!==canonical(uniqueDeps(change.changes.flatMap(item=>item.revision.dependencies))))
       fail('COMPILATION_REVIEW_CANDIDATE_MISMATCH','Candidate base heads are inconsistent');
@@ -165,11 +173,27 @@ export function createPgCompilationReviewPort(pool:Pool,grant:KnowledgeWriterGra
     for(const base of change.baseHeads.filter(item=>item.versionId))knowledgeRefs.set(refKey({objectId:base.objectId,versionId:base.versionId!}),
       knowledgeRefs.get(refKey({objectId:base.objectId,versionId:base.versionId!}))??
       {ref:{...context.scope,domain:'knowledge',objectId:base.objectId,versionId:base.versionId!,contentDigest:null}});
+    const repairKey=row.request.repairTarget?refKey(row.request.repairTarget):null;
     for(const item of knowledgeRefs.values()){
       const frozen=await store.inspectFrozen?.(context.scope.projectId,version(item.ref));
       if(!frozen?.published||frozen.kind!=='wiki_page'||frozen.spaceId!==context.scope.spaceId||
         item.storageDigest&&frozen.storageDigest!==item.storageDigest)
         fail('COMPILATION_REVIEW_READSET_INVALID','Frozen Wiki origin is unavailable or its storage changed');
+      if(refKey(item.ref)===repairKey){
+        // Comparable but not admitted: its invalidity is the reason for repair, and its lineage is not carried forward.
+        // Reading it for comparison still needs the viewer's current source rights.
+        if(!frozen.current)issues.push('修复对照页已有新版');
+        if(!frozen.criticalSourcesComplete||!sources)issues.push('修复对照页的来源权限无法核对');
+        else for(const dep of frozen.criticalSources){
+          let readable=false;
+          try{const record=await sources.readRecord(context.scope,{...context.scope,domain:dep.domain,...dep.ref,contentDigest:null},context);
+            readable=!!record?.readability.metadataVisible&&!!record.readability.contentReadable;}catch{readable=false;}
+          if(!readable){issues.push('修复对照页的来源当前不可读');break;}
+        }
+        if(frozen.review?.purpose!==context.purpose||!['approved_for_purpose','exploration_only'].includes(frozen.review.decision))
+          issues.push('修复对照页未获此用途审阅');
+        continue;
+      }
       if(!frozen.criticalSourcesComplete)fail('COMPILATION_SOURCE_ASSURANCE_REQUIRED','Critical source lineage is incomplete');
       for(const dep of frozen.criticalSources){if(dep.domain!=='source')
         fail('COMPILATION_SOURCE_ASSURANCE_REQUIRED','External source lineage cannot be published');
@@ -209,6 +233,15 @@ export function createPgCompilationReviewPort(pool:Pool,grant:KnowledgeWriterGra
     if(old.body.length>100_000)fail('COMPILATION_REVIEW_BASE_TOO_LARGE','Exact prior Wiki body exceeds the review projection limit',422);
     return {ref:{...context.scope,domain:'knowledge',...old.ref,contentDigest:digest(old)},title:old.title,body:old.body,
       conditions:old.content.conditions,counterexamples:old.content.counterexamples,unknowns:old.content.unknowns};
+  }
+  async function repairView(context:ReadContext,row:CompilationRow,change:KnowledgeChangeSet,index:number):Promise<CandidateView['changes'][number]['repair']>{
+    const plan=row.result.drafts[index]?.repair,base=change.baseHeads[index];
+    if(!plan||!row.request.repairTarget||!base.versionId)return undefined;
+    const ref={objectId:base.objectId,versionId:base.versionId};
+    const [frozen,read]=await Promise.all([store.inspectFrozen?.(context.scope.projectId,ref),store.get(context.scope.projectId,ref)]);
+    if(!frozen||!read)fail('COMPILATION_REVIEW_BASE_UNAVAILABLE','Exact repair target is unavailable');
+    return {comparisonOnly:true,invalidityReasons:[...new Set(frozen!.validity.issues.map(issue=>issue.reason))].slice(0,100),
+      reviewDueAt:read!.revision.scope.reviewDueAt,dependencies:plan.dependencies,reviewDue:plan.reviewDue};
   }
   async function ticketRow(db:Db,context:ReadContext,id:string,lock=false):Promise<TicketRow|null>{
     const row=(await db.query<TicketRow>(`SELECT * FROM ccl_knowledge_review_tickets WHERE id=$1 AND project_id=$2 AND space_id=$3
@@ -292,8 +325,9 @@ export function createPgCompilationReviewPort(pool:Pool,grant:KnowledgeWriterGra
         const page=entry.revision;if(page.kind!=='wiki_page')fail('CANDIDATE_CONTENT_UNSUPPORTED','Only Wiki pages can be reviewed');
         const profile=getWikiPageProfile(page.content.profile.id,page.content.profile.version);
         if(!profile)fail('CANDIDATE_PROFILE_UNAVAILABLE','Wiki profile is unavailable');
+        const repair=await repairView(context,row,change,index);
         changes.push({ref:{...context.scope,domain:'knowledge',...page.ref,contentDigest:digest(page)},effect:entry.effect,
-          before:await before(context,change,index),title:page.title,body:page.body,
+          before:await before(context,change,index),...repair?{repair}:{},title:page.title,body:page.body,
           profile:{id:profile.id,version:profile.version,digest:wikiPageProfileFingerprint(profile)},
           conditions:page.content.conditions,counterexamples:page.content.counterexamples,unknowns:page.content.unknowns,
           nextQuestions:page.content.nextQuestions,

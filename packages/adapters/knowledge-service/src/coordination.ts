@@ -17,7 +17,7 @@ export interface CoordinationOperationPort {
 type Row={id:string;input_digest:string;request:CoordinationRequest;result:CoordinationRun;state:CoordinationRun['state']};
 const scoped='project_id=$1 AND space_id=$2 AND principal_id=$3 AND installation_id=$4 AND purpose=$5';
 const terminal=new Set<CoordinationRun['state']>(['waiting_for_review','no_change','needs_evidence','refused','failed',
-  'outcome_unknown','completed','cancelled']);
+  'outcome_unknown','completed','cancelled','superseded']);
 const zero=():CoordinationRun['cost']=>({modelCalls:{state:'known',value:0},tokens:{state:'known',value:0},
   money:{state:'known',amount:0,currency:'USD',source:'no_provider_call'}});
 const isZero=(cost:CoordinationRun['cost'])=>cost.modelCalls.state==='known'&&cost.modelCalls.value===0&&
@@ -186,7 +186,7 @@ export function createPgCoordinationRuns(pool:Pool,grant:KnowledgeWriterGrant):C
           WHERE ${scoped} AND id=$6`,[...identity(context),initial.request.taskId])).rows[0];
         if(!task||task.input_digest!==initial.request.taskInputDigest||initial.request.sourceEventId!==null&&
           !task.request.sourceEventIds.includes(initial.request.sourceEventId)||initial.request.subjectRef&&
-          (task.request.kind!=='relation_check'||canonical(task.request.subjectRef)!==canonical(initial.request.subjectRef)))
+          (!['relation_check','recompile'].includes(task.request.kind??'')||canonical(task.request.subjectRef)!==canonical(initial.request.subjectRef)))
           throw new KnowledgeError('COORDINATION_TASK_MISMATCH','Exact maintenance task and input digest are unavailable',409);
         const inserted=await client.query<Row>(`INSERT INTO ccl_knowledge_coordination_runs
           (project_id,space_id,principal_id,installation_id,purpose,id,task_id,input_digest,request,result,state)

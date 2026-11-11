@@ -110,7 +110,9 @@ export const AskClaimSchema = z.strictObject({text:Text(5000),evidenceIds:z.arra
     ctx.addIssue({code:'custom',path:['evidenceIds'],message:'Claim evidence IDs must be distinct'});
 });
 export type AskClaim = z.infer<typeof AskClaimSchema>;
-export const AskEvidenceReceiptSchema = z.strictObject({id:Text(100),kind:z.enum(['wiki_page','source_content']),ref:KnowledgeRefSchema,title:Text(500),locator:Text(2000).nullable(),conditions:List(Text(1000),100),counterexamples:List(Text(1000),100),unknowns:List(Text(1000),100),actualReadCoverage:List(ReadCoverageSchema,100),storageDigest:Sha256Schema.optional(),sourceGroups:List(SourceGroupSchema,100).optional(),wiki:z.strictObject({profile:ProfileRefSchema,identity:z.strictObject({key:Text(300),aliases:List(Text(300),100)})}).optional()});
+export const AskEvidenceReceiptSchema = z.strictObject({id:Text(100),kind:z.enum(['wiki_page','source_content']),ref:KnowledgeRefSchema,title:Text(500),locator:Text(2000).nullable(),conditions:List(Text(1000),100),counterexamples:List(Text(1000),100),unknowns:List(Text(1000),100),actualReadCoverage:List(ReadCoverageSchema,100),storageDigest:Sha256Schema.optional(),sourceGroups:List(SourceGroupSchema,100).optional(),wiki:z.strictObject({profile:ProfileRefSchema,identity:z.strictObject({key:Text(300),aliases:List(Text(300),100)})}).optional(),
+  /** A repair target is read only for revision comparison and exact base heads; it never becomes support. */
+  role:z.literal('repair_target').optional()});
 export type AskEvidenceReceipt = z.infer<typeof AskEvidenceReceiptSchema>;
 export const AskProviderAnswerSchema = z.strictObject({outcome:z.enum(['answered','needs_evidence','refused']),claims:List(AskClaimSchema,50),reason:Text(5000),gaps:List(Text(1000),100)}).superRefine((answer,ctx)=>{
   if(answer.outcome==='answered'&&answer.claims.length===0)ctx.addIssue({code:'custom',path:['claims'],message:'answered requires at least one cited claim'});
@@ -152,6 +154,22 @@ export const CancelRequestSchema = z.strictObject({reason:Text(1000)});
 export const CancelReceiptSchema = z.strictObject({operationId:IdSchema,state:z.enum(['cancel_requested','cancelled','too_late']),publication:PublicationSchema.nullable()});
 export const CandidateInputSchema = z.strictObject({purpose:Purpose,methodVersion:Text(100),baseHeads:List(z.strictObject({objectId:IdSchema,versionId:IdSchema.nullable()}),100),changes:List(z.strictObject({objectId:IdSchema,profile:ProfileRefSchema,body:Text(100_000),content:z.json(),dependencies:List(RelationSchema,100),citations:List(z.strictObject({ref:KnowledgeRefSchema,anchor:AnchorSchema}),100)}),100),rationale:Text(5000),contentDigest:Sha256Schema});
 export const CandidateReceiptSchema = z.strictObject({candidateId:IdSchema,changeSetId:IdSchema,draftRefs:List(KnowledgeRefSchema,100),contentHash:Sha256Schema,published:z.literal(false)});
+export const WikiRepairDependencySchema = z.strictObject({domain:z.enum(['knowledge','source']),ref:z.strictObject({objectId:IdSchema,versionId:IdSchema}),
+  action:z.enum(['keep','replace','remove']),replacementEvidenceId:Text(100).nullable(),reason:Text(2000)}).superRefine((value,ctx)=>{
+  if((value.action==='replace')!==(value.replacementEvidenceId!==null))
+    ctx.addIssue({code:'custom',path:['replacementEvidenceId'],message:'Only a replacement names its exact replacement evidence'});
+});
+export type WikiRepairDependency = z.infer<typeof WikiRepairDependencySchema>;
+export const WikiRepairReviewDueSchema = z.discriminatedUnion('action',[
+  z.strictObject({action:z.literal('keep')}),
+  z.strictObject({action:z.literal('set'),until:TimestampSchema,reason:Text(2000)}),
+  z.strictObject({action:z.literal('clear'),reason:Text(2000)})]);
+/** Every critical dependency of the repaired version is disposed explicitly; nothing is inherited by default. */
+export const WikiRepairSchema = z.strictObject({dependencies:List(WikiRepairDependencySchema,100),reviewDue:WikiRepairReviewDueSchema}).superRefine((value,ctx)=>{
+  const keys=value.dependencies.map(item=>`${item.domain}:${item.ref.objectId}/${item.ref.versionId}`);
+  if(new Set(keys).size!==keys.length)ctx.addIssue({code:'custom',path:['dependencies'],message:'Each dependency is disposed once'});
+});
+export type WikiRepair = z.infer<typeof WikiRepairSchema>;
 /** A bounded review projection of an immutable staged change set, never a second candidate store. */
 export const CandidateViewSchema = z.strictObject({candidateId:IdSchema,contentHash:Sha256Schema,purpose:Purpose,
   proposer:Text(200),rationale:Text(5000),createdAt:TimestampSchema,
@@ -159,6 +177,9 @@ export const CandidateViewSchema = z.strictObject({candidateId:IdSchema,contentH
   exactReadset:List(KnowledgeRefSchema,100),changes:List(z.strictObject({ref:KnowledgeRefSchema,
     title:Text(500),body:z.string().max(100_000),profile:ProfileRefSchema,effect:Text(100).optional(),
     before:z.strictObject({ref:KnowledgeRefSchema,title:Text(500),body:z.string().max(100_000),conditions:List(Text(12000),50),counterexamples:List(Text(12000),50),unknowns:List(Text(12000),50)}).nullable().optional(),
+    /** The prior version of a repair stays comparable but is not admitted as current support. */
+    repair:z.strictObject({comparisonOnly:z.literal(true),invalidityReasons:List(Text(200),100),reviewDueAt:TimestampSchema.nullable(),
+      dependencies:List(WikiRepairDependencySchema,100),reviewDue:WikiRepairReviewDueSchema}).optional(),
     conditions:List(Text(1000),100),counterexamples:List(Text(1000),100),unknowns:List(Text(1000),100),
     nextQuestions:List(Text(1000),100),sourceGroups:List(SourceGroupSchema,100)}),100)});
 export const ReviewTargetSchema = z.discriminatedUnion('kind',[z.strictObject({kind:z.literal('candidate'),candidateId:IdSchema,contentHash:Sha256Schema}),z.strictObject({kind:z.literal('research_result'),researchId:IdSchema,resultDigest:Sha256Schema})]);
@@ -246,9 +267,14 @@ export const AnswerResearchRequestSchema=z.strictObject({purpose:Purpose,expecte
 export type AnswerResearchRequest=z.infer<typeof AnswerResearchRequestSchema>;
 
 export const WikiCompileRequestSchema = z.strictObject({question:Text(2000),purpose:Purpose,sourceEventIds:List(IdSchema,20),selectedRefs:List(KnowledgeRefSchema,100).optional(),sourceRefs:List(KnowledgeRefSchema,100).optional(),answerSeed:AnswerSeedSchema.optional(),
+  repairTarget:KnowledgeRefSchema.optional().describe('Current invalid or due Wiki head read only for comparison and its exact base head'),
   queries:z.array(Text(500)).min(1).max(5),judgmentIds:List(IdSchema,3).optional(),limit:z.int().min(1).max(100).describe('Maximum Wiki pages; all Wiki and source evidence together remain bounded by 100'),maxPages:z.int().min(1).max(5),budget:BudgetSchema}).superRefine((value,ctx)=>{
  const refs=value.selectedRefs??[],sources=value.sourceRefs??[];
  if(!value.sourceEventIds.length&&!refs.length&&!sources.length)ctx.addIssue({code:'custom',message:'Compilation needs exact sources or selected Wiki versions'});
+ if(value.repairTarget){const target=value.repairTarget;
+  if(target.domain!=='knowledge'||target.contentDigest===null)ctx.addIssue({code:'custom',path:['repairTarget'],message:'A repair target needs its exact canonical Wiki digest'});
+  if(refs.some(ref=>ref.objectId===target.objectId))ctx.addIssue({code:'custom',path:['selectedRefs'],message:'A repair target object cannot also be selected as support'});
+  if(value.answerSeed||value.sourceEventIds.length||value.judgmentIds?.length)ctx.addIssue({code:'custom',path:['repairTarget'],message:'Repair compilation uses only exact current inputs'});}
  if(refs.some(ref=>ref.domain!=='knowledge'||ref.contentDigest===null))ctx.addIssue({code:'custom',path:['selectedRefs'],message:'Selected Wiki inputs need canonical digests'});
  if(new Set(refs.map(ref=>`${ref.objectId}/${ref.versionId}`)).size!==refs.length)ctx.addIssue({code:'custom',path:['selectedRefs'],message:'Selected Wiki versions must be distinct'});
  if(sources.some(ref=>ref.domain==='knowledge'||ref.contentDigest===null))ctx.addIssue({code:'custom',path:['sourceRefs'],message:'Exact source references require canonical digests'});
@@ -258,7 +284,7 @@ export const WikiCompileRequestSchema = z.strictObject({question:Text(2000),purp
 export type WikiCompileRequest = z.infer<typeof WikiCompileRequestSchema>;
 export const WikiDraftChangeSchema = z.strictObject({targetEvidenceId:Text(100).nullable(),profile:ProfileRefSchema,identityKey:Text(300),
   title:Text(500),summary:Text(12000),conditions:List(Text(1000),50),counterexamples:List(Text(1000),50),unknowns:List(Text(1000),50),
-  nextQuestions:List(Text(1000),50),supportEvidenceIds:z.array(Text(100)).min(1).max(50),rationale:Text(3000)});
+  nextQuestions:List(Text(1000),50),supportEvidenceIds:z.array(Text(100)).min(1).max(50),rationale:Text(3000),repair:WikiRepairSchema.optional()});
 export type WikiDraftChange = z.infer<typeof WikiDraftChangeSchema>;
 export const WikiCompileProposalSchema = z.strictObject({outcome:z.enum(['proposed','no_change','needs_evidence','refused']),drafts:List(WikiDraftChangeSchema,5),reason:Text(5000),gaps:List(Text(1000),100)}).superRefine((value,ctx)=>{
   if((value.outcome==='proposed')!==(value.drafts.length>0))ctx.addIssue({code:'custom',path:['drafts'],message:'Only a proposed outcome has nonempty drafts'});
@@ -343,7 +369,7 @@ export const CoordinationStepSchema=z.strictObject({kind:z.enum(['planning','dis
 export type CoordinationStep=z.infer<typeof CoordinationStepSchema>;
 export const CoordinationRequestSchema=z.strictObject({taskId:IdSchema,taskInputDigest:Sha256Schema,purpose:Purpose,policyVersion:Text(100),sourceEventId:IdSchema.nullable(),subjectRef:KnowledgeRefSchema.optional(),budget:BudgetSchema});
 export type CoordinationRequest=z.infer<typeof CoordinationRequestSchema>;
-export const CoordinationRunSchema=z.strictObject({id:IdSchema,request:CoordinationRequestSchema,state:z.enum(['reserved','running','waiting_for_review','no_change','needs_evidence','refused','failed','outcome_unknown','completed','cancelled']),sourcePlanId:IdSchema.nullable(),compilationOutcome:z.enum(['published','rejected']).optional(),candidateRefs:List(KnowledgeRefSchema,5),discovery:z.strictObject({epoch:Int(Number.MAX_SAFE_INTEGER).nullable(),evidence:List(AskEvidenceReceiptSchema,5),hasMore:z.boolean(),question:Text(2000).optional(),queries:List(Text(500),5).optional()}).nullable().optional(),readAccounting:z.literal('acknowledged_steps').optional(),judgmentIds:List(IdSchema,3),compilationId:IdSchema.nullable(),steps:List(CoordinationStepSchema,8),cost:CostSchema,readBytes:Int(10_000_000),reason:Text(5000),gaps:List(Text(1000),100),createdAt:TimestampSchema,completedAt:TimestampSchema.nullable()});
+export const CoordinationRunSchema=z.strictObject({id:IdSchema,request:CoordinationRequestSchema,state:z.enum(['reserved','running','waiting_for_review','no_change','needs_evidence','refused','failed','outcome_unknown','completed','cancelled','superseded']),sourcePlanId:IdSchema.nullable(),compilationOutcome:z.enum(['published','rejected']).optional(),candidateRefs:List(KnowledgeRefSchema,5),discovery:z.strictObject({epoch:Int(Number.MAX_SAFE_INTEGER).nullable(),evidence:List(AskEvidenceReceiptSchema,5),hasMore:z.boolean(),question:Text(2000).optional(),queries:List(Text(500),5).optional()}).nullable().optional(),readAccounting:z.literal('acknowledged_steps').optional(),judgmentIds:List(IdSchema,3),compilationId:IdSchema.nullable(),steps:List(CoordinationStepSchema,8),cost:CostSchema,readBytes:Int(10_000_000),reason:Text(5000),gaps:List(Text(1000),100),createdAt:TimestampSchema,completedAt:TimestampSchema.nullable()});
 export type CoordinationRun=z.infer<typeof CoordinationRunSchema>;
 
 export type Budget=z.infer<typeof BudgetSchema>;

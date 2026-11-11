@@ -208,7 +208,15 @@ Lint 只提供七种结构或审阅提示。`findingCount` 是持久累计数，
 
 协调器需显式配置 `compiler`、`enableSourceIngest`、`enableMaintenance`、`coordinationPolicy` 与可信 writer grant；来源事件路径另需 `sourcePlanner`。可注入独立 Worker 的 `maintenance.processor`，CLI 默认仍只运行元数据维护。当前协调器受理单一准确来源事件的 `source_research`，也可受理无新来源事件、带准确当前 Wiki `subjectRef` 的 `relation_check`。前者先规划来源，再以 v2 发现有界旧页；后者从准确 Wiki 的标题、身份键和别名发现有界候选。两者最多三次有类型判断，最后将本轮真实读过的双端作为编纂提示。策略将最多五分钟的总期限及金额、模型调用和读取额度分配到固定子步骤，确认回执后累加，不能把未知费用当零。`GET /coordination-runs/:runId`、`GET /coordination-runs/by-task/:taskId` 与 SDK 用于查进度；`POST /maintenance/process-one` 推进一个任务，不把同一写 header 当成下一页。每步原键、请求和预算持久固定，未知时只 lookup，不重新分发提供方。普通任务 reason 不包含私有模型内容；协调详情及计划每次读取都重新核来源资格。实现见 `packages/knowledge-application/src/coordination.ts` 与 `apps/knowledge-api/src/index.ts`。
 
-独立审阅的批准或拒绝在同一事务结束编纂、协调运行和维护任务；两种决定均使任务完成，但 `compilationOutcome` 区分结果。运行中的租约不被抢走，过期 ACK 依据真实发表或拒绝记录核对，旧执行端只收到规范状态元数据。当前 Wiki 的周期语义任务发现与纯 Wiki `relation_check` 已在开发工作树接线；失效旧 Wiki 的 `recompile` 仍保持 queued。统一实体消歧、自动挑选答案入维护任务、跨键缓存、无变化提案独立审阅、外部发表保证和完整收件箱仍未完成。
+独立审阅的批准或拒绝在同一事务结束编纂、协调运行和维护任务；两种决定均使任务完成，但 `compilationOutcome` 区分结果。运行中的租约不被抢走，过期 ACK 依据真实发表或拒绝记录核对，旧执行端只收到规范状态元数据。当前 Wiki 的周期语义任务发现与纯 Wiki `relation_check` 已在开发工作树接线；失效旧 Wiki 的 `recompile` 已由同一协调 processor 执行到待审候选，见下文“失效 Wiki 修复”。统一实体消歧、自动挑选答案入维护任务、跨键缓存、无变化提案独立审阅、外部发表保证和完整收件箱仍未完成。
+
+### 失效 Wiki 修复（开发分支候选）
+
+`recompile` 任务的 `subjectRef` 是需要修复的准确当前页 C1。协调 processor 先有界读取 C1：C1 已不是当前版本时任务以 `superseded` 结束；C1 或其关键来源当前不可读、上游 Wiki 仍待修复、或找不到可读输入时以 `needs_evidence` 结束。这三种情况都不调用编纂器。否则 processor 为 C1 的每条关键依赖准备当前输入：仍有效的依赖读取原版本，失效来源读取其可读新版，失效 Wiki 读取其有效当前版本；任务的 `relatedRefs` 按同样规则补充。
+
+编纂请求以 `repairTarget` 携带 C1 的准确引用。C1 进入读集时带 `role:"repair_target"`，只用于修订对照和准确基线，不能出现在 `supportEvidenceIds` 中。`WikiCompiler` 会额外收到 `repairTarget`，其中有失效原因、复核期限和每条依赖是否有效。提案只能修订 C1 一次，并在 `draft.repair` 中为每条关键依赖写明 `keep`、`replace` 或 `remove` 及理由：失效依赖不能保留；替换项必须是本次读过、领域相同的不同版本，并列为新支持；复核期已过时须给出未来日期或写明清除理由。修复不接受 `no_change`，这样的结果记为 `needs_evidence`。stage 按处置重建依赖、引文和导航，不再默认继承旧依赖。
+
+审阅视图的 `changes[].repair` 标明修改前版本只供对照，并列出失效原因与处置。批准时 C1 不必有效，但必须仍是未变化的当前版本，审阅者也须当前能读取其来源；其余新支持仍走原有准入、撤权和并发 head 检查。实现见 `packages/knowledge-application/src/coordination.ts`、`wiki-compile.ts`，以及 `packages/adapters/knowledge-service/src/wiki-compile-stage.ts`、`compilation-review.ts`。
 
 ### 接入周期语义扫描与纯 Wiki 关系任务（开发工作树候选）
 

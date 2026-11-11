@@ -17,6 +17,9 @@ export interface WikiCompiler {
  compile(input:{operationId:string;question:string;purpose:string;evidence:readonly AskEvidence[];profiles:readonly ProfileRef[];
   budget:WikiCompileRequest['budget'];signal:AbortSignal;gaps:readonly string[];
   answerSeed?:{answerId:string;answerFingerprint:string;question:string;claims:readonly AskClaim[];gaps:readonly string[]};
+  /** Present only for repair. The target evidence is comparison-only; each critical dependency needs an explicit disposition. */
+  repairTarget?:{evidenceId:string;invalidityReasons:readonly string[];reviewDueAt:string|null;
+   dependencies:readonly {domain:string;ref:{objectId:string;versionId:string};critical:boolean;valid:boolean}[]};
   relationHints?:readonly {judgmentId:string;inputFingerprint:string;sourceRelation:RelationJudgment['sourceRelation'];answers:readonly DecisionAnswer[]}[]}):Promise<{proposal:WikiCompileProposal;
    cost:WikiCompileResult['cost'];modelReturned:string|null;requestId:string|null}>;
 }
@@ -27,6 +30,7 @@ export interface WikiCompileStagePort {stage(context:ReadContext,input:WikiCompi
 
 import {randomUUID} from 'node:crypto';
 import {WikiCompileRequestSchema,WikiCompileResultSchema,WikiCompileProposalSchema,CostSchema,QueryRequestSchema,fromVersionRef} from '@commerce/knowledge-contracts';
+import type {RepairTargetPage} from './index.ts';
 import {KnowledgeError} from '@commerce/knowledge-core/types';
 import {digest} from '@commerce/knowledge-core/utils';
 import {getWikiPageProfile,wikiPageProfileFingerprint,listWikiPageProfiles} from '@commerce/knowledge-core/wiki-page';
@@ -46,8 +50,44 @@ const sameExactRefs=(actual:readonly KnowledgeRef[],expected:readonly KnowledgeR
  actual.length===expected.length&&canonicalRefs(actual)===canonicalRefs(expected);
 const canonicalRefs=(refs:readonly KnowledgeRef[])=>JSON.stringify(refs.map(exactRefKey).sort());
 
+const repairKey=(domain:string,ref:{objectId:string;versionId:string})=>`${domain}:${ref.objectId}/${ref.versionId}`;
+/** A repair revises its exact target once and disposes every prior critical dependency; nothing invalid is inherited silently. */
+export function assertRepairProposal(proposal:WikiCompileProposal,repair:{evidenceId:string;page:RepairTargetPage},evidence:readonly AskEvidence[],at:Date){
+ const fail=(code:string,message:string):never=>{throw new KnowledgeError(code,message,422);};
+ if(proposal.drafts.length!==1)fail('REPAIR_DRAFT_INVALID','A repair proposes exactly one revision of its target');
+ const draft=proposal.drafts[0],plan=draft.repair;
+ if(draft.targetEvidenceId!==repair.evidenceId)fail('REPAIR_DRAFT_INVALID','A repair must revise its exact target');
+ if(!plan)fail('REPAIR_DISPOSITION_REQUIRED','A repair must dispose each prior critical dependency');
+ const self=repair.page.ref.objectId,prior=new Map<string,RepairTargetPage['dependencies'][number]>();
+ for(const dependency of repair.page.dependencies){
+  if(!dependency.critical||dependency.domain==='knowledge'&&dependency.ref.objectId===self)continue;
+  if(dependency.domain!=='knowledge'&&dependency.domain!=='source')fail('REPAIR_DEPENDENCY_UNSUPPORTED','Only local source and Wiki dependencies can be repaired');
+  prior.set(repairKey(dependency.domain,dependency.ref),dependency);
+ }
+ const disposed=new Set(plan!.dependencies.map(item=>repairKey(item.domain,item.ref)));
+ if(disposed.size!==prior.size||[...prior.keys()].some(key=>!disposed.has(key)))
+  fail('REPAIR_DISPOSITION_INCOMPLETE','Each prior critical dependency needs exactly one keep, replace or remove disposition');
+ for(const item of plan!.dependencies){
+  const old=prior.get(repairKey(item.domain,item.ref))!;
+  if(!item.reason.trim())fail('REPAIR_DISPOSITION_REASON_REQUIRED','Each dependency disposition needs a reason');
+  if(item.action==='keep'&&!old.valid)fail('REPAIR_KEEPS_INVALID_DEPENDENCY','An invalid dependency cannot be kept in the repaired version');
+  if(item.action==='replace'){
+   const replacement=evidence.find(read=>read.id===item.replacementEvidenceId);
+   if(!replacement||replacement.role==='repair_target'||replacement.kind!==(item.domain==='knowledge'?'wiki_page':'source_content'))
+    fail('REPAIR_REPLACEMENT_UNREAD','A replacement must be exact current evidence of the same domain read in this compilation');
+   if(replacement!.ref.objectId===item.ref.objectId&&replacement!.ref.versionId===item.ref.versionId)
+    fail('REPAIR_REPLACEMENT_UNCHANGED','A replacement must name a different exact version');
+   if(!draft.supportEvidenceIds.includes(replacement!.id))fail('REPAIR_REPLACEMENT_UNSUPPORTED','A replacement must be declared as new support');
+  }
+ }
+ const due=repair.page.reviewDueAt,elapsed=!!due&&Date.parse(due)<=at.getTime();
+ if(plan!.reviewDue.action==='keep'&&elapsed)fail('REPAIR_REVIEW_DUE_REQUIRED','An elapsed review date needs a new date or an explicit clearing reason');
+ if(plan!.reviewDue.action!=='keep'&&!plan!.reviewDue.reason.trim())fail('REPAIR_REVIEW_DUE_REASON_REQUIRED','A review date change needs a reason');
+ if(plan!.reviewDue.action==='set'&&Date.parse(plan!.reviewDue.until)<=at.getTime())fail('REPAIR_REVIEW_DUE_PAST','A new review date must be in the future');
+}
+
 /** Compiles a bounded exact readset into proposals; only the trusted stage port can create a changeset. */
-export function createWikiCompileApplication(options:{reader:Pick<KnowledgeApplication,'queryCandidates'|'readCandidate'|'validateFrozenWiki'|'sourceRecord'|'sourceContentBounded'|'assertReadEpoch'>&Partial<Pick<KnowledgeApplication,'validateHistoricalWiki'|'readWikiExactBounded'>>;
+export function createWikiCompileApplication(options:{reader:Pick<KnowledgeApplication,'queryCandidates'|'readCandidate'|'validateFrozenWiki'|'sourceRecord'|'sourceContentBounded'|'assertReadEpoch'>&Partial<Pick<KnowledgeApplication,'validateHistoricalWiki'|'readWikiExactBounded'|'readRepairTarget'|'validateRepairTarget'>>;
  intake:Pick<ReturnType<typeof createSourceIntakeApplication>,'get'>;operations:WikiCompileOperationPort;provider:WikiCompiler;
  stage?:WikiCompileStagePort;sources?:SourceRegistryPort;answers?:AskAnswerReader;
  judgments?:{get(context:CapabilityContext,id:string):Promise<RelationJudgment>};now?:()=>Date;
@@ -66,7 +106,16 @@ export function createWikiCompileApplication(options:{reader:Pick<KnowledgeAppli
   for(const item of result.evidence){
    if(item.kind==='wiki_page'){
     if(!item.storageDigest)throw new KnowledgeError('COMPILE_READSET_INVALID','Missing frozen Wiki storage fingerprint',409);
-    if(['published','rejected'].includes(result.state)&&options.reader.validateHistoricalWiki)await options.reader.validateHistoricalWiki(context,item.ref,item.storageDigest);
+    if(item.role==='repair_target'){
+     // A finished repair keeps the target as history; an open one must still be the unchanged current head.
+     if(['published','rejected'].includes(result.state)){
+      if(!options.reader.validateHistoricalWiki)throw new KnowledgeError('BOUNDED_WIKI_READ_UNSUPPORTED','Historical Wiki verifier is unavailable',503);
+      await options.reader.validateHistoricalWiki(context,item.ref,item.storageDigest);
+     }else{
+      if(!options.reader.validateRepairTarget)throw new KnowledgeError('REPAIR_UNSUPPORTED','Repair target verifier is unavailable',503);
+      await options.reader.validateRepairTarget(context,item.ref,item.storageDigest);
+     }
+    }else if(['published','rejected'].includes(result.state)&&options.reader.validateHistoricalWiki)await options.reader.validateHistoricalWiki(context,item.ref,item.storageDigest);
     else await options.reader.validateFrozenWiki(context,item.ref,item.storageDigest);
    }else{const source=await options.reader.sourceRecord(context,item.ref);
     if(!source.readability.contentReadable||!source.readability.metadataVisible)throw new KnowledgeError('SOURCE_FORBIDDEN','Compilation source is no longer readable',403);}
@@ -98,6 +147,10 @@ export function createWikiCompileApplication(options:{reader:Pick<KnowledgeAppli
     throw new KnowledgeError('SOURCE_REF_SCOPE_MISMATCH','Exact sources must belong to the authenticated scope',403);
    if(request.selectedRefs?.length&&!options.reader.readWikiExactBounded)
     throw new KnowledgeError('BOUNDED_WIKI_READ_UNSUPPORTED','Exact bounded Wiki reading is unavailable for selected versions',503);
+   if(request.repairTarget&&(request.repairTarget.projectId!==context.scope.projectId||request.repairTarget.spaceId!==context.scope.spaceId))
+    throw new KnowledgeError('REPAIR_TARGET_SCOPE_MISMATCH','A repair target must belong to the authenticated scope',403);
+   if(request.repairTarget&&(!options.reader.readRepairTarget||!options.reader.validateRepairTarget))
+    throw new KnowledgeError('REPAIR_UNSUPPORTED','Repair target reading is unavailable',503);
    if(!key.trim()||key.length>200)throw new KnowledgeError('IDEMPOTENCY_KEY_REQUIRED','Bounded compilation key required',400);
    if(new Set(request.sourceEventIds).size!==request.sourceEventIds.length)throw new KnowledgeError('DUPLICATE_SOURCE_EVENT','Source event IDs must be distinct',422);
    if(Date.parse(request.budget.deadline)-now().getTime()>300_000)throw new KnowledgeError('DEADLINE_TOO_LARGE','Compilation deadline must be within five minutes',422);
@@ -125,6 +178,7 @@ export function createWikiCompileApplication(options:{reader:Pick<KnowledgeAppli
    if(!await committed(options.operations.start(context,id),id))return committed(get(context,id),id);
    let result:WikiCompileResult={...reservation.result,state:'running'},invoked=false,acknowledged=false,epoch:number|null=null;
    const evidence:AskEvidence[]=[],bases=new Map<string,KnowledgeRevision>(),sourceProofs:SourceAccessProof[]=[],gaps:string[]=[],excluded:WikiCompileResult['excluded']=[];
+   let repair:{evidenceId:string;page:RepairTargetPage}|null=null;
    let wikiBytes=0,sourceBytes=0,preparedBytes=0,loaded=0,hasMore=false;
    const remaining=()=>Math.max(0,request.budget.maxReadBytes-wikiBytes-sourceBytes);
    const check=()=>{if(Date.parse(request.budget.deadline)<=now().getTime())throw new KnowledgeError('DEADLINE_EXPIRED','Compilation deadline elapsed',422);};
@@ -133,7 +187,26 @@ export function createWikiCompileApplication(options:{reader:Pick<KnowledgeAppli
     coverage:{scopeDescription:`${context.scope.projectId}/${context.scope.spaceId}: ${request.selectedRefs?.length?'selected Wiki, lexical v2, bounded sources':'Wiki lexical v2, bounded original reports'}`,returned:evidence.length,loaded:loaded+evidence.filter(item=>item.kind==='source_content').length,hasMore,nextCursor:null,
      completeness:'bounded',omittedReasons:['Lexical candidates do not prove all related knowledge was found',...hasMore?['Additional candidates were not read']:[]],snapshot:{publicationEpoch:epoch,consistency:'single_scope_snapshot'}}};};
    try{
-    check();const seenSources=new Map<string,string>();
+    check();
+    if(request.repairTarget){
+     const page=await options.reader.readRepairTarget!(context,request.repairTarget,Math.min(1_000_000,remaining()));
+     wikiBytes+=page.payloadBytes;
+     if(page.payloadBytes>request.budget.maxReadBytes)throw new KnowledgeError('READ_BUDGET_EXCEEDED','Repair target exceeded the input bound',422);
+     check();
+     const target=request.repairTarget,base=page.frozenRevision;
+     if(page.ref.objectId!==target.objectId||page.ref.versionId!==target.versionId||page.ref.contentDigest!==target.contentDigest||base?.kind!=='wiki_page')
+      throw new KnowledgeError('EXACT_REF_MISMATCH','Repair target differs from the exact requested version',409);
+     const profile=getWikiPageProfile(base.content.profile.id,base.content.profile.version);
+     if(!profile)throw new KnowledgeError('REPAIR_TARGET_PROFILE_UNSUPPORTED','Repair target profile is unavailable',422);
+     const evidenceId=`repair:${page.ref.objectId}:${page.ref.versionId}`;
+     evidence.push({id:evidenceId,kind:'wiki_page',role:'repair_target',ref:page.ref,title:page.title,body:page.body,locator:null,conditions:page.conditions,
+      counterexamples:page.counterexamples,unknowns:page.unknowns,actualReadCoverage:[],storageDigest:page.storageDigest,
+      sourceGroups:page.sourceGroups.length?page.sourceGroups.map(id=>({id,status:'known',authority:'knowledge-revision-lineage'})):[unknownGroup()],
+      wiki:{profile:{id:profile.id,version:profile.version,digest:wikiPageProfileFingerprint(profile)},identity:base.content.identity}});
+     bases.set(evidenceId,base);repair={evidenceId,page};
+     gaps.push('修复对照页只用于修订对照和准确基线，不作为新支持证据');
+    }
+    const seenSources=new Map<string,string>();
     const addSource=async(ref:KnowledgeRef,evidenceId:string,title:string)=>{
      const identity=`${ref.domain}/${ref.objectId}/${ref.versionId}`,prior=seenSources.get(identity);
      if(prior!==undefined){if(prior!==ref.contentDigest)throw new KnowledgeError('EXACT_SOURCE_CONFLICT','One source version has conflicting exact digests',409);return;}
@@ -199,14 +272,15 @@ export function createWikiCompileApplication(options:{reader:Pick<KnowledgeAppli
       throw new KnowledgeError('EXACT_REF_MISMATCH','Selected Wiki differs from the exact requested version',409);
      addWiki(pageData,true,true);
     }
-    if(readWiki>=request.limit||evidence.length>=100){
-     hasMore=true;
+    if(readWiki>=request.limit||evidence.length>=100||repair){
+     // Repair reads only its exact current inputs; lexical expansion would add unrequested support.
+     hasMore=!repair;
      // Exact selections may fill the limit. Capture the publication epoch without loading another body.
      const observed=await options.reader.queryCandidates(context,QueryRequestSchema.parse({question:request.queries[0],purpose:request.purpose,
       kinds:['wiki_page'],limit:1,retrievalMethod:'wiki-lexical-v2'}));
      epoch=observed.coverage.snapshot.publicationEpoch;
     }
-    for(let page=0;page<request.maxPages&&readWiki<request.limit&&evidence.length<100;page++){
+    for(let page=0;!repair&&page<request.maxPages&&readWiki<request.limit&&evidence.length<100;page++){
      for(const query of [...new Set(request.queries)]){if(page&&!cursors.has(query))continue;check();
       const found=await options.reader.queryCandidates(context,QueryRequestSchema.parse({question:query,purpose:request.purpose,kinds:['wiki_page'],limit:request.limit,cursor:cursors.get(query),retrievalMethod:'wiki-lexical-v2'}));
       const nextEpoch=found.coverage.snapshot.publicationEpoch;
@@ -248,8 +322,11 @@ export function createWikiCompileApplication(options:{reader:Pick<KnowledgeAppli
      answerSeedAdvisory={answerId:resolvedAnswer.origin.answerId,answerFingerprint:resolvedAnswer.origin.answerFingerprint,
       question:resolvedAnswer.origin.question,claims,gaps:resolvedAnswer.answer.gaps};
     }
+    const repairAdvisory=repair?{evidenceId:repair.evidenceId,invalidityReasons:[...new Set(repair.page.validity.issues.map(issue=>issue.reason))],
+     reviewDueAt:repair.page.reviewDueAt,dependencies:repair.page.dependencies.filter(item=>item.domain==='knowledge'||item.domain==='source')
+      .map(item=>({domain:item.domain,ref:{objectId:item.ref.objectId,versionId:item.ref.versionId},critical:item.critical,valid:item.valid}))}:undefined;
     const prepared={question:request.question,purpose:request.purpose,evidence,profiles,gaps,
-     ...answerSeedAdvisory?{answerSeed:answerSeedAdvisory}:{},...relationHints.length?{relationHints}:{}};
+     ...answerSeedAdvisory?{answerSeed:answerSeedAdvisory}:{},...relationHints.length?{relationHints}:{},...repairAdvisory?{repairTarget:repairAdvisory}:{}};
     preparedBytes=Buffer.byteLength(JSON.stringify(prepared),'utf8');
     if(preparedBytes>request.budget.maxReadBytes)
      throw new KnowledgeError('PREPARED_INPUT_BUDGET_EXCEEDED','Prepared compiler input exceeds its bound',422);
@@ -271,8 +348,16 @@ export function createWikiCompileApplication(options:{reader:Pick<KnowledgeAppli
     if(result.cost.modelCalls.state==='known'&&result.cost.modelCalls.value>request.budget.maxModelCalls)throw new KnowledgeError('MODEL_BUDGET_EXCEEDED','Compiler reported excess calls',422);
     if(request.budget.maxMoney&&result.cost.money.state==='known'&&(result.cost.money.currency!==request.budget.maxMoney.currency||result.cost.money.amount>request.budget.maxMoney.amount))throw new KnowledgeError('MONEY_BUDGET_EXCEEDED','Compiler reported excess money',422);
     if(Buffer.byteLength(JSON.stringify(execution.proposal),'utf8')>1_000_000)throw new KnowledgeError('COMPILE_OUTPUT_LIMIT','Compiler proposal exceeds one million UTF-8 bytes',422);
-    const proposal=WikiCompileProposalSchema.parse(execution.proposal),ids=new Set(evidence.map(item=>item.id));
+    let proposal=WikiCompileProposalSchema.parse(execution.proposal);const ids=new Set(evidence.map(item=>item.id));
+    if(repair){
+     // A repaired dependency set is itself a change; "no change" cannot close a repair.
+     if(proposal.outcome==='no_change')proposal={outcome:'needs_evidence',drafts:[],reason:`${proposal.reason}; 修复任务不接受“无变化”：失效依赖仍须逐项保留、替换或移除`,
+      gaps:[...proposal.gaps,'修复未完成：需要带依赖处置的修订候选']};
+     if(proposal.outcome==='proposed')assertRepairProposal(proposal,repair,evidence,now());
+    }else if(proposal.drafts.some(draft=>draft.repair))throw new KnowledgeError('REPAIR_DISPOSITION_UNEXPECTED','Only a repair compilation may dispose prior dependencies',422);
     for(const draft of proposal.drafts){
+     if(draft.supportEvidenceIds.some(id=>evidence.find(item=>item.id===id)?.role==='repair_target'))
+      throw new KnowledgeError('REPAIR_TARGET_AS_SUPPORT','A repair target is comparison-only and cannot support its own repair',422);
      if(draft.supportEvidenceIds.some(id=>!ids.has(id))||new Set(draft.supportEvidenceIds).size!==draft.supportEvidenceIds.length)throw new KnowledgeError('UNREAD_CITATION','Compile proposal cites unread or duplicate evidence',422);
      const profile=profiles.find(item=>item.id===draft.profile.id&&item.version===draft.profile.version);
      if(!profile||profile.digest!==draft.profile.digest)throw new KnowledgeError('PROFILE_MISMATCH','Compiler profile fingerprint differs',422);
