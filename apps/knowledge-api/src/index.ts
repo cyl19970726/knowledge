@@ -350,7 +350,8 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
     if(!grant)throw new Error('Claude providers require a trusted KNOWLEDGE_WRITER_GRANT_JSON capability');
     await migrateModelSpend(pool);await migrateModelCalls(pool);
     const redactor=claude.redactionFile?createRedactor(readRedactionFile(claude.redactionFile)):undefined;
-    const port=createClaudeModelPort({transport:createAnthropicTransport({apiKey:readApiKeyFile(claude.apiKeyFile)}),ledger:createPgSpendLedger(pool),config:claude.model,
+    const transport=createAnthropicTransport({apiKey:readApiKeyFile(claude.apiKeyFile)}),ledger=createPgSpendLedger(pool);
+    const port=createClaudeModelPort({transport,ledger,config:claude.model,
       redactor,onRedaction:event=>process.stdout.write(`redaction role=${event.role} operation=${event.operationId} replacements=${event.count}\n`)});
     const has=(role:Parameters<typeof claude.roles.has>[0])=>claude.roles.has(role);
     models={modelDisclosure:claude.disclosure,
@@ -358,7 +359,8 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
       ...has('source_plan')&&sourceIntakeEnabled?{sourcePlanner:createClaudeSourcePlanner(port)}:{},
       ...has('wiki_compile')&&sourceIntakeEnabled?{compiler:createClaudeWikiCompiler(port)}:{},
       ...has('relation_judgment')?{decisionProvider:createClaudeDecisionProvider(port)}:{},
-      ...has('model_call')?{modelCalls:createModelCallService({port,store:createPgModelCallStore(pool)})}:{}};
+      // Generic model calls stay unredacted: evaluation arms compare the raw model against the knowledge service.
+      ...has('model_call')?{modelCalls:createModelCallService({port:createClaudeModelPort({transport,ledger,config:claude.model}),store:createPgModelCallStore(pool)})}:{}};
     process.stdout.write(`Claude providers enabled: model=${claude.model.model} roles=${[...claude.roles].join(',')} redaction=${redactor?'on':'off'} perCallUsd=${claude.model.maxCallUsd} dailyUsd=${claude.model.dailyCapUsd}\n`);
   }
   const api=await createKnowledgeApi({pool,...principals?{principals}:{token},principal:{id:process.env.KNOWLEDGE_API_PRINCIPAL_ID??'local-owner',

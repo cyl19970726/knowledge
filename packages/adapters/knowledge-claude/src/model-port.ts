@@ -135,10 +135,11 @@ export function createClaudeModelPort(options:{transport:ClaudeTransport;ledger:
       const usage:TokenUsage={inputTokens:message.usage.input_tokens,outputTokens:message.usage.output_tokens,
         cacheCreationInputTokens:message.usage.cache_creation_input_tokens??0,cacheReadInputTokens:message.usage.cache_read_input_tokens??0};
       const costUsd=usageCost(config.model,usage);
-      await options.ledger.settle(reservation.id,{actualUsd:costUsd,usage,modelReturned:message.model,requestId,stopReason:message.stop_reason});
       const raw=message.content.flatMap(block=>block.type==='text'?[block.text]:[]).join('');
-      const {text,count:redactions}=options.redactor?options.redactor.redact(raw):{text:raw,count:0};
+      // The call's own input decides whether ambiguous secondary forms refer to the protected person.
+      const {text,count:redactions}=options.redactor?options.redactor.redact(raw,`${input.system}\n${input.cachedPrefix??''}\n${input.prompt}`):{text:raw,count:0};
       if(redactions)options.onRedaction?.({role:input.role,operationId:input.operationId,count:redactions});
+      await options.ledger.settle(reservation.id,{actualUsd:costUsd,usage,modelReturned:message.model,requestId,stopReason:message.stop_reason,redactions});
       const outcome=message.stop_reason==='refusal'?'refused':message.stop_reason==='max_tokens'?'truncated':'completed';
       return {outcome,text,redactions,usage,costUsd,reservedUsd,modelRequested:config.model,modelReturned:message.model,requestId,stopReason:message.stop_reason,priceTable:PRICE_TABLE_VERSION};
     },

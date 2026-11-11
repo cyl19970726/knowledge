@@ -3319,7 +3319,7 @@ make docs-knowledge-check
 </tr>
 <tr>
 <td><code>KNOWLEDGE_MODEL_REDACTION_FILE</code></td>
-<td>可选。私有文件（权限 600），格式 <code>{&quot;terms&quot;:[...],&quot;replacement&quot;:&quot;...&quot;}</code>，列出不得出现在任何模型输出中的人名。每次调用都带上这条规则；模型输出在解析和入库前做确定性替换，拉丁字母不区分大小写，长名优先替换。日志只记录替换次数，不记录名字。审阅 agent 读同一个文件，候选页里只要还出现这些名字，就在调用模型之前转人工（<code>private_person</code>）。</td>
+<td>可选。私有文件（权限 600）：<code>{&quot;terms&quot;:[...],&quot;secondaryTerms&quot;:[...],&quot;replacement&quot;:{&quot;zh&quot;:&quot;当事女性&quot;,&quot;default&quot;:&quot;the woman&quot;}}</code>。<code>terms</code> 中的名字一律替换；<code>secondaryTerms</code>（容易与他人重名的简短写法）只在同一次输出或这次调用的输入里出现了 <code>terms</code> 中的名字时才替换。匹配前对文本做 NFKC 规范化，拉丁字母不区分大小写，只匹配整词；名字中间有空格或间隔号，或者没有分隔，都能匹配；不会泛化到名单以外的词。中文上下文用 <code>zh</code> 替换词，其他用 <code>default</code>。规划、编纂、问答和关系判断的每次调用都带上规则，输出在解析前替换，替换次数按调用记入账本的 <code>redactions</code> 列，不记录名字。<code>POST /model-calls</code> 不做替换，供评测对照。审阅 agent 读同一个文件，候选页里只要出现任一写法就转人工（<code>private_person</code>）。</td>
 </tr>
 </tbody>
 </table></div>
@@ -3410,7 +3410,7 @@ python3 -m unittest tests.test_build_docs -v
 <article id="knowledge-current-state" class="doc" aria-label="当前状态与证据"><div class="chapter-meta"><span>现行说明 · 实现与部署分别见状态页</span><span>2026-10-29</span></div><h1 id="knowledge-current-state--当前状态与证据边界">当前状态与证据边界</h1>
 <p>2026-11-02 · 当前集成起点为已合并 PR8 的 <code>github/main@2f66ba174bbd47be92d0bbdc238159d33c5a74f8</code>。PR8 保留 R1 深色三视角工作台、默认 3D 与 2D/列表、共同选区及前端文档；2.5D <a href="#knowledge-handoff-2p5d-experiment">交接说明</a>只定义默认关闭的实验，尚无实现或验收。下方 2026-10-27 至 11-01 的前端段落按各自日期保留：其中“未提交”和“仅 synthetic”描述当时阶段，不代表 PR8 后的主线状态。旧核心和业务测试数、旧 UI 截图只是各阶段证据，不能当作 <code>2f66ba1</code> 的验收。生产部署和真实语义效果仍另行验收。</p>
 <h2 id="knowledge-current-state--2026-11-11-受保护人名的确定性替换">2026-11-11 · 受保护人名的确定性替换</h2>
-<p><code>KNOWLEDGE_MODEL_REDACTION_FILE</code> 列出的人名不会出现在 Claude 提供方的任何输出里：编纂页、Ask 回答、规划、关系判断和通用模型调用都一样。提示词里带上这条规则，输出在解析前做确定性替换；规划里以这些名字为 surface 的实体提及会被丢弃。审阅 agent 发现候选页仍含这些名字时，不调用模型，直接转人工。来源原文本身不改，原文读取接口仍返回原文。验证范围是假 transport 单元测试；真实模型下的遵守率由替换计数观察。</p>
+<p><code>KNOWLEDGE_MODEL_REDACTION_FILE</code> 列出的人名不会出现在编纂页、Ask 回答、规划和关系判断的输出里；通用模型调用 <code>/model-calls</code> 有意不做替换，以便评测对照。替换按语言选择替换词，次要写法只在同一上下文出现全名时才替换，替换次数按调用记入账本。提示词里带上这条规则，输出在解析前做确定性替换；规划里以这些名字为 surface 的实体提及会被丢弃。审阅 agent 发现候选页仍含这些名字时，不调用模型，直接转人工。来源原文本身不改，原文读取接口仍返回原文。验证范围是假 transport 单元测试；真实模型下的遵守率由替换计数观察。</p>
 <h2 id="knowledge-current-state--2026-11-11-多引用精确读取k7">2026-11-11 · 多引用精确读取（K7）</h2>
 <p>新增 <code>POST /reads/exact</code>（SDK <code>documents</code>）：一次精确读取最多 20 个知识版本，只签发一张 <code>exact_set</code> 读取回执，一个 use 因此可以同时采用一份产物引用的全部页面。整体成败：任何一个版本不可用就不签发回执。Ask 回答本身仍不带读取回执。验证范围是一次性测试库上的 API 集成测试，覆盖多引用采用、请求顺序、整体失败与客户端校验，以及不挂 use 的发布反馈。</p>
 <h2 id="knowledge-current-state--2026-11-10-审阅-agent开发工作树候选">2026-11-10 · 审阅 agent（开发工作树候选）</h2>

@@ -10,7 +10,7 @@ import {readRedactionFile,createRedactor,createClaudeModelPort,createMemorySpend
   createReviewAgent,type ClaudeTransport,type ClaudeRequest,type ReviewAgentClient} from '../src/index.ts';
 
 // Fictitious names used only for this test.
-const policy={terms:['王小梅','Wang Xiaomei','小梅'],replacement:'当事女性'};
+const policy={terms:['王小梅','Wang Xiaomei','Xiaomei Wang'],secondaryTerms:['Xiaomei'],replacement:{zh:'当事女性',default:'the woman'}};
 const model='claude-sonnet-5-5',signal=new AbortController().signal;
 const config={model,effort:'high' as const,maxCallUsd:0.5,dailyCapUsd:1,maxOutputTokens:16000};
 function transport(text:string){const sent:ClaudeRequest[]=[];
@@ -31,23 +31,40 @@ test('the redaction file is private, well formed, and errors never echo its cont
   assert.throws(()=>readRedactionFile(path),(error:Error)=>!error.message.includes('王小梅'));
   writeFileSync(path,JSON.stringify({terms:['当事'],replacement:'当事女性'}));
   assert.throws(()=>readRedactionFile(path),/must not contain/);
+  writeFileSync(path,JSON.stringify({terms:['Woman'],replacement:{zh:'当事女性',default:'the woman'}}));
+  assert.throws(()=>readRedactionFile(path),/must not contain/);
 });
 
-test('the redactor replaces longest names first and Latin spellings case-insensitively',()=>{
+test('matching is NFKC, case-insensitive, separator-tolerant and whole-word, with a per-language replacement',()=>{
   const r=createRedactor(policy);
-  assert.deepEqual(r.redact('王小梅说，小梅和WANG XIAOMEI都是她。'),{text:'当事女性说，当事女性和当事女性都是她。',count:3});
+  assert.deepEqual(r.redact('王小梅说，王·小梅和王 小梅都是她。'),{text:'当事女性说，当事女性和当事女性都是她。',count:3});
+  assert.deepEqual(r.redact('Reports say WANG  XIAOMEI and Ｗａｎｇ－Ｘｉａｏｍｅｉ left.'),{text:'Reports say the woman and the woman left.',count:2});
+  assert.equal(r.redact('报道称 Wang Xiaomei 已离开。').text,'报道称 当事女性 已离开。','Han context picks the Chinese replacement');
+  assert.equal(r.redact('Wang Xiaomeiya is someone else.').count,0,'no partial-word matches');
+  assert.equal(r.redact('王小 梅').count,1);
   assert.equal(r.contains('与本案无关'),false);
-  assert.equal(r.contains('wang xiaomei'),true);
+  assert.equal(r.redact('全角，标点：保持不变').text,'全角，标点：保持不变','text outside the names is untouched');
+});
+
+test('a secondary form is replaced only when a primary name appears in the output or in the call input',()=>{
+  const r=createRedactor(policy);
+  assert.deepEqual(r.redact('Xiaomei said no.'),{text:'Xiaomei said no.',count:0});
+  assert.deepEqual(r.redact('Xiaomei said no.','Source: Wang Xiaomei spoke to reporters.'),{text:'the woman said no.',count:1});
+  assert.deepEqual(r.redact('王小梅回应后，Xiaomei 再次发声。'),{text:'当事女性回应后，当事女性 再次发声。',count:2});
+  assert.equal(r.contains('Xiaomei'),true,'the review gate also flags the secondary form');
 });
 
 test('every call carries the rule and every output is redacted before parsing, with only a count reported',async()=>{
-  const {t,sent}=transport('王小梅回应了质疑。');const events:unknown[]=[];
-  const port=createClaudeModelPort({transport:t,ledger:createMemorySpendLedger(),config,redactor:createRedactor(policy),onRedaction:event=>events.push(event)});
+  const {t,sent}=transport('王小梅回应了质疑。');const events:unknown[]=[];const ledger=createMemorySpendLedger();
+  const port=createClaudeModelPort({transport:t,ledger,config,redactor:createRedactor(policy),onRedaction:event=>events.push(event)});
   const result=await port.call({role:'model_call',operationId:'op-1',system:'Answer.',prompt:'Who?',signal});
   assert.equal(result.text,'当事女性回应了质疑。');
   assert.equal(result.redactions,1);
   assert.deepEqual(events,[{role:'model_call',operationId:'op-1',count:1}]);
   assert.match(JSON.stringify(sent[0].system),/Privacy rule/);
+  assert.equal(ledger.entries[0].redactions,1,'the count is stored per call, so it can be summed by role');
+  const plain=createClaudeModelPort({transport:transport('王小梅回应了质疑。').t,ledger,config});
+  assert.equal((await plain.call({role:'model_call',operationId:'op-2',system:'s',prompt:'p',signal})).text,'王小梅回应了质疑。','a port without a redactor is left untouched');
 });
 
 test('compiled pages never carry a protected name, even when the model ignores the rule',async()=>{

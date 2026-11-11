@@ -73,7 +73,7 @@ Worker 的维护模式须显式开启，并提供确定的项目、空间、用�
 | `KNOWLEDGE_CLAUDE_ROLES` | 只启用部分角色：`ask,source_plan,wiki_compile,relation_judgment,model_call`；默认全部。 |
 | `KNOWLEDGE_MODEL_DISCLOSURE_RIGHTS_POLICY_IDS` | 允许发给外部模型的来源权利策略；未列出的来源原文一律不外发。 |
 | `KNOWLEDGE_MODEL_DISCLOSURE_WIKI` | `1` 时允许把已发表 Wiki 页发给模型；默认不允许。 |
-| `KNOWLEDGE_MODEL_REDACTION_FILE` | 可选。私有文件（权限 600），格式 `{"terms":[...],"replacement":"..."}`，列出不得出现在任何模型输出中的人名。每次调用都带上这条规则；模型输出在解析和入库前做确定性替换，拉丁字母不区分大小写，长名优先替换。日志只记录替换次数，不记录名字。审阅 agent 读同一个文件，候选页里只要还出现这些名字，就在调用模型之前转人工（`private_person`）。 |
+| `KNOWLEDGE_MODEL_REDACTION_FILE` | 可选。私有文件（权限 600）：`{"terms":[...],"secondaryTerms":[...],"replacement":{"zh":"当事女性","default":"the woman"}}`。`terms` 中的名字一律替换；`secondaryTerms`（容易与他人重名的简短写法）只在同一次输出或这次调用的输入里出现了 `terms` 中的名字时才替换。匹配前对文本做 NFKC 规范化，拉丁字母不区分大小写，只匹配整词；名字中间有空格或间隔号，或者没有分隔，都能匹配；不会泛化到名单以外的词。中文上下文用 `zh` 替换词，其他用 `default`。规划、编纂、问答和关系判断的每次调用都带上规则，输出在解析前替换，替换次数按调用记入账本的 `redactions` 列，不记录名字。`POST /model-calls` 不做替换，供评测对照。审阅 agent 读同一个文件，候选页里只要出现任一写法就转人工（`private_person`）。 |
 
 调用被拒时的错误码：Anthropic 明确拒绝的请求（4xx）为 `MODEL_CALL_REJECTED`，限流为 `MODEL_RATE_LIMITED`，网络或服务故障为 `MODEL_UNAVAILABLE`，这三种都没有计费，可以用同一个键重试；已发出但结果不明的为 `PROVIDER_OUTCOME_UNKNOWN`。模型已经返回、也已计费，但输出不可用（不是 JSON、不符合契约、引用未提供的证据、输出被截断）时，提供方抛出带费用回执的 `ProviderOutputError`（`PROVIDER_OUTPUT_INVALID` 或 `PROVIDER_OUTPUT_TRUNCATED`）；Ask、规划、编纂和关系判断都把它记为 `failed` 并保留已知费用，只有调用本身没有回音时才是 `outcome_unknown`。只有上述未计费错误和预算、价格错误会释放 `/model-calls` 的幂等键；其他任何错误（包括发送后账本结算冲突）都可能已经计费，键保持占用，不能重发。Haiku 5.5 按实际提示长度分两档计价。请求体在认证通过后才解析。
 
