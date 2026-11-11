@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: verify-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -30,8 +34,6 @@ jobs:
           --health-retries=20
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
@@ -39,14 +41,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: pip
+          cache-dependency-path: pyproject.toml
       - name: Install isolated test dependencies
         run: |
-          python -m pip install '.[docs]'
+          python -m pip install 'markdown-it-py>=3,<5'
           npm ci
       - name: Build core packages and web
         run: npm run build
+      # The build step already compiled every workspace package; skip the pretest rebuild.
       - name: Test core with disposable PostgreSQL schemas
-        run: npm test
+        run: npm test --ignore-scripts
       - name: Test public document onboarding with disposable PostgreSQL schemas
         run: npm run test:document-onboarding
       - name: Validate portable core documentation
