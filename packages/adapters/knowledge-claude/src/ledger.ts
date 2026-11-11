@@ -9,9 +9,11 @@ import type {TokenUsage} from './pricing.ts';
  * A call whose outcome is unknown keeps its reservation, so the daily cap can only be over-counted, never exceeded.
  */
 export interface SpendReservation {id:string;day:string;reservedUsd:number}
-export interface SpendSettlement {actualUsd:number;usage:TokenUsage;modelReturned:string|null;requestId:string|null;stopReason:string|null}
+export interface SpendSettlement {actualUsd:number;usage:TokenUsage;modelReturned:string|null;requestId:string|null;stopReason:string|null;
+  /** Protected-name replacements in this call's output (counts only). */
+  redactions?:number}
 export interface SpendEntry {id:string;day:string;role:string;operationId:string;model:string;state:'reserved'|'settled'|'released'|'unknown';
-  reservedUsd:number;actualUsd:number|null;usage:TokenUsage|null;requestId:string|null;reason:string|null;createdAt:string}
+  reservedUsd:number;actualUsd:number|null;usage:TokenUsage|null;requestId:string|null;reason:string|null;createdAt:string;redactions?:number}
 export interface SpendLedger {
   reserve(input:{role:string;operationId:string;model:string;reservedUsd:number;dailyCapUsd:number;now:Date}):Promise<SpendReservation>;
   settle(id:string,settlement:SpendSettlement):Promise<void>;
@@ -36,7 +38,7 @@ export function createMemorySpendLedger():SpendLedger&{entries:SpendEntry[]}{
       const entry:SpendEntry={id:randomUUID(),day,role:input.role,operationId:input.operationId,model:input.model,state:'reserved',reservedUsd:input.reservedUsd,
         actualUsd:null,usage:null,requestId:null,reason:null,createdAt:input.now.toISOString()};
       entries.push(entry);return {id:entry.id,day,reservedUsd:input.reservedUsd};},
-    async settle(id,settlement){Object.assign(find(id),{state:'settled',actualUsd:settlement.actualUsd,usage:settlement.usage,requestId:settlement.requestId});},
+    async settle(id,settlement){Object.assign(find(id),{state:'settled',actualUsd:settlement.actualUsd,usage:settlement.usage,requestId:settlement.requestId,redactions:settlement.redactions??0});},
     async release(id,reason){Object.assign(find(id),{state:'released',reason});},
     async markUnknown(id,reason){Object.assign(find(id),{state:'unknown',reason});},
     async spentToday(now){return spent(spendDay(now));},
@@ -52,6 +54,7 @@ export async function migrateModelSpend(pool:Pool):Promise<void>{
     created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now(),
     CHECK(state<>'settled' OR actual_usd IS NOT NULL))`);
   await pool.query('CREATE INDEX IF NOT EXISTS ccl_knowledge_model_spend_day ON ccl_knowledge_model_spend(day,state)');
+  await pool.query('ALTER TABLE ccl_knowledge_model_spend ADD COLUMN IF NOT EXISTS redactions integer NOT NULL DEFAULT 0 CHECK(redactions>=0)');
 }
 
 const COUNTED=`COALESCE(SUM(CASE state WHEN 'released' THEN 0 WHEN 'settled' THEN actual_usd ELSE reserved_usd END),0)::float8`;
@@ -77,8 +80,8 @@ export function createPgSpendLedger(pool:Pool):SpendLedger{
       }catch(error){await client.query('ROLLBACK').catch(()=>undefined);throw error;}
       finally{client.release();}
     },
-    settle:(id,s)=>transition(id,['reserved'],`state='settled',actual_usd=$3,usage=$4,model_returned=$5,request_id=$6,stop_reason=$7`,
-      [s.actualUsd,JSON.stringify(s.usage),s.modelReturned,s.requestId,s.stopReason]),
+    settle:(id,s)=>transition(id,['reserved'],`state='settled',actual_usd=$3,usage=$4,model_returned=$5,request_id=$6,stop_reason=$7,redactions=$8`,
+      [s.actualUsd,JSON.stringify(s.usage),s.modelReturned,s.requestId,s.stopReason,s.redactions??0]),
     release:(id,reason)=>transition(id,['reserved'],`state='released',reason=$3`,[reason.slice(0,1000)]),
     markUnknown:(id,reason)=>transition(id,['reserved'],`state='unknown',reason=$3`,[reason.slice(0,1000)]),
     async spentToday(now){return Number((await pool.query(`SELECT ${COUNTED} AS used FROM ccl_knowledge_model_spend WHERE day=$1`,[spendDay(now)])).rows[0].used);},
@@ -111,7 +114,7 @@ export function createFileSpendLedger(path:string):SpendLedger{
       const entry:SpendEntry={id:randomUUID(),day,role:input.role,operationId:input.operationId,model:input.model,state:'reserved',reservedUsd:input.reservedUsd,
         actualUsd:null,usage:null,requestId:null,reason:null,createdAt:input.now.toISOString()};
       await append(entry);return {id:entry.id,day,reservedUsd:input.reservedUsd};}),
-    settle:(id,s)=>update(id,{state:'settled',actualUsd:s.actualUsd,usage:s.usage,requestId:s.requestId}),
+    settle:(id,s)=>update(id,{state:'settled',actualUsd:s.actualUsd,usage:s.usage,requestId:s.requestId,redactions:s.redactions??0}),
     release:(id,reason)=>update(id,{state:'released',reason}),
     markUnknown:(id,reason)=>update(id,{state:'unknown',reason}),
     spentToday:now=>serial(async()=>spent(await load(),spendDay(now))),

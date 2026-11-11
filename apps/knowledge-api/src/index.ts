@@ -24,7 +24,7 @@ import {createPgReviewPort,migrateKnowledgeReviews,lookupCapabilityOperation,get
   createPgFeedbackResearchPort,createPgKnowledgeAnswers,migrateKnowledgeAnswers,createPgSourceIntake,migrateSourceIntake,createPgWikiCompilations,migrateWikiCompilations,createPgWikiCompileStage,migrateMaintenanceTasks,createPgMaintenanceTasks,migrateWikiLint,createPgWikiLint,migrateRelationJudgments,createPgRelationJudgments,migrateSourcePlans,createPgSourcePlans,migrateCoordinationRuns,createPgCoordinationRuns,migrateSemanticSweeps,createPgSemanticSweep} from '@commerce/knowledge-service-adapter';
 import {createModelDisclosureAuthorizer,type ModelDisclosurePolicy,createModelCallService,readClaudeRuntimeConfig,readApiKeyFile,createAnthropicTransport,
   createPgSpendLedger,migrateModelSpend,createClaudeModelPort,createClaudeAnswerer,createClaudeSourcePlanner,createClaudeWikiCompiler,createClaudeDecisionProvider,
-  createPgModelCallStore,migrateModelCalls} from '@commerce/knowledge-claude-adapter';
+  createPgModelCallStore,migrateModelCalls,readRedactionFile,createRedactor} from '@commerce/knowledge-claude-adapter';
 import {ExactSetReadSchema,ModelCallRequestSchema,ReviewQueueRequestSchema,CONTRACT_VERSION,CatalogRequestSchema,CompareRequestSchema,GraphRequestSchema,HistoryRequestSchema,KnowledgeRefSchema,QueryRequestSchema,ReadReceiptSchema,
   SourceUpsertSchema,ResearchRequestSchema,CancelRequestSchema,OperationLookupSchema,UseInputSchema,FeedbackInputSchema,ChangesRequestSchema,
   ReviewRequestSchema,ReviewDecisionSchema,FeedbackSourceRequestSchema,AskRequestSchema,SourceEventRequestSchema,EntityMentionExtractionSchema,WikiCompileRequestSchema,MaintenanceCollectRequestSchema,LintRequestSchema,RelationJudgmentRequestSchema,SearchProjectionBuildRequestSchema,SourcePlanRequestSchema,SemanticSweepApiRequestSchema,AnswerResearchRequestSchema} from '@commerce/knowledge-contracts';
@@ -349,15 +349,19 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   if(claude){
     if(!grant)throw new Error('Claude providers require a trusted KNOWLEDGE_WRITER_GRANT_JSON capability');
     await migrateModelSpend(pool);await migrateModelCalls(pool);
-    const port=createClaudeModelPort({transport:createAnthropicTransport({apiKey:readApiKeyFile(claude.apiKeyFile)}),ledger:createPgSpendLedger(pool),config:claude.model});
+    const redactor=claude.redactionFile?createRedactor(readRedactionFile(claude.redactionFile)):undefined;
+    const transport=createAnthropicTransport({apiKey:readApiKeyFile(claude.apiKeyFile)}),ledger=createPgSpendLedger(pool);
+    const port=createClaudeModelPort({transport,ledger,config:claude.model,
+      redactor,onRedaction:event=>process.stdout.write(`redaction role=${event.role} operation=${event.operationId} replacements=${event.count}\n`)});
     const has=(role:Parameters<typeof claude.roles.has>[0])=>claude.roles.has(role);
     models={modelDisclosure:claude.disclosure,
       ...has('ask')?{answerer:createClaudeAnswerer(port)}:{},
       ...has('source_plan')&&sourceIntakeEnabled?{sourcePlanner:createClaudeSourcePlanner(port)}:{},
       ...has('wiki_compile')&&sourceIntakeEnabled?{compiler:createClaudeWikiCompiler(port)}:{},
       ...has('relation_judgment')?{decisionProvider:createClaudeDecisionProvider(port)}:{},
-      ...has('model_call')?{modelCalls:createModelCallService({port,store:createPgModelCallStore(pool)})}:{}};
-    process.stdout.write(`Claude providers enabled: model=${claude.model.model} roles=${[...claude.roles].join(',')} perCallUsd=${claude.model.maxCallUsd} dailyUsd=${claude.model.dailyCapUsd}\n`);
+      // Generic model calls stay unredacted: evaluation arms compare the raw model against the knowledge service.
+      ...has('model_call')?{modelCalls:createModelCallService({port:createClaudeModelPort({transport,ledger,config:claude.model}),store:createPgModelCallStore(pool)})}:{}};
+    process.stdout.write(`Claude providers enabled: model=${claude.model.model} roles=${[...claude.roles].join(',')} redaction=${redactor?'on':'off'} perCallUsd=${claude.model.maxCallUsd} dailyUsd=${claude.model.dailyCapUsd}\n`);
   }
   const api=await createKnowledgeApi({pool,...principals?{principals}:{token},principal:{id:process.env.KNOWLEDGE_API_PRINCIPAL_ID??'local-owner',
     clientInstallationId:process.env.KNOWLEDGE_API_CLIENT_INSTALLATION_ID?.trim()||'local-api',projectId,spaceIds,purposes:['exploration_reading']},
